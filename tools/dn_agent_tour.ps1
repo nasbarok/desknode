@@ -289,6 +289,84 @@ switch ($Action) {
         exit 3
     }
 
+    # --- LHM : LE PREREQUIS DUR ------------------------------- (dn7-5)
+    # !!! ARBITRAGE OWNER DU 2026-09-10, VERBATIM : " LHM est-il un prerequis
+    #     DUR !!! car sinon la dalle sert a rien ". => CE PRE-VOL REFUSE.
+    #     L'option " confort declare " est ECARTEE.
+    # !!! LA PLACE EST CHOISIE : APRES les dependances, AVANT le compte
+    #     d'instances - donc AVANT TOUTE DESTRUCTION D'ETAT. C'est le motif
+    #     ecrit vingt lignes plus haut : un pre-vol qui echoue ne casse rien.
+    # !!! L'ADRESSE EST **LUE DANS L'AGENT**, JAMAIS RECOPIEE ICI. Meme patron
+    #     que tools\dn_lhm_tour.ps1 (l.122-128) : figer la valeur ferait DEUX
+    #     sources de verite, et la seconde pourrirait EN SILENCE le jour ou
+    #     l'owner joue un autre port. $AGENT est deja verifie plus haut.
+    # !!! ET C'EST LE CHEMIN DE MESURES QUI TRANCHE, PAS LE PROCESSUS. Le
+    #     serveur web de LHM vient de sa CONFIG XML, pas de son lancement : un
+    #     LHM ouvert SANS serveur rendrait " 1 process " et un chemin de
+    #     mesures MORT. Le compter serait un FAUX VERT.
+    # (!) AUCUNE ELEVATION ICI : c'est un GET sur la boucle locale. C'est LHM
+    #     qui coute l'elevation, pas DeskNode - et la tache de cet agent reste
+    #     limitee (voir le bloc de `tache`, plus bas).
+    # (!) -CaseSensitive, ET C'EST MESURE : Select-String est INSENSIBLE
+    #     par defaut, la lecture Python de la meme adresse est SENSIBLE.
+    #     Un `lhm_port` minuscule serait lu par l'un et pas par l'autre :
+    #     la page dirait ' non testable ' pendant que ce pre-vol REFUSE.
+    #     Le cote Python a raison - la constante est en MAJUSCULES.
+    $lhmHote = $null; $lhmPort = $null; $lhmChemin = $null
+    $mH = Select-String -CaseSensitive -Path $AGENT -Pattern '^LHM_HOTE\s*=\s*"([^"]+)"'   | Select-Object -First 1
+    $mP = Select-String -CaseSensitive -Path $AGENT -Pattern '^LHM_PORT\s*=\s*(\d+)'       | Select-Object -First 1
+    $mC = Select-String -CaseSensitive -Path $AGENT -Pattern '^LHM_CHEMIN\s*=\s*"([^"]+)"' | Select-Object -First 1
+    if ($mH) { $lhmHote   = $mH.Matches[0].Groups[1].Value }
+    if ($mP) { $lhmPort   = [int]$mP.Matches[0].Groups[1].Value }
+    if ($mC) { $lhmChemin = $mC.Matches[0].Groups[1].Value }
+    if ($null -eq $lhmHote -or $null -eq $lhmPort -or $null -eq $lhmChemin) {
+        # (!) UNE IGNORANCE N'EST PAS UN ECART. On ne sait pas OU interroger
+        #     LHM : on le DIT, et on ne refuse pas sur ce qu'on n'a pas mesure.
+        Alerte "Adresse de LHM introuvable dans dn_agent.py : sonde IMPOSSIBLE."
+        Alerte "  => ce n'est PAS ' LHM absent ', et cela ne bloque rien ici."
+    } else {
+        $lhmUrl = "http://" + $lhmHote + ":" + $lhmPort + $lhmChemin
+        $lhmVu = $false
+        # !!! UN 200 NE SUFFIT PAS, ET C'EST MESURE : /metrics sur ce port
+        #     est L'ADRESSE LA PLUS BANALE D'UN EXPORTATEUR PROMETHEUS.
+        #     Un service voisin rendrait la sonde VERTE, l'agent demarrerait,
+        #     et la temperature du CPU resterait a " -- " pour toujours -
+        #     meme famille de faux vert que compter le processus.
+        #     => le CORPS doit porter le prefixe que l'agent lui-meme exige
+        #        (dn_agent.py : `if not ligne.startswith("lhm_")`).
+        try {
+            $rep = Invoke-WebRequest -Uri $lhmUrl -UseBasicParsing -TimeoutSec 3
+            if ($rep.StatusCode -eq 200 -and
+                [string]$rep.Content -cmatch '(?m)^lhm_') { $lhmVu = $true }
+        } catch { }
+        if (-not $lhmVu) {
+            Stop2 ("LibreHardwareMonitor est INJOIGNABLE sur " + $lhmUrl)
+            Stop2 "  (ou il repond, mais ce n'est PAS LUI : le corps ne porte"
+            Stop2 "   aucune ligne ` lhm_ `, celle que l'agent exige.)"
+            Stop2 "  CE QUI TOMBE SANS LUI : la temperature du CPU et les trois"
+            Stop2 "  vitesses de ventilateur ne seront JAMAIS publiees. C'est"
+            Stop2 "  LHM qui lit ces sondes-la, et LUI SEUL."
+            Stop2 "  => LE GESTE : .\tools\dn_lhm_tour.ps1 -Poser -Permanence tache"
+            Stop2 "     (ce script demande des droits administrateur ; cet"
+            Stop2 "      agent-ci, non. Sans argument il VERIFIE et ne change"
+            Stop2 "      RIEN.)"
+            Stop2 "  (!) SI LHM TOURNE MAIS ECOUTE AILLEURS, CE REFUS EST"
+            Stop2 "      QUAND MEME LE BON, et sa parade est ailleurs : cette"
+            Stop2 "      sonde vise LHM_PORT de agent/dn_agent.py, et rien"
+            Stop2 "      d'autre. Un port different est une configuration"
+            Stop2 "      SUPPORTEE (dn_lhm_tour.ps1 -Port <n>) que NI ce"
+            Stop2 "      script NI dn-agent.bat ne savent encore passer a"
+            Stop2 "      l'agent. => soit aligner LHM_PORT sur le port"
+            Stop2 "      REELLEMENT ecoute, soit rejouer dn_lhm_tour.ps1"
+            Stop2 "      SANS -Port pour revenir au defaut."
+            Stop2 "  L'AGENT N'EST PAS LANCE : la dalle sans ces valeurs n'est"
+            Stop2 "  pas le produit. Voir README.md, section de l'ecart declare."
+            exit 12
+        }
+        Dire ("LHM : " + $lhmUrl + " repond 200.")
+    }
+    # --- fin du prerequis LHM -----------------------------------------
+
     # --- instance unique : le compte D'ABORD, le port ENSUITE. ------------
     $i = Get-Instances
     if ($i.Confirmes.Count -gt 0) {
@@ -704,6 +782,24 @@ switch ($Action) {
     #     ce n'etait pas le bon reglage pour ce cas.
     #     3 reprises a 1 min : de quoi couvrir un `--vers-agent` joue juste
     #     apres le logon, sans boucler indefiniment sur une carte debranchee.
+    # =====================================================================
+    # !!! 2026-09-10 (dn7-5) - LE REFUS DUR CREE UNE **COURSE AU LOGON**, ET
+    #     ELLE EST ECRITE PLUTOT QUE TUE. Depuis cette date, `prevol` REFUSE
+    #     quand LHM est injoignable (exit 12). Or les deux permanences tirent
+    #     sur le MEME evenement et ne sont PAS symetriques :
+    #       . la tache LHM      : AtLogOn, ELEVEE   (dn_lhm_tour.ps1:462-470)
+    #       . la tache de l'agent : AtLogOn, NON elevee (juste au-dessus)
+    #     => si LHM monte APRES l'agent, le pre-vol de l'agent refuse alors
+    #        que la machine est SAINE trente secondes plus tard.
+    #     LA PARADE EXISTE DEJA, ET C'EST LE REGLAGE CI-DESSOUS : 3 reprises
+    #     a 1 minute. ELLE PORTE SA BORNE, ET C'EST LE PRIX ECRIT DE
+    #     L'ARBITRAGE : au-dela de ~3 MINUTES, l'agent est ABSENT TOUTE LA
+    #     SESSION, en silence. C'est la meme borne que celle du port attache
+    #     a WSL, deux paragraphes plus haut - un seul mecanisme, deux causes.
+    #     (!) NE PAS "corriger" en montant -RestartCount sans mesure : ce
+    #         reglage a ete choisi pour ne PAS boucler indefiniment, et le
+    #         relever deplacerait le cout au lieu de le supprimer.
+    # =====================================================================
     $reglages = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
         -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) `
         -StartWhenAvailable -MultipleInstances IgnoreNew `

@@ -927,6 +927,18 @@
         <b>deux modules</b>. C'est un <b>écart déclaré</b>, ⛔ pas un oubli — et il a un porteur
         écrit.</span>
     </p>
+    <p class="discret" style="margin:0 0 10px">
+      <span lang="en">⚠️ <b>Completed on 2026-09-10, ⛔ not rewritten</b>&nbsp;: “two modules”
+        described the gap for <b>Python</b> alone. <b>LibreHardwareMonitor</b> belongs to it
+        too — it is ⛔ <b>not</b> a module, its gesture is ⛔ not <code>pip</code>, and without
+        it the CPU temperature and the three fan speeds ⛔ never fill in. It is listed
+        below.</span>
+      <span lang="fr">⚠️ <b>Complété le 2026-09-10, ⛔ pas réécrit</b>&nbsp;: «&nbsp;deux
+        modules&nbsp;» décrivait l'écart du côté <b>Python</b> seulement.
+        <b>LibreHardwareMonitor</b> en fait partie aussi — ce n'est ⛔ <b>pas</b> un module, son
+        geste n'est ⛔ pas <code>pip</code>, et sans lui la température du CPU et les trois
+        vitesses de ventilateur ⛔ ne se remplissent jamais. Il est listé ci-dessous.</span>
+    </p>
     <div class="ligne">
       <span class="cle"><span lang="en">Python 3</span><span lang="fr">Python 3</span></span>
       <span class="val" id="v-python">…</span>
@@ -940,14 +952,50 @@
       <span class="val" id="v-pyserial">…</span>
     </div>
     <div class="ligne">
-      <span class="cle"><span lang="en">⛔ <code>websockets</code></span><span lang="fr">⛔ <code>websockets</code></span></span>
-      <span class="val">⛔ <span lang="en"><b>not tested here</b> — the agent imports it without a guard</span><span lang="fr"><b>pas testé ici</b> — l'agent l'importe sans garde</span></span>
+      <span class="cle"><span lang="en">⛔ <code>pyserial</code> and <code>websockets</code></span><span lang="fr">⛔ <code>pyserial</code> et <code>websockets</code></span></span>
+      <span class="val">⛔ <span lang="en"><b>imported without a guard</b> — this line is about the <b>import guard</b>, ⛔ not about presence&nbsp;: whether <code>pyserial</code> is installed is the line above. If either is missing, the agent stops on a <b>bare traceback</b> instead of naming the gesture. <b>Completed on 2026-09-10</b>&nbsp;: this line named <code>websockets</code> alone and said nothing of the <i>same</i> fault on <code>pyserial</code>, which the agent imports in the <b>normal-regime branch</b>. The earlier wording is ⛔ not erased — it was incomplete, ⛔ not false.</span><span lang="fr"><b>importés sans garde</b> — cette ligne parle de la <b>garde de l'import</b>, ⛔ pas de la présence&nbsp;: que <code>pyserial</code> soit installé ou non, c'est la ligne au-dessus qui le dit. Si l'un des deux manque, l'agent sort sur une <b>trace nue</b> au lieu de nommer le geste. <b>Complété le 2026-09-10</b>&nbsp;: cette ligne ne nommait que <code>websockets</code> et taisait le <i>même</i> défaut sur <code>pyserial</code>, que l'agent importe dans la <b>branche du régime normal</b>. L'ancienne rédaction n'est ⛔ pas effacée — elle était incomplète, ⛔ pas fausse.</span></span>
     </div>
     <p style="margin:12px 0 0">
       <span lang="en">The gesture, if one is missing&nbsp;:</span>
       <span lang="fr">Le geste, s'il en manque un&nbsp;:</span>
     </p>
     <pre style="max-height:none"><span lang="en">pip install --user psutil pyserial</span><span lang="fr">pip install --user psutil pyserial</span></pre>
+    <p style="margin:16px 0 0">
+      <span lang="en">And <b>one more thing, which is ⛔ not a Python module</b> — so ⛔ not a
+        <code>pip</code> line either&nbsp;:</span>
+      <span lang="fr">Et <b>une chose de plus, qui ⛔ n'est pas un module Python</b> — donc ⛔ pas
+        une ligne <code>pip</code> non plus&nbsp;:</span>
+    </p>
+    <div class="ligne">
+      <span class="cle"><span lang="en"><code>LibreHardwareMonitor</code> (the CPU temperature, and the three fan speeds)</span><span lang="fr"><code>LibreHardwareMonitor</code> (la température du CPU, et les trois vitesses de ventilateur)</span></span>
+      <span class="val" id="v-lhm">…</span>
+    </div>
+    <p style="margin:12px 0 0">
+      <span lang="en">Its gesture is <b>its own</b>, and the repository already carries it&nbsp;:</span>
+      <span lang="fr">Son geste est <b>le sien</b>, et le dépôt le porte déjà&nbsp;:</span>
+    </p>
+    <pre style="max-height:none"><span lang="en">tools\dn_lhm_tour.ps1 -Poser -Permanence tache</span><span lang="fr">tools\dn_lhm_tour.ps1 -Poser -Permanence tache</span></pre>
+    <p class="discret" style="margin:8px 0 0">
+      <span lang="en"><b>What falls without it, measured&nbsp;: the CPU temperature and the
+        three fan speeds — and ⛔ nothing else.</b> The CPU percentage, the GHz, the MB/s and
+        the AMBIENT box ⛔ do not depend on it. ⚠️ That script asks for <b>administrator
+        rights</b>, and it is <b>LibreHardwareMonitor</b> that costs them — the DeskNode agent
+        itself asks for none, and the scheduled task it installs is a limited one. Run with no
+        argument, the same script <b>checks and changes nothing</b>. 🔴 <b>The agent now refuses
+        to start without it</b>&nbsp;: its own pre-flight stops, with its own exit code. ⛔ This
+        page does not&nbsp;: it opens all the same, and <b>flashing the board is ⛔ not affected
+        by LibreHardwareMonitor</b>.</span>
+      <span lang="fr"><b>Ce qui tombe sans lui, mesuré&nbsp;: la température du CPU et les trois
+        vitesses de ventilateur — et ⛔ rien d'autre.</b> Le pourcentage CPU, les GHz, les Mo/s
+        et la case AMBIANCE ⛔ n'en dépendent pas. ⚠️ Ce script demande des <b>droits
+        administrateur</b>, et c'est <b>LibreHardwareMonitor</b> qui les coûte — l'agent
+        DeskNode, lui, n'en demande aucun, et la tâche planifiée qu'il pose est une tâche
+        limitée. Sans argument, le même script <b>vérifie et ne change rien</b>. 🔴 <b>L'agent
+        refuse désormais de démarrer sans lui</b>&nbsp;: son propre pré-vol s'arrête, avec son
+        propre code de sortie. ⛔ Cette page, elle, ⛔ ne refuse pas&nbsp;: elle s'ouvre quand
+        même, et <b>poser le firmware sur la carte ⛔ ne dépend pas de
+        LibreHardwareMonitor</b>.</span>
+    </p>
     <p class="discret" style="margin:12px 0 0">
       <span lang="en"><b>Owner of the return to a single download&nbsp;: the agent as a standalone
         executable, planned for V0.2.</b> The decision of 2026-09-08 created this gap, and it is
@@ -1559,7 +1607,7 @@ function troisEtats(v, cleAbsent) {
    ne posait que `v-tache` : les cinq autres restaient sur leurs points de
    suspension POUR TOUJOURS, ce qui se lit « en cours » alors que c'est fini. */
 var CHAMPS = ["v-tache", "v-runlevel", "v-pilote", "v-python",
-              "v-psutil", "v-pyserial"];
+              "v-psutil", "v-pyserial", "v-lhm"];
 
 /* 🔴 L'ANCRE EST **OPTIONNELLE**, ET LES DEUX CAS SONT DES FAITS DIFFERENTS
    (dn7-4, 2026-09-10).
@@ -1589,6 +1637,7 @@ function rafraichirEtat(ancre) {
       else { poserMot("v-python", "etat.introuvable"); }
       poserMot("v-psutil", troisEtats(e.psutil, "etat.absent-geste"));
       poserMot("v-pyserial", troisEtats(e.pyserial, "etat.absent-geste"));
+      poserMot("v-lhm", troisEtats(e.lhm, "etat.absent-geste"));
       document.getElementById("etat-orphelin").hidden = (e.arbre_parent !== false);
       /* 🔴 « PILOTABLE » NE SE DEDUIT ⛔ PAS DE L'EXISTENCE DU FICHIER. Hors
          Windows, la copie du dépôt EXISTE — les boutons restaient donc actifs

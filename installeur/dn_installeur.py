@@ -109,6 +109,7 @@ Codes de retour :
 """
 
 import argparse
+import http.client
 import io
 import json
 import os
@@ -221,6 +222,39 @@ GESTE_DEPENDANCES = "pip install --user psutil pyserial"
 #    un geste exact a quelqu'un de perdu, ⛔ non.
 PORTEUR_ECART = ("l'agent en executable autonome, prevu en V0.2 - "
                  "c'est la decision qui a cree l'ecart qui le refermera")
+
+# ══ LE SERVICE LHM : L'ADRESSE EST **LUE DANS LE PRODUIT** (dn7-5) ═════════
+# 🔴 LE PATRON EST DEJA ECRIT DANS CE DEPOT : `tools/dn_lhm_tour.ps1` (l.122-128)
+#    lit `LHM_PORT` DANS `agent/dn_agent.py` au lieu de le recopier, et il dit
+#    pourquoi — figer la valeur ici ferait DEUX sources de verite, et la
+#    seconde pourrirait EN SILENCE le jour ou l'owner joue un autre port.
+# ⚠️ ⛔ AUCUN REPLI CHIFFRE, ET C'EST UN CHOIX. Si `agent/dn_agent.py` n'est pas
+#    la — copie deployee, dossier `installeur/` recupere seul — la sonde ⛔ ne
+#    DEVINE pas : elle rend `None`, c'est-a-dire " non testable ici ", ⛔ pas
+#    " ABSENT ". Une ignorance publiee comme un constat est exactement ce que
+#    `tache_presente()` et `dependance_presente()` se gardent deja de faire.
+AGENT_PY = os.path.join(RACINE, "agent", "dn_agent.py")
+RE_LHM_HOTE = re.compile(r'^LHM_HOTE\s*=\s*"([^"]+)"', re.M)
+RE_LHM_PORT = re.compile(r"^LHM_PORT\s*=\s*(\d+)", re.M)
+RE_LHM_CHEMIN = re.compile(r'^LHM_CHEMIN\s*=\s*"([^"]+)"', re.M)
+# ⚠️ LE PLAFOND DE **LA SONDE**, ⛔ pas celui du regime de l'agent. L'agent
+#    borne sa lecture a 0,6 s parce qu'il CADENCE ; ici personne ne cadence
+#    rien : on pose UNE question a la boucle locale, une seule fois.
+LHM_SONDE_TIMEOUT_S = 1.5
+# Ce que le corps doit porter pour que ce soit LHM et ⛔ pas un voisin :
+# le prefixe que `agent/dn_agent.py` exige de CHAQUE ligne qu'il retient
+# (`if not ligne.startswith("lhm_")`), ancre EN DEBUT DE LIGNE comme lui.
+RE_MARQUE_LHM = re.compile(rb"(?m)^lhm_")
+PLAFOND_CORPS_LHM = 65536
+# 🔴 LE GESTE DE LHM EXISTE DEJA, ⛔ IL NE S'INVENTE PAS. `tools/dn_lhm_tour.ps1`
+#    installe ce qui manque, ecrit la config du serveur web et pose la
+#    permanence ; SANS ARGUMENT il VERIFIE et ne change RIEN. ⛔ Ce n'est pas un
+#    module pip, et ⛔ pas une ligne d'installateur recopiee.
+GESTE_LHM = "tools\\dn_lhm_tour.ps1 -Poser -Permanence tache"
+# Ce qui tombe SANS LHM — MESURE dans `agent/dn_agent.py`, ⛔ pas suppose : la
+# grandeur 4 (temperature du CPU) et les trois vitesses de ventilateur. Le
+# reste ne bouge pas : le % CPU, les GHz, les Mo/s et l'AMBIANCE survivent.
+PERTE_LHM = ("la temperature du CPU et les trois vitesses de ventilateur")
 
 # ⚠️ RELU DANS L'OUTIL, ⛔ PAS RECOPIE : le nom de la tache est une valeur de
 #    `dn_agent_tour.ps1`. Le figer ici ferait deux sources de verite, et la
@@ -374,6 +408,80 @@ def dependance_presente(module, sans_site_utilisateur):
     except (OSError, subprocess.SubprocessError):
         return None
     return r.returncode == 0
+
+
+def cible_lhm():
+    """OU LHM repond — hote, port et chemin **LUS DANS L'AGENT**.
+
+    ⛔ RIEN N'EST RECOPIE ICI. C'est `agent/dn_agent.py` qui decide ou il va
+       chercher ses sondes ; ce fichier ne fait que RELIRE sa decision. Le
+       jour ou l'owner joue un autre port, la page suit toute seule.
+    ⚠️ Rend `None` si l'agent n'est pas la ou ne publie pas ses trois
+       constantes — et « on ne sait pas » ⛔ n'est PAS « absent »."""
+    txt = _lire(AGENT_PY)
+    if not txt:
+        return None
+    h = RE_LHM_HOTE.search(txt)
+    p = RE_LHM_PORT.search(txt)
+    c = RE_LHM_CHEMIN.search(txt)
+    if not (h and p and c):
+        return None
+    return h.group(1), int(p.group(1)), c.group(1)
+
+
+def lhm_present():
+    """`True` / `False` / `None` — et `None` n'est ⛔ PAS `False`.
+
+    🔴 C'EST LE CHEMIN DE MESURES QUI TRANCHE, ⛔ PAS LE PROCESSUS.
+       `tools/dn_lhm_tour.ps1` sait compter les deux et ecrit pourquoi le
+       second ne suffit pas : le serveur web de LHM vient de sa **config XML**
+       (l.317-320), ⛔ pas de son lancement. Un LHM ouvert SANS son serveur
+       rendrait « 1 processus » et un chemin de mesures MORT — un FAUX VERT,
+       c'est-a-dire la faute que ce depot a nommee quatre fois pendant `dn7-4`.
+    ⚠️ LA QUESTION EST **EXACTEMENT CELLE QUE L'AGENT POSE** : un `GET` sur la
+       boucle locale. ⛔ Aucune elevation, ⛔ aucun driver, ⛔ aucun .NET — c'est
+       LHM qui coute ces trois-la, ⛔ pas DeskNode."""
+    # 🔴 HORS WINDOWS, ⛔ ON NE CONCLUT PAS — ET C'EST LE MEME MOTIF QUE
+    #    `tache_presente()` ET QUE « PILOTABLE NE SE DEDUIT PAS DE L'EXISTENCE
+    #    DU FICHIER », trois lignes sous le champ que cette sonde remplit.
+    #    MESURE sur Linux : sans ce garde, la sonde rendait `False` ⇒ le
+    #    pre-vol imprimait « ABSENT » et envoyait jouer un `.ps1` INJOUABLE.
+    #    LHM n'existe QUE sur Windows : ailleurs, la question n'a pas de
+    #    reponse, et une ignorance ⛔ n'est PAS un constat.
+    if os.name != "nt":
+        return None
+    cible = cible_lhm()
+    if cible is None:
+        return None
+    hote, port, chemin = cible
+    conn = None
+    try:
+        conn = http.client.HTTPConnection(hote, port,
+                                          timeout=LHM_SONDE_TIMEOUT_S)
+        conn.request("GET", chemin)
+        rep = conn.getresponse()
+        corps = rep.read(PLAFOND_CORPS_LHM)
+        # 🔴 UN `200` NE SUFFIT PAS, ET C'EST MESURE : `/metrics` sur ce port
+        #    est **l'adresse la plus banale d'un exportateur Prometheus**. Un
+        #    service voisin rendrait la sonde VERTE, l'agent demarrerait, et la
+        #    temperature du CPU resterait a `--` pour toujours — meme famille
+        #    de FAUX VERT que compter le processus. ⇒ le corps doit porter le
+        #    prefixe que l'agent LUI-MEME exige (`ligne.startswith("lhm_")`).
+        # ⚠️ UN REFUS DE CONNEXION EST UN **CONSTAT**, ⛔ pas une ignorance :
+        #    personne n'ecoute, donc LHM n'est pas debout. C'est bien `False`.
+        return rep.status == 200 and bool(RE_MARQUE_LHM.search(corps))
+    except (OSError, ValueError, http.client.HTTPException):
+        # ⚠️ `ValueError` EST DANS LE TUPLE, ET C'EST MESURE : un `LHM_CHEMIN`
+        #    non-ASCII fait lever `UnicodeEncodeError` a `putrequest`, et c'est
+        #    un `ValueError`, ⛔ pas un `OSError`. Sans lui, une fenetre
+        #    double-cliquee sortait en TRACE NUE.
+        return False
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except OSError:
+                pass
 
 
 def decouvrir_port():
@@ -584,6 +692,16 @@ def etat_machine(sans_site_utilisateur=False):
         "non_testables": non_testables,
         "arbre_parent": arbre_parent_present(),
         "geste": GESTE_DEPENDANCES,
+        # ── L'AUTRE MOITIE DE L'ECART DECLARE (dn7-5) ─────────────────────
+        # 🔴 TROIS POSITIONS, ⛔ PAS DEUX, exactement comme `psutil` : `None`
+        #    veut dire « la sonde n'a pas pu tourner », ⛔ pas « absent ».
+        # 🔴 ⛔ ET LHM N'ENTRE PAS DANS `manquantes` : cette liste commande A LA
+        #    FOIS le code de sortie `6` du pre-vol ET le bloc qui publie
+        #    `GESTE_DEPENDANCES`. Y verser LHM ferait imprimer `pip install …`
+        #    pour une dependance qui ⛔ n'est PAS un module pip.
+        "lhm": lhm_present(),
+        "geste_lhm": GESTE_LHM,
+        "perte_lhm": PERTE_LHM,
         "porteur_ecart": PORTEUR_ECART,
         "tache_nom": nom_de_la_tache(),
         "tache_presente": presente,
@@ -916,6 +1034,44 @@ def prevol(sans_site_utilisateur):
               % PORTEUR_ECART)
         print("     La page s'ouvre quand meme : arreter et retirer l'agent")
         print("        ne demande aucun de ces deux modules.")
+    # ── LHM : L'AUTRE MOITIE DE L'ECART, ET ⛔ PAS UN MODULE PYTHON ────────
+    # 🔴 IL A **SON** BLOC ET **SON** GESTE, ET IL ⛔ N'ENTRE PAS DANS
+    #    `manquantes`. Ce n'est pas une elegance de redaction : `manquantes`
+    #    commande A LA FOIS le `6` ET le bloc qui publie `GESTE_DEPENDANCES`,
+    #    c'est-a-dire `pip install --user psutil pyserial`. Y verser LHM ferait
+    #    imprimer LE MAUVAIS GESTE — un geste qui ⛔ ne peut pas reussir — et
+    #    bougerait un code de sortie que `README.md` publie et que `(c28)` de
+    #    `tools/verif_installeur_dn71.py` JOUE.
+    # ⚠️ CE PRE-VOL-CI **CONSTATE**, il ⛔ ne refuse pas : flasher la carte n'a
+    #    rien a voir avec LHM. Celui qui REFUSE est `tools/dn_agent_tour.ps1`,
+    #    et il refuse sur son propre code de sortie.
+    lhm = lhm_present()
+    print("  %-19s : %s" % ("LibreHardwareMonitor",
+                            "present" if lhm is True else
+                            "ABSENT" if lhm is False else "non testable"))
+    if lhm is False:
+        print("")
+        print("  /!\\ ECART DECLARE (2) - LHM N'EST PAS UN MODULE PYTHON,")
+        print("      ET SON GESTE N'EST PAS ` pip `.")
+        print("     Sans lui, %s" % PERTE_LHM)
+        print("     resteront a \" -- \" sur la dalle, POUR TOUJOURS : c'est")
+        print("     LHM qui lit ces sondes-la, et lui seul. Le reste ne bouge")
+        print("     pas - le % CPU, les GHz, les Mo/s et l'AMBIANCE n'en")
+        print("     dependent pas.")
+        print("")
+        print("       %s" % GESTE_LHM)
+        print("")
+        print("     Ce script demande des droits administrateur, et c'est LUI")
+        print("     qui les coute : l'agent DeskNode, lui, n'en demande aucun.")
+        print("     Sans argument, le meme script VERIFIE et ne change RIEN.")
+        print("     La page s'ouvre quand meme, et POSER LE FIRMWARE SUR LA")
+        print("        CARTE ne depend pas de LHM.")
+    elif lhm is None:
+        # ⚠️ UNE IGNORANCE N'EST ⛔ PAS UN ECART : on la dit, et elle ⛔ ne pese
+        #    PAS sur le code de retour.
+        print("")
+        print("  (i) sonde LHM impossible : agent/dn_agent.py ne se lit pas,")
+        print("      ou ne publie pas son adresse - ce n'est PAS \" absent \".")
     # ── LA CHARGE : CE QU'ON VA POSER SUR LA CARTE ────────────────────────
     # 🔴 ⛔ PAS UNE TRACE NUE, ET ⛔ PAS UN SILENCE NON PLUS. Sans charge, la
     #    page afficherait un bouton d'installation qui echouerait sur un 404 du

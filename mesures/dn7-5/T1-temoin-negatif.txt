@@ -1,0 +1,103 @@
+dn7-5 / T1 - TEMOIN NEGATIF : LA GATE NEUVE JOUEE CONTRE L'ARBRE D'ORIGINE
+Methode : `git archive c58931d` deploye HORS de l'arbre, la gate y est
+copiee et jouee. Une gate qui reverdit sans avoir rougi n'a RIEN garde.
+date  : 2026-09-10   (apres revue : 47 controles, 29 mutants)
+
+/!\ CE QUE CE TEMOIN NE PROUVE PAS, ET C'EST ECRIT PLUTOT QUE DEVINE :
+    SEPT controles numerotes en sortent VERTS - (c1)(c3)(c5)(c13) et les
+    trois de reciprocite (c14)(c15)(c16). Ils gardent des ACQUIS, PAS des
+    defauts que cette marche repare. Pour eux, le gardien est LE MUTANT.
+    Un temoin negatif prouve ' ce controle voit ce que la marche a
+    change ' ; il ne prouve JAMAIS ' ce controle garde quelque chose '.
+/!\ ET (c17) EN SORT ROUGE ALORS QU'ON L'ATTENDAIT VERT : il porte DEUX
+    faits d'age different. Le REGLAGE -RestartCount 3 / 1 min est un
+    acquis (dn4-17) ; le BLOC DATE qui nomme la course au logon est
+    ecrit PAR dn7-5. Le detail de la ligne dit LAQUELLE des deux a cede.
+==============================================================================
+==============================================================================
+dn7-5 — L'ECART DECLARE SE RE-DERIVE, ET LHM EST UN PREREQUIS DUR
+==============================================================================
+cibles     : installeur/index.html · installeur/dn_installeur.py · installeur/DeskNode-installeur.bat · tools/dn_agent_tour.ps1 · tools/dn_lhm_tour.ps1 · agent/dn_agent.py · README.md · CHANGELOG.md · docs/roadmap.md
+⛔ CETTE GATE EST STRUCTURELLE : elle N'INSTALLE PAS LHM, n'ouvre
+   aucun navigateur, ne lance aucune tache et n'emet AUCUNE requete
+   reseau. Elle prouve que LE MECANISME EST BRANCHE, ⛔ pas qu'une
+   tour sans LHM refuse — ce fait se ferme par `mesures/dn7-5/T2`,
+   cote Windows, ou l'absence de l'agent est VERIFIEE.
+
+── (c0) LE PRE-VOL — ⛔ AUCUN CONTROLE SUR DU VIDE ────────────────
+  [OK ] (c0) tout fichier attendu est LISIBLE                      9 fichier(s) lus
+  [OK ] (c0) le mutant 1 a une CIBLE et un LIBELLE                 → c1
+  [OK ] (c0) le mutant 2 a une CIBLE et un LIBELLE                 → c2
+  [OK ] (c0) le mutant 3 a une CIBLE et un LIBELLE                 → c3
+  [OK ] (c0) le mutant 4 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 5 a une CIBLE et un LIBELLE                 → c4,c5,c6
+  [OK ] (c0) le mutant 6 a une CIBLE et un LIBELLE                 → c5
+  [OK ] (c0) le mutant 7 a une CIBLE et un LIBELLE                 → c6
+  [OK ] (c0) le mutant 8 a une CIBLE et un LIBELLE                 → c7
+  [OK ] (c0) le mutant 9 a une CIBLE et un LIBELLE                 → c8
+  [OK ] (c0) le mutant 10 a une CIBLE et un LIBELLE                → c9
+  [OK ] (c0) le mutant 11 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 12 a une CIBLE et un LIBELLE                → c11
+  [OK ] (c0) le mutant 13 a une CIBLE et un LIBELLE                → c12
+  [OK ] (c0) le mutant 14 a une CIBLE et un LIBELLE                → c13
+  [OK ] (c0) le mutant 15 a une CIBLE et un LIBELLE                → c14
+  [OK ] (c0) le mutant 16 a une CIBLE et un LIBELLE                → c15
+  [OK ] (c0) le mutant 17 a une CIBLE et un LIBELLE                → c16
+  [OK ] (c0) le mutant 18 a une CIBLE et un LIBELLE                → c0
+  [OK ] (c0) le mutant 19 a une CIBLE et un LIBELLE                → z
+  [OK ] (c0) le mutant 20 a une CIBLE et un LIBELLE                → c2,c11,c12
+  [OK ] (c0) le mutant 21 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 22 a une CIBLE et un LIBELLE                → c6
+  [OK ] (c0) le mutant 23 a une CIBLE et un LIBELLE                → c17
+  [OK ] (c0) le mutant 24 a une CIBLE et un LIBELLE                → c7
+  [OK ] (c0) le mutant 25 a une CIBLE et un LIBELLE                → c7
+  [OK ] (c0) le mutant 26 a une CIBLE et un LIBELLE                → c6
+  [OK ] (c0) le mutant 27 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 28 a une CIBLE et un LIBELLE                → c17
+  [OK ] (c0) le mutant 29 a une CIBLE et un LIBELLE                → c12
+
+── (c1) LES DEPENDANCES DE L'AGENT SONT **DERIVEES** ─────────────
+  [OK ] (c1) les dependances tierces sont derivees a l'AST         psutil · pyserial (SANS GARDE) · websockets (SANS GARDE)
+
+── (c2)(c3) L'ADRESSE DE LHM EST **LUE**, ⛔ JAMAIS RECOPIEE ─────
+  [KO ] (c2) les 2 sondes LISENT l'adresse dans l'agent            ⛔ `installeur/dn_installeur.py` ne relit pas l'agent — deux sources de verite divergeront, et la seconde pourrira EN SILENCE le jour ou l'owner joue un autre port
+  [OK ] (c3) ⛔ aucun miroir de l'adresse LHM hors du produit       port et chemin cherches dans 4 fichier(s)
+
+── (c4)(c5)(c6) LES DEUX SENS, ET LES DEUX ENUMERATIONS ──────────
+  [KO ] (c4) page ⇄ README ⇄ derive, DANS LES DEUX SENS            ⛔ SENS 1 — absente(s) de la page : LibreHardwareMonitor(en) LibreHardwareMonitor(fr) · du README : LibreHardwareMonitor — un ecart declare INCOMPLET envoie l'inconnu monter un agent dont une part ne se remplira JAMAIS
+  [OK ] (c5) les 2 enumerations EXECUTABLES sont appariees         psutil pyserial, des deux cotes, et sous-ensemble du derive
+  [KO ] (c6) « sans garde » couvre les non gardees, PAR LANGUE     ⛔ derive=pyserial websockets · en=websockets · fr=websockets — la page disait « sans garde » de `websockets` SEUL, et taisait le MEME defaut sur `pyserial`, importe dans la branche du REGIME NORMAL. ⛔ Une moitie de page corrigee ⛔ n'en corrige PAS l'autre
+
+── (c7)(c8) LE GESTE PROPRE DE LHM, ET SON CHAMP ─────────────────
+  [KO ] (c7) le geste de LHM est LE SIEN, et il est BINDABLE       ⛔ la page ne publie pas le geste PROPRE de LHM — LHM ⛔ n'est PAS un module pip, et un geste que le script nomme ne peut pas reussir s'il ⛔ ne s'y branche pas
+  [KO ] (c8) la ligne LHM a son `id`, et il est dans `CHAMPS`      ⛔ la page ne porte pas `id="v-lhm"` — un `id` neuf oublie dans `CHAMPS` reste sur ses points de suspension POUR TOUJOURS, ce qui se lit « en cours » alors que c'est fini : un bug SILENCIEUX qu'⛔ aucune autre gate ne voit
+
+── (c9)(c10) TROIS POSITIONS, ET LE `6` QUI ⛔ NE BOUGE PAS ──────
+  [KO ] (c9) `etat_machine()` expose LHM a TROIS positions         ⛔ `lhm_present()` est introuvable — `None` ⛔ n'est PAS `False` : publier une IGNORANCE comme un constat est la faute que `dn7-1` a deja payee pour `psutil`, et elle ⛔ ne se rejoue pas
+  [KO ] (c10) `prevol()` IMPRIME LHM, hors de `manquantes`         ⛔ le pre-vol ⛔ n'imprime pas LHM — `manquantes` commande A LA FOIS le `6` ET le bloc qui publie `pip install …` : y verser LHM ferait imprimer LE MAUVAIS GESTE et bougerait un code que le README publie
+
+── (c11)(c12) LE REFUS DUR, SON CODE, ET CE QUI TRANCHE ──────────
+  [KO ] (c11) le refus LHM sort en `exit 12`, code LIBRE           ⛔ le bloc LHM de l'outil ne se delimite pas — `4` porte DEJA DEUX SENS selon le verbe et `lancer` le neutralise en `0` : un refus qui l'emprunterait laisserait l'agent DEMARRER
+  [KO ] (c12) `/metrics` ET SON CORPS tranchent, ⛔ rien d'autre    ⛔ le bloc de l'outil n'exige pas un 200 EXACT et le prefixe `lhm_` du corps — un LHM lance SANS son serveur web rend « 1 processus » et un `/metrics` MORT ; et n'IMPORTE QUEL 200 sur ce port peut venir d'un exportateur voisin. Le seul verdict qui a la forme de ce que l'agent fait est la REQUETE que l'agent fait
+
+── (c13) ⛔ AUCUN JETON D'ELEVATION SOUS `installeur/` ────────────
+  [OK ] (c13) ⛔ aucun jeton d'elevation dans `installeur/`         7 motif(s) cherche(s) dans 3 fichier(s) de code
+
+── (c17) LA REPRISE AU LOGON, ET SA BORNE PUBLIEE ────────────────
+  [KO ] (c17) la reprise au logon tient, et elle est DITE          ⛔ le bloc DATE qui nomme la course au logon a disparu — le reglage tiendrait sans que personne sache POURQUOI — la tache de LHM demarre ELEVEE au logon, celle de l'agent ⛔ non : depuis le refus dur, un `-RestartCount` retire ou releve devient une PANNE SILENCIEUSE DE TOUTE LA SESSION sur une machine SAINE, et le README, le CHANGELOG et le ledger publieraient une borne de ~3 min qui n'existe plus
+
+── (c14)(c15)(c16) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c14) chaque controle est vise par >= 1 mutant             19 controle(s) lu(s) a l'AST, 19 cible(s) declaree(s)
+  [OK ] (c15) chaque cible de mutant est un controle REEL          19 cible(s) confrontee(s)
+  [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent               29 mutant(s), 29 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'une tour SANS LHM refuse.
+   Elle prouve que le mecanisme est BRANCHE — la sonde vise ce que
+   l'agent vise, le refus a SON code, la prose couvre EXACTEMENT le
+   derive. Le refus REEL se ferme par `mesures/dn7-5/T2`, cote
+   Windows, avec l'ABSENCE DE L'AGENT verifiee — ⛔ pas deduite.
+
+==============================================================================
+BILAN : 37 OK, 10 KO
+==============================================================================
+rc=1

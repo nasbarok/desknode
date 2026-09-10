@@ -274,6 +274,46 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Changed
 
+- 🆕 **LibreHardwareMonitor is now a HARD prerequisite of the agent, and the declared
+  gap names it.** Owner decision of 2026-09-10, raised **by a question in session** —
+  ⛔ by no check in this repository. Measured the same day: the install page, its local
+  server and the roadmap carried **zero** mention of it, while `agent/dn_agent.py`
+  carried 142 on 129 lines and its own header says *« it is LHM that does it, and it
+  alone »*. Someone following the page to the letter therefore ended up with a running
+  agent whose **CPU temperature** and **three fan speeds** would never fill in, and the
+  only complete sentence about that in the product was a `stderr` line printed **when a
+  scheduled task shuts down**.
+  - **What changed, exactly.** The declared gap names LibreHardwareMonitor on the three
+    surfaces a newcomer crosses — the page, this file's sibling `README.md`, and the
+    installer's pre-flight, which now **prints** its state in **three positions**
+    (*present* / *ABSENT* / *not testable here*). Its gesture is **its own**
+    (`tools\dn_lhm_tour.ps1 -Poser`), ⛔ not `pip`: it is ⛔ **not** a Python module.
+    The published gap is now **re-derived** from the agent's real imports **through the
+    AST**, in **both directions**, so a dependency that appears, disappears or loses its
+    guard makes a check go red instead of staying quiet. That derivation found a second
+    fault on its first run: `pyserial` is imported **without a guard** too, in the
+    normal-regime branch, and the page said that of `websockets` alone.
+  - **The pre-flight that really refuses is the agent's, ⛔ not the installer's.** It
+    stops on its **own** exit code, **`12`**, with a message naming LibreHardwareMonitor,
+    its gesture and what falls without it. ⛔ The install page does **not** refuse and its
+    exit code `6` is **unchanged**: flashing the board has nothing to do with
+    LibreHardwareMonitor, and blocking the page would take the **main** gesture away from
+    a newcomer over a dependency of the **agent**.
+  - 🔴 **And the price is written, ⛔ not hidden.** A machine without it kept everything
+    **except the four quantities LibreHardwareMonitor publishes** — the CPU
+    temperature and the three fan speeds — and now loses the **agent entirely** — the README table
+    that measures the opposite is **annotated at its date**, ⛔ not erased, because it is
+    what makes the cost readable. And because the LibreHardwareMonitor task starts
+    **elevated** at logon while the agent's does not, the two **race**: the existing
+    recovery is **3 restarts, 1 minute apart**, so **beyond about three minutes the
+    agent is absent for the whole session**. ⛔ No elevation was added to anything this
+    repository ships — probing is a `GET` on the loopback, and the agent's scheduled task
+    stays a limited one.
+  - ⚠️ **What is ⛔ not closed by any check here**: that a real tower without
+    LibreHardwareMonitor refuses. No check in this repository installs it, opens a
+    browser or starts a scheduled task. That fact is measured on Windows and filed under
+    `mesures/dn7-5/`, where the agent's absence is **verified** rather than deduced from
+    the message.
 - **`mesures/` and the Markdown files at the repository root are now CC-BY-SA-4.0**
   too — added on 2026-09-04, at the code review of the entry below, which had applied
   its own reason to only half the tree. `mesures/` is 330 measurement captures and the
@@ -484,3 +524,18 @@ Work towards the first public release, `v0.1.0-beta`.
 - CPU temperature and fan RPM require **LibreHardwareMonitor**, installed separately
   with administrator rights. Without it those two values show `--` and everything else
   keeps working.
+  🔴 **Annotated on 2026-09-10, ⛔ not rewritten — the last sentence stopped being the
+  whole truth that day.** *« Everything else keeps working »* is still exactly right of
+  the **firmware and the agent's own measurements**: the CPU percentage, the GHz, the
+  MB/s and the AMBIENT box never depended on LibreHardwareMonitor. What changed is **the
+  supported path**: the owner ruled that it is a **hard** prerequisite, so the agent's
+  pre-flight now **refuses** to start it without one — see **Changed**, above. ⇒ on a
+  machine without LibreHardwareMonitor there is **no agent left to keep anything
+  working**, and *« installed separately »* now understates what that costs. ⛔ The
+  earlier wording is named here rather than swapped out: it was true when it was
+  published, and it still describes the hardware.
+  ⚠️ **The refusal itself is asserted only where it has been measured**: what has been
+  checked here is that the mechanism is wired — the probe exists, it targets what the
+  agent targets, and the refusal carries its own exit code. That a real tower without
+  LibreHardwareMonitor refuses is closed by a Windows-side record under
+  `mesures/dn7-5/`, ⛔ not by any check in this repository.

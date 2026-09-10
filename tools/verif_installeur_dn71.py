@@ -263,7 +263,20 @@ ATTENDU_PREVOL = {
     #    page : sans outil, le pre-vol annoncait « tout est la » pendant que
     #    les deux gestes exposes etaient MORTS.
     "pilote_absent": 3,
+    # 🔴 dn7-5 — LA **POLARITE** DE LA SONDE LHM EST JOUEE, ⛔ pas seulement
+    #    lue. DEMONTRE le 2026-09-10 : replier le ternaire du pre-vol en
+    #    `"present" if lhm else "ABSENT"` fait dire **ABSENT** a une sonde qui
+    #    n'a **PAS PU TOURNER** — l'ignorance publiee en constat, la faute meme
+    #    que les trois positions existent pour empecher — et TOUTES les gates
+    #    restaient vertes. Le tampon de `jouer_prevol` etait ECRIT PUIS JETE.
+    #    ⚠️ Ce sont des MOTS IMPRIMES, ⛔ pas des codes de retour : LHM ⛔ ne
+    #       pese pas sur le `rc`, et c'est precisement ce que `(c28)` garde.
+    "lhm_present": "present",
+    "lhm_absent": "ABSENT",
+    "lhm_non_testable": "non testable",
 }
+# La ligne que le pre-vol imprime pour LHM — ⛔ un NOM, pas un numero de ligne.
+RE_MOT_LHM = re.compile(r"^\s*LibreHardwareMonitor\s*:\s*(.+?)\s*$", re.M)
 # `| `--dn-x` | role | `#rrggbb` | `chemin:ligne` | nom |`
 RE_JETON = re.compile(
     r"^\|\s*`(--dn-[a-z-]+)`\s*\|\s*([^|]*?)\s*\|\s*`(#[0-9a-fA-F]{6})`\s*\|"
@@ -615,12 +628,18 @@ def jouer_retirer(mod):
 def jouer_prevol(mod):
     """Fait jouer le PRE-VOL trois fois, et relit son CODE DE SORTIE."""
     garde = (mod.dependance_presente, mod.arbre_parent_present, mod.PAGE,
-             dict(mod._PILOTE), mod.localiser_pilote)
+             dict(mod._PILOTE), mod.localiser_pilote, mod.lhm_present)
     out = {}
     try:
         mod._PILOTE.update(chemin=os.path.join(RACINE, OUTIL),
                            origine="double de papier")
         mod.arbre_parent_present = lambda: True
+        # 🔴 LA SONDE LHM EST **REMPLACEE**, ET CA FERME DEUX CHOSES A LA FOIS :
+        #    (1) sans ca, cette gate ouvrait QUATRE CONNEXIONS TCP REELLES vers
+        #        la boucle locale a chaque passe — un resultat qui depend de ce
+        #        qui tourne sur la machine du lecteur ⛔ n'est pas une mesure ;
+        #    (2) la polarite des TROIS positions devient JOUABLE.
+        mod.lhm_present = lambda: None
         tampon = io.StringIO()
         with contextlib.redirect_stdout(tampon):
             mod.dependance_presente = lambda m, s: (m != "psutil")
@@ -632,6 +651,20 @@ def jouer_prevol(mod):
             mod.PAGE = garde[2]
             mod.localiser_pilote = lambda: (None, "introuvable")
             out["pilote_absent"] = mod.prevol(False)
+        # ⚠️ ET LE TAMPON EST **RELU**, ⛔ plus jete : ce que le pre-vol IMPRIME
+        #    est ce que l'inconnu lit. Un tampon qu'on jette est un controle
+        #    qui n'existe pas.
+        mod.PAGE = garde[2]
+        mod.localiser_pilote = garde[4]
+        mod.dependance_presente = lambda m, s: True
+        for cle, valeur in (("lhm_present", True), ("lhm_absent", False),
+                            ("lhm_non_testable", None)):
+            mod.lhm_present = (lambda v: (lambda: v))(valeur)
+            vu = io.StringIO()
+            with contextlib.redirect_stdout(vu):
+                mod.prevol(False)
+            m = RE_MOT_LHM.search(vu.getvalue())
+            out[cle] = m.group(1) if m else "⛔ AUCUNE LIGNE LHM IMPRIMEE"
     except Exception as exc:                              # noqa: BLE001
         out["__erreur__"] = "%s: %s" % (type(exc).__name__, str(exc)[:80])
     finally:
@@ -639,6 +672,7 @@ def jouer_prevol(mod):
         mod._PILOTE.clear()
         mod._PILOTE.update(garde[3])
         mod.localiser_pilote = garde[4]
+        mod.lhm_present = garde[5]
     return out
 
 

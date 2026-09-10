@@ -1,0 +1,40 @@
+dn7-5 / T1 - CAMPAGNE DE MUTANTS DE tools/verif_prerequis_dn75.py
+Chaque mutant est TIRE INDIVIDUELLEMENT, et le controle qu'il rougit
+est CONFRONTE a la cible qu'il DECLARE. « N mutants, N rouges » prouve
+`mutant => rouge`, JAMAIS `controle => couvert` : c'est (c14)/(c15)/(c16)
+qui mesurent l'autre sens, et ils sont dans la gate.
+date : 2026-09-10   (apres la revue : 47 controles, 29 mutants)
+==============================================================================
+ 1  rc=1  BILAN=True  sain=True  declare=c1             rougi=c1             OK
+ 2  rc=1  BILAN=True  sain=True  declare=c2             rougi=c2             OK
+ 3  rc=1  BILAN=True  sain=True  declare=c3             rougi=c3             OK
+ 4  rc=1  BILAN=True  sain=True  declare=c4             rougi=c4             OK
+ 5  rc=1  BILAN=True  sain=True  declare=c4,c5,c6       rougi=c4,c5,c6       OK
+ 6  rc=1  BILAN=True  sain=True  declare=c5             rougi=c5             OK
+ 7  rc=1  BILAN=True  sain=True  declare=c6             rougi=c6             OK
+ 8  rc=1  BILAN=True  sain=True  declare=c7             rougi=c7             OK
+ 9  rc=1  BILAN=True  sain=True  declare=c8             rougi=c8             OK
+10  rc=1  BILAN=True  sain=True  declare=c9             rougi=c9             OK
+11  rc=1  BILAN=True  sain=True  declare=c10            rougi=c10            OK
+12  rc=1  BILAN=True  sain=True  declare=c11            rougi=c11            OK
+13  rc=1  BILAN=True  sain=True  declare=c12            rougi=c12            OK
+14  rc=1  BILAN=True  sain=True  declare=c13            rougi=c13            OK
+15  rc=1  BILAN=True  sain=True  declare=c14            rougi=c14            OK
+16  rc=1  BILAN=True  sain=True  declare=c15            rougi=c15            OK
+17  rc=1  BILAN=True  sain=True  declare=c16            rougi=c16            OK
+18  rc=1  BILAN=True  sain=True  declare=c0             rougi=c0             OK
+19  rc=1  BILAN=True  sain=True  declare=z              rougi=z              OK
+20  rc=1  BILAN=True  sain=True  declare=c2,c11,c12     rougi=c2,c11,c12     OK
+21  rc=1  BILAN=True  sain=True  declare=c10            rougi=c10            OK
+22  rc=1  BILAN=True  sain=True  declare=c6             rougi=c6             OK
+23  rc=1  BILAN=True  sain=True  declare=c17            rougi=c17            OK
+24  rc=1  BILAN=True  sain=True  declare=c7             rougi=c7             OK
+25  rc=1  BILAN=True  sain=True  declare=c7             rougi=c7             OK
+26  rc=1  BILAN=True  sain=True  declare=c6             rougi=c6             OK
+27  rc=1  BILAN=True  sain=True  declare=c4             rougi=c4             OK
+28  rc=1  BILAN=True  sain=True  declare=c17            rougi=c17            OK
+29  rc=1  BILAN=True  sain=True  declare=c12            rougi=c12            OK
+==============================================================================
+29 mutants tires · ecarts declare/rougi : AUCUN
+mutant inconnu (999) : rc=2  (attendu 2)
+gate saine           : rc=0  BILAN : 47 OK, 0 KO

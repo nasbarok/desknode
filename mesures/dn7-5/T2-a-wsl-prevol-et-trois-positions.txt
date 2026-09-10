@@ -1,0 +1,89 @@
+dn7-5 / T2-a - CE QUI A PU SE MESURER **DEPUIS WSL**, ET CE QUE CA NE FERME PAS
+==============================================================================
+/!\ CE RELEVE N'EST **PAS** `T2`. Il est joue depuis le WSL de la tour, qui est
+    en NAT : `localhost` NE TRAVERSE PAS. Il ne dit RIEN de la page servie cote
+    Windows, RIEN de la tache planifiee, et RIEN du refus reel de l'agent.
+    Ce qui ferme `AC7.5.3` est `T2-b`, cote Windows, et il n'est PAS joue.
+/!\ RE-JOUE APRES LA REVUE DU 2026-09-10. Le 1er tir de ce fichier montrait
+    `LibreHardwareMonitor : ABSENT` sur Linux - c'etait une IGNORANCE PUBLIEE
+    EN CONSTAT, et la revue l'a nommee. La sonde rend desormais `None` hors
+    Windows, et le pre-vol imprime ` non testable `. Le 1er tir est NOMME ici
+    plutot qu'efface : il etait FAUX, il ne l'est plus.
+date : 2026-09-10
+==============================================================================
+
+(1) LE PRE-VOL IMPRIME LHM, ET LE CODE DE SORTIE NE BOUGE PAS
+    commande : python3 installeur/dn_installeur.py --verifier
+------------------------------------------------------------------------------
+==========================================================================
+DeskNode - installeur local   (pre-vol)
+==========================================================================
+  Python              : 3.12.3  (/usr/bin/python3)
+  la page             : /home/nasbarok/projects/desknode/installeur/index.html
+  l'outil de l'agent  : /home/nasbarok/projects/desknode/tools/dn_agent_tour.ps1  [la copie du depot (aucune tache posee)]
+  psutil              : ABSENT
+  pyserial            : present
+
+  /!\ ECART DECLARE - ce n'est PAS une panne de l'installeur.
+     DeskNode ne se telecharge pas encore en UN seul morceau :
+     l'agent a besoin de psutil.
+
+       pip install --user psutil pyserial
+
+     Porteur du retour a un seul telechargement : l'agent en executable autonome, prevu en V0.2 - c'est la decision qui a cree l'ecart qui le refermera.
+     La page s'ouvre quand meme : arreter et retirer l'agent
+        ne demande aucun de ces deux modules.
+  LibreHardwareMonitor : non testable
+
+  (i) sonde LHM impossible : agent/dn_agent.py ne se lit pas,
+      ou ne publie pas son adresse - ce n'est PAS " absent ".
+
+  la charge a poser    : /home/nasbarok/projects/desknode/installeur/charge
+  version au manifeste : 40be2c8
+  bootloader.bin       : 20848 o
+  partition-table.bin  : 3072 o
+  desknode.bin         : 1266752 o
+  living_pcb_v0.bin    : 614416 o
+  manifest.json        : 509 o
+  asset (integrite)    : intact (614400 o + 16 o de queue, CRC32 verifie)
+rc=6
+  LECTURE : 6 = ECART DECLARE cote MODULES (psutil manque sur CE python de WSL).
+  C'est le MEME code qu'avant cette marche : LHM n'entre PAS dans la liste
+  `manquantes`, et (c28) de verif_installeur_dn71.py le JOUE - il confronte
+  desormais AUSSI les trois mots imprimes pour LHM, en relisant le tampon.
+
+(2) LA SONDE A BIEN **TROIS** POSITIONS, ET C'EST LE CORPS QUI TRANCHE
+    (module importe, sonde exercee contre un banc d'essai local)
+------------------------------------------------------------------------------
+cible_lhm() lue dans l'agent  : ('127.0.0.1', 8085, '/metrics')
+os.name                       : posix (⛔ pas 'nt' ⇒ hors Windows)
+hors Windows                  -> lhm_present() = None   (⛔ PAS False : LHM n'existe que sur Windows)
+
+-- regime Windows FORCE, pour exercer les chemins reels --
+LHM injoignable               -> lhm_present() = False
+agent illisible               -> lhm_present() = None   (⛔ pas False)
+banc d'essai, adresse lue     : ('127.0.0.1', 33957, '/metrics')
+LHM qui repond 200 + corps    -> lhm_present() = True
+VOISIN qui repond 200 (node_) -> lhm_present() = False   (le CORPS tranche, ⛔ pas le 200)
+meme serveur, autre chemin    -> lhm_present() = False   (le CHEMIN tranche)
+
+  LECTURE :
+   . HORS WINDOWS la sonde rend `None`. LHM n'existe QUE sur Windows : y
+     repondre ` ABSENT ` enverrait jouer un .ps1 INJOUABLE.
+   . `None` sort AUSSI quand l'agent ne se lit pas - " non testable ici ",
+     et ce n'est PAS " absent ". L'ignorance ne pese pas sur le code de retour.
+   . Le port ET le chemin viennent de `agent/dn_agent.py` : le banc les deplace
+     dans le PRODUIT, et la sonde suit. Aucun miroir n'est recopie.
+   . UN VOISIN QUI REND 200 EST REFUSE : /metrics sur ce port est l'adresse la
+     plus banale d'un exportateur Prometheus. C'est le CORPS - le prefixe
+     `lhm_`, celui que l'agent lui-meme exige - qui tranche, PAS le code HTTP.
+   . Meme serveur, autre chemin => False. Le chemin tranche aussi.
+
+(3) CE QUE CE RELEVE NE PROUVE PAS - ECRIT PLUTOT QUE TU
+------------------------------------------------------------------------------
+   . que la ligne LHM s'affiche dans ses trois positions SUR LA PAGE SERVIE ;
+   . que le bouton de flash reste utilisable quand LHM est absent ;
+   . que `dn-agent.bat run` REFUSE, ni que l'agent est ABSENT apres ce refus ;
+   . que le geste publie POSE VRAIMENT la tache au logon (c'est `-Permanence
+     tache`, ajoute par la revue : la moitie qui manquait au geste).
+  => tous dans `T2-b-A-JOUER-COTE-WINDOWS.md`.

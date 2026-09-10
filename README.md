@@ -138,6 +138,16 @@ paliers matériels, il ne s'y range pas.
 | ⛔ | ⛔ | ✅ | 5 cases sur 6, sans la °C CPU ni les tr/min | AMBIANCE · °C CPU · tr/min |
 | ⛔ | — | ⛔ | 🔴 **RIEN — 0 case sur 6** | **tout** |
 
+🔴 **ANNOTÉE LE 2026-09-10, ⛔ PAS CORRIGÉE — ET C'EST ELLE QUI REND LE PRIX LISIBLE.** Les
+deux lignes *« LHM ⛔ »* restent **vraies du matériel** : la dalle afficherait bien tout cela
+sans LibreHardwareMonitor. Ce qui a changé ce jour-là, c'est **le chemin supporté**, ⛔ pas la
+mesure : l'owner a tranché que **LHM est un prérequis DUR**, et le pré-vol de l'agent
+**refuse** désormais de le lancer sans lui. ⇒ sur une machine sans LHM, ces deux lignes
+décrivent ce que le **matériel** ferait, et ⛔ **plus** ce que le projet accepte de livrer —
+il n'y a **pas d'agent** pour remplir les cases. ⛔ **Effacer la table effacerait le prix de
+la décision** ; la laisser nue ferait mentir ce fichier. Voir *Ce que vous devez installer
+vous-même — écart déclaré*, plus bas, où ce prix est chiffré.
+
 ### 🔴 « VIVANT MÊME PC ÉTEINT » N'EXISTE PAS AU PALIER « DeskNode »
 
 **D6** promettait qu'une case sur six survive au PC éteint : c'est **AMBIANCE**, et elle vient du
@@ -707,6 +717,36 @@ découvert au premier lancement :
 pip install --user psutil pyserial
 ```
 
+- et il lui faut **LibreHardwareMonitor**, qui n'est ⛔ **pas** un module Python — donc ⛔ pas
+  une ligne de la commande ci-dessus. Son geste est **le sien**, et le dépôt le porte déjà :
+
+```
+tools\dn_lhm_tour.ps1 -Poser -Permanence tache
+```
+
+🔴 **CE QUI TOMBE SANS LUI, MESURÉ : la température du CPU et les trois vitesses de
+ventilateur — et ⛔ rien d'autre.** Le % CPU, les GHz, les Mo/s et la case AMBIANCE ⛔ n'en
+dépendent pas : la table du haut de ce fichier, **TROIS AXES, ⛔ PAS DEUX — et le troisième
+est indépendant des autres**, le mesure ligne à ligne, et c'est le même endroit qui écrit
+que **c'est LHM qui coûte l'élévation, ⛔ pas DeskNode**. Sans argument, `dn_lhm_tour.ps1`
+**vérifie et ne change rien**.
+
+🔴 **ET DEPUIS LE 2026-09-10, C'EST UN PRÉREQUIS DUR — ⛔ plus un confort.** Arbitrage owner,
+verbatim : *« LHM est-il un prerequis DUR !!! car sinon la dalle sert a rien »*. ⇒ le pré-vol
+de l'agent **REFUSE** de le lancer sans lui, avec **son propre code de sortie**, **`12`**, et
+un message qui nomme LHM, son geste et ce qui tombe sans lui. ⛔ **La page d'installation, elle,
+⛔ ne refuse pas** : elle l'**imprime** et **s'ouvre quand même** — poser le firmware sur la
+carte ⛔ n'a rien à voir avec LHM, et bloquer la page priverait un inconnu du geste
+**principal** pour une dépendance de l'**agent**.
+⚠️ **Et le prix est écrit, ⛔ pas tu, en deux pièces mesurées** : *(i)* une machine sans LHM
+gardait tout **sauf les quatre grandeurs que LHM publie** — la température du CPU
+et les trois vitesses de ventilateur ; elle perd désormais **l'agent entier** — la table
+du haut, qui mesure le contraire, est **annotée à sa date**, ⛔ pas effacée, parce que c'est
+elle qui rend ce coût lisible ; *(ii)* la tâche de LHM démarre **élevée** à l'ouverture de
+session et celle de l'agent ⛔ **non** — les deux tirent sur le **même** événement, donc elles
+**se courent après**. La reprise existe déjà et **porte sa borne** : **3 reprises à 1 minute**.
+⇒ **au-delà d'environ trois minutes, l'agent est absent TOUTE LA SESSION**, en silence.
+
 ⚠️ **Ce n'est ⛔ ni un oubli ni une panne : c'est le prix, écrit, d'une décision datée.** Le
 2026-09-08, l'owner a tranché qu'un **script lançable** suffisait pour la première version,
 plutôt qu'un exécutable autonome — le moins coûteux et le plus fiable. Or c'est l'exécutable
@@ -724,6 +764,29 @@ un trou que personne n'avait bouché. ⇒ le pré-vol déplace le problème pour
 trois, ⛔ il ne le referme pour aucun **côté agent** : quelqu'un qui lance `dn_agent.py` sans
 passer par l'installeur — ce que la tâche planifiée fait à **chaque** ouverture de session —
 retombe sur la trace nue. Le manque est au ledger, porteur `epic-dn4`.
+
+🔴 **CORRECTION DATÉE DU 2026-09-10 — une phrase du paragraphe ci-dessus a CESSÉ d'être vraie.
+Elle est reprise ici, BARRÉE, et ⛔ elle n'est PAS effacée là-haut** : elle était **exacte** le
+2026-09-08, et l'effacer effacerait ce que ce dossier savait ce jour-là.
+~~« Ce que le pré-vol de l'installeur teste, exactement :
+`psutil` et `pyserial` »~~ : il teste **aussi LibreHardwareMonitor**, et il l'**imprime** avec
+son geste propre. Deux précisions, parce qu'une correction qui en dit trop est une nouvelle
+erreur :
+- **le code de sortie `6` ⛔ n'a PAS bougé**, et c'est voulu. LHM ⛔ n'entre **pas** dans la
+  liste des modules manquants — cette liste commande **à la fois** le `6` **et** le bloc qui
+  publie la commande `pip` ci-dessus. Y verser LHM ferait imprimer **le mauvais geste** pour
+  une dépendance qui ⛔ n'est **pas** un module. ⇒ LHM a **son** bloc et **son** geste ;
+- **la sonde a TROIS positions, ⛔ pas deux** : *présent*, *ABSENT*, et *« non testable ici »*
+  — cette dernière quand l'adresse de LHM ne peut pas être relue dans `agent/dn_agent.py`.
+  ⛔ Une ignorance **n'est pas** un écart, et elle ⛔ ne pèse **pas** sur le code de sortie.
+
+⚠️ **Et cette adresse est LUE, ⛔ jamais recopiée.** L'hôte, le port et le chemin de LHM sont
+des valeurs de `agent/dn_agent.py` ; la page, son serveur local et l'outil de l'agent les y
+**relisent** au lieu d'en garder un miroir. Une seconde source de vérité pourrirait **en
+silence** le jour où l'un des deux change. Le même principe garde l'écart déclaré lui-même :
+les dépendances publiées ici sont **re-dérivées** des `import` réels de l'agent, dans les
+**deux sens**, de sorte qu'une dépendance qui apparaît, disparaît ou perd sa garde fasse
+**rougir** une vérification au lieu de se taire.
 
 ### ⚠️ Si vous avez **téléchargé** ce fichier plutôt que cloné le dépôt
 
