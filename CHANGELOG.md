@@ -10,6 +10,58 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Added
 
+- 🆕 **The install page now installs what it can, and it blocks on what it cannot.** Five
+  requests from the owner in session on 2026-09-10 — ⛔ raised by no check in this repository.
+  Each of the workflow's four steps carries a **three-position** state witness, in the
+  vocabulary the panel itself uses (*real* / *simulated* / *absent*), and every one of those
+  identifiers sits in the list the page resets when its local server goes quiet — an
+  identifier left out of it would stay on its ellipsis **forever**, which reads as *in
+  progress* when it is finished. A **single named factory** greys a gesture **and writes the
+  reason and the repair under the button**: before this, the page had **one** disarmed gesture
+  on **one** condition, fifteen scattered `disabled` assignments and ⛔ no common factory.
+  ⚠️ **Corrected on 2026-09-10 — the earlier figure is named rather than erased.** This
+  line, the page and the check all read *seventeen*; re-measured on the page as it stood
+  before this marker, `.disabled` is **assigned** at 15 sites and **referenced** 18 times,
+  three of them reads. *Seventeen* was references minus one — a count of the wrong thing,
+  published on four surfaces, which is the class this repository has already paid for.
+  ⚠️ **The line of division is written because it is not intuitive**: the flash is ⛔ **not**
+  blocked by the agent's dependencies nor by LibreHardwareMonitor — putting the firmware on
+  the board has nothing to do with either, and taking the **main** gesture away from a
+  newcomer over a dependency of the **agent** is the very mistake `dn7-5` refused to make.
+  ⚠️ And the **third position does not block**: *not testable here* is ⛔ not *absent*; an
+  ignorance is ⛔ not a verdict.
+- 🆕 **A button that runs the dependency gesture**, non-elevated, with the interpreter that
+  serves the page — so the one the agent will use, ⛔ not the first `pip` on the `PATH`. The
+  command run is **derived** from the published string rather than written a second time, its
+  output and exit code are handed over **as they are**, and three outcomes are told apart:
+  success, `pip` **unavailable**, and **timed out**. Afterwards the state is **measured
+  again** and the witnesses move **without a reload** — ⚠️ it is that measurement which
+  decides, ⛔ not `pip`'s exit code.
+- 🆕 **A new verb that activates the agent**, and it is a **composition**, ⛔ not a new
+  mechanism. Measured: of the tool's seven verbs, **none** activated. One installs the
+  scheduled task but its trigger is the logon **alone**, so nothing starts today; the other
+  starts the agent but never touches the scheduler, so nothing survives the session. The new
+  verb plays both, relays their exit codes untouched, and reserves **one code of its own** for
+  the outcome none of them says: the task installed **and verified**, and no agent alive ten
+  seconds later — ⛔ neither a success nor a total failure, since both would be false.
+  ⛔ It **redeclares no task setting**: the limited run level, the logon trigger and the
+  **3 restarts, 1 minute apart** come **with** the block it reuses, ⛔ not from a rule someone
+  could forget. That is what keeps *nothing in `dn7` needs administrator rights* true **by
+  construction** rather than by discipline.
+- 🆕 **A check over all of that** (`tools/verif_preconditions_dn76.py`, run by
+  `tools/run_gates.sh` and replayed mutant by mutant by `tools/verif_campagne_dn56.py`): each
+  step carries a witness and its identifier is in the reset list; the witness is painted only
+  in the seven stated tokens, each declared in `:root`; the **rejected** green of the firmware
+  stays out of the page — and the check **re-measures** that it is indeed rejected there
+  rather than taking it on trust; disarming goes through **one** factory; the reason is
+  written by a factory under its button; the new verb moves on its **three** surfaces at once;
+  its half-success code is checked **as a property**, ⛔ not as a literal; ⛔ no elevation in
+  its block — a reciprocal carried where the two existing elevation checks ⛔ do not reach;
+  the `pip` gesture is runnable and the LibreHardwareMonitor one is ⛔ not, with the reason
+  written; and the **new route** refuses foreign `Origin` and `Host` headers with a **403**,
+  which the existing check ⛔ could not see because it knows only the two older routes.
+  ⛔ **What it does not prove, and its own header says so**: it opens no browser, installs
+  nothing and schedules no task. It proves the mechanism is **wired**.
 - **A purchasing page** ([`docs/bom.md`](docs/bom.md)) — what to buy for each of the two
   named tiers, every line carrying a reference, a supplier, a price, **the date the price
   was read** and **the source URL**. Sources that could not be reached are listed one by
@@ -274,6 +326,32 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Changed
 
+- 🆕 **`dn7` stops only exposing, and that is an owner decision, ⛔ not a drift.** The thread
+  of this epic was *« `dn7` exposes, it builds nothing »* — true from `dn7-1` to `dn7-3`, and
+  **false from 2026-09-10 on**, by the arbitration *« it installs as far as possible,
+  otherwise it exposes »*. ⛔ The earlier sentence is **named rather than erased**: it
+  described exactly what the page did over those three markers. What it exposes now, it
+  exposes **with its reason**: LibreHardwareMonitor, whose gesture needs administrator rights
+  this installer never asks for, and Python itself, which ⛔ cannot be a precondition of a
+  page that **does not exist without it** — the file you double-click stops before serving a
+  single byte, so the link lives in **both** places rather than only in the one nobody in need
+  can reach.
+- ⚠️ **A declared gap, and it is the heart of this change rather than a footnote: the state
+  witness is ⛔ NOT green**, although the owner asked for green dots. Three measurements
+  decide it, ⛔ no argument. The install page's identity is a **closed list of seven roles**,
+  each one **read out of the firmware**, and the file that states it writes its own rule —
+  *colours are not invented here, they are read over there*; none of the seven is green.
+  Green was **tried on the product and abandoned**: `0x4ade80` was the first pass, and the
+  owner's own **eye** replaced it on 2026-08-25 because it did not read well on a green PCB —
+  its three occurrences in `firmware/` are **all** annotations of that rejection. And `dn7-4`
+  already settled, **on this very page**, that the filled state is a difference of **shape**,
+  ⛔ not of hue, after two neighbouring hues made one position be read for the other **in
+  session**. ⇒ what the request wanted — *seeing at a glance* — is carried by the **shape**
+  and by the product's own vocabulary. 🔴 **And the mechanical back door is closed on
+  purpose**: citing the firmware line where the abandoned green still sits would **pass** the
+  existing identity check while publishing a dead value as a live identity, so the new check
+  refuses the rejected values **by name**. The carrier is written: an owner arbitration that
+  amends the identity file with a **live** firmware source.
 - 🆕 **LibreHardwareMonitor is now a HARD prerequisite of the agent, and the declared
   gap names it.** Owner decision of 2026-09-10, raised **by a question in session** —
   ⛔ by no check in this repository. Measured the same day: the install page, its local

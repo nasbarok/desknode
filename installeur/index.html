@@ -111,6 +111,60 @@
      orange se lit comme un refus. ⛔ AUCUNE COULEUR NEUVE — ce sont les MEMES
      jetons, et la regle a la meme forme que `.avert` juste au-dessus. */
   .pose { border-left: 3px solid var(--dn-accent); padding-left: 12px; color: var(--dn-accent); }
+  /* ─────────────────────────────────────────────────────────────────────
+     LE TEMOIN D'ETAT D'UNE ETAPE — TROIS POSITIONS, ET UNE **FORME** (dn7-6)
+     ─────────────────────────────────────────────────────────────────────
+     🎯 LE VOCABULAIRE EST CELUI DU PRODUIT, ⛔ PAS UN VOCABULAIRE NEUF :
+        `W_COL_REELLE` / `W_COL_SIMULEE` / `W_COL_ABSENTE`, declarees dans
+        `firmware/desknode/main/dn_widget.c`, sont choisies par un `switch` a
+        TROIS branches — miroir exact de `troisEtats()` plus bas.
+        ⚠️ ⛔ AUCUN NUMERO DE LIGNE N'EST CITE ICI, ET C'EST UNE REGLE DE CETTE
+           PAGE : une adresse se perime au premier commit ; c'est la GATE qui
+           relit le firmware, ⛔ pas la page qui pointe.
+     🔴 ⛔ ET LE TEMOIN N'EST **PAS VERT** : ECART DECLARE, DATE DU 2026-09-10,
+        ⛔ NI TU NI « REPARABLE ». Le verbatim owner disait « pastilles
+        vertes ». TROIS MESURES le refusent, ⛔ aucun argument :
+          (i)   l'identite de cette page est une LISTE FERMEE DE SEPT ROLES,
+                chacun RELEVE dans le firmware — `IDENTITE.md` ecrit sa propre
+                regle, « les couleurs ne sont pas inventees ici, elles sont
+                relevees la-bas » — et ⛔ AUCUN DES SEPT N'EST VERT ;
+          (ii)  le vert EXISTE dans le firmware et il y est **REJETE, DATE** :
+                `0x4ade80`, constat owner A L'ŒIL du 2026-08-25, « ca ne se
+                voit pas bien » sur un PCB VERT, remplace par `0x3b82f6` ;
+          (iii) `dn7-4` a deja tranche SUR CETTE PAGE, et par la mesure :
+                « l'aplat est une difference de FORME, ⛔ pas de teinte »,
+                apres que deux teintes voisines aient fait lire une position
+                pour l'autre a l'owner EN SEANCE.
+        ⇒ ce que la demande veut — voir d'un coup d'œil — est tenu par la
+          FORME (l'aplat) et par le vocabulaire du produit, ⛔ pas par une
+          teinte importee.
+        ⚠️ PORTEUR DU RETOUR, NOMME : un arbitrage owner qui amende
+           `IDENTITE.md` avec une source firmware **vivante**. ⛔ Un ecart sans
+           porteur ecrit est un oubli deguise.
+     ⛔ AUCUNE COULEUR N'EST AJOUTEE ICI : les CINQ jetons employes sont DEJA
+        declares dans `:root` plus haut — `--dn-accent`, `--dn-fond`,
+        `--dn-avertissement`, `--dn-trait` et `--dn-eteint`.
+        ⚠️ CORRIGE LE 2026-09-10 : ce commentaire disait « les QUATRE jetons »
+           en en employant CINQ. ⛔ Le chiffre d'avant est NOMME plutot
+           qu'efface — c'est `IDENTITE.md` qui les liste tous les cinq, et
+           c'est LUI qui faisait foi.
+     ⚠️ ET LES APLATS S'ECRIVENT EN `background-color`, ⛔ PAS EN LA FORME
+        RACCOURCIE — ANNOTE ET DATE LE 2026-09-10, ET CE N'EST ⛔ PAS UN GOUT.
+        Les regles d'etat des deux selecteurs de langue posent leur aplat avec
+        la forme raccourcie, suivie de la couleur de texte, et TROIS mutants
+        vivants de `tools/verif_placement_dn74.py` s'ancrent sur cette suite de
+        signes — l'un d'eux en COMPTANT ses occurrences. La reecrire ici a
+        l'identique ferait viser ces mutants A COTE : ils muteraient CETTE
+        regle, que leur controle ⛔ ne balaie pas, et ils sortiraient VERTS en
+        ayant pourtant change des octets. ⇒ un no-op DEGUISE echappe a la garde
+        du no-op, et c'est une gate D'UN AUTRE SUJET qui aurait rougi sur ce que
+        cette marche ecrit — trois fois en une passe pendant `dn7-1`.
+        ⛔ POUR LA MEME RAISON, CE COMMENTAIRE ⛔ NE CITE PAS CES DECLARATIONS
+           MOT POUR MOT : les ancres de ces mutants lisent la page AVEC ses
+           commentaires. */
+  .val.etat-prete { background-color: var(--dn-accent); color: var(--dn-fond); border-radius: 6px; padding: 1px 9px; }
+  .val.etat-bloquee { background-color: var(--dn-avertissement); color: var(--dn-fond); border-radius: 6px; padding: 1px 9px; }
+  .val.etat-su-non { background-color: var(--dn-trait); color: var(--dn-eteint); border-radius: 6px; padding: 1px 9px; }
   ul { padding-left: 20px; } li { margin: 5px 0; }
   a { color: var(--dn-accent); }
 
@@ -366,6 +420,66 @@
         suivie du port <b>tiré au lancement</b> — il change à chaque fois, et c'est voulu.</span>
     </div>
 
+    <!-- ═══ LES DEUX PRECONDITIONS DE L'AGENT, EN TETE ═══════════ (dn7-6) ══
+         🔴 ELLES MONTENT ICI, A COTE DES CINQ QUI Y ETAIENT DEJA, ⛔ pas en
+            bas de page : ce sont elles qui COMMANDENT, et un prerequis qu'il
+            faut trouver n'est pas un prerequis.
+         🔴 ⛔ ET LA LIGNE DE PARTAGE EST ECRITE, PARCE QU'ELLE N'EST PAS
+            INTUITIVE : ⛔ LE FLASH N'EST **PAS** BLOQUE par ces deux-la. Poser
+            le firmware sur la carte ⛔ n'a rien a voir avec l'agent, et priver
+            un inconnu du geste PRINCIPAL pour une dependance de l'AGENT est
+            exactement le contresens que `dn7-5` a ecarte en refusant de faire
+            echouer le pre-vol de cette page. -->
+    <div id="etat-deps" hidden class="avert" style="margin-bottom:16px">
+      <span lang="en"><b>The DeskNode agent is missing at least one of its two Python
+        modules.</b><br>
+        ⚠️ <b>The flash below is ⛔ not affected</b>: putting the firmware on the board has
+        nothing to do with the agent. What is blocked is <b>activating the agent</b> — its
+        pre-flight would refuse. <b>The button below runs the published gesture</b>, with the
+        very interpreter that serves this page, and <b>asks for no administrator
+        rights</b>. Its output is handed to you as it is, exit code included, and the state
+        above is <b>measured again</b> afterwards.</span>
+      <span lang="fr"><b>Il manque à l'agent DeskNode au moins un de ses deux modules
+        Python.</b><br>
+        ⚠️ <b>Le flash ci-dessous ⛔ n'est pas concerné</b>&nbsp;: poser le firmware sur la
+        carte n'a rien à voir avec l'agent. Ce qui est bloqué, c'est <b>l'activation de
+        l'agent</b> — son pré-vol refuserait. <b>Le bouton ci-dessous joue le geste
+        publié</b>, avec l'interpréteur même qui sert cette page, et il ⛔ <b>ne demande
+        aucun droit administrateur</b>. Sa sortie vous est rendue telle quelle, code de
+        retour compris, et l'état ci-dessus est <b>re-mesuré</b> ensuite.</span>
+      <div style="margin-top:10px">
+        <button id="b-deps" type="button" disabled>
+          <span lang="en">Install the agent's dependencies</span>
+          <span lang="fr">Installer les dépendances de l'agent</span>
+        </button>
+      </div>
+    </div>
+    <!-- 🔴 LA RAISON VIT **HORS** DU BANDEAU, ⛔ pas dedans (corrige le
+         2026-09-10, mesure de revue). Elle etait a l'INTERIEUR de
+         `#etat-deps`, qui n'est revele QUE quand un module manque —
+         c'est-a-dire exactement quand le bouton est **ARME**. ⇒ la prose du
+         refus etait MORTE : invisible dans le seul cas ou elle sert. -->
+    <div id="b-deps-raison" hidden class="discret" style="margin:-8px 0 16px"></div>
+
+    <div id="etat-lhm" hidden class="avert" style="margin-bottom:16px">
+      <span lang="en"><b>LibreHardwareMonitor is not answering on this machine, and the agent
+        now refuses to start without it.</b><br>
+        ⚠️ <b>The flash below is ⛔ not affected</b> — and ⛔ <b>this page will not install
+        it for you</b>. Its gesture needs <b>administrator rights</b>, which this installer
+        ⛔ never asks for; the command is written out further down, <b>to copy</b>, with what
+        falls without it. Until it answers, <b>activating the agent stays disarmed</b>: its
+        pre-flight would stop with its own exit code, at the next logon, <b>without a line on
+        disk</b>.</span>
+      <span lang="fr"><b>LibreHardwareMonitor ne répond pas sur cette machine, et l'agent
+        refuse désormais de démarrer sans lui.</b><br>
+        ⚠️ <b>Le flash ci-dessous ⛔ n'est pas concerné</b> — et ⛔ <b>cette page ne
+        l'installera pas pour vous</b>. Son geste exige des <b>droits administrateur</b>, que
+        cet installeur ⛔ ne demande jamais&nbsp;; la commande est écrite plus bas, <b>à
+        recopier</b>, avec ce qui tombe sans elle. Tant qu'il ne répond pas, <b>l'activation
+        de l'agent reste désarmée</b>&nbsp;: son pré-vol s'arrêterait avec son propre code de
+        sortie, à la prochaine ouverture de session, <b>sans une ligne sur disque</b>.</span>
+    </div>
+
     <ol class="gestes">
 
       <!-- ─── GESTE 1 : ARRETER L'AGENT ─────────────────────────────────
@@ -380,6 +494,7 @@
           <span lang="en"><b>Stop the DeskNode agent.</b> It is what holds the serial port.</span>
           <span lang="fr"><b>Arrêter l'agent DeskNode.</b> C'est lui qui tient le port série.</span>
         </p>
+        <div class="ligne"><span class="cle"><span lang="en">is this step available?</span><span lang="fr">cette étape est-elle faisable&nbsp;?</span></span><span class="val" id="v-etape-arret">…</span></div>
         <button id="b-stop" type="button">
           <span lang="en">Stop the agent and hand the port back</span>
           <span lang="fr">Arrêter l'agent et rendre le port</span>
@@ -445,6 +560,7 @@
           <span lang="en"><b>Put the firmware on the board.</b> The browser will ask you to pick the port.</span>
           <span lang="fr"><b>Poser le firmware sur la carte.</b> Le navigateur vous demandera de choisir le port.</span>
         </p>
+        <div class="ligne"><span class="cle"><span lang="en">is this step available?</span><span lang="fr">cette étape est-elle faisable&nbsp;?</span></span><span class="val" id="v-etape-flash">…</span></div>
         <!-- ═══ LE CHOIX DE LA LANGUE **DE LA DALLE** ═══════════ (dn7-3) ═══
              🔴 ⛔ CE N'EST **PAS** LE SELECTEUR DE LANGUE DE CETTE PAGE. Deux
                 langues DIFFERENTES sont en jeu : celle que vous LISEZ ici (en
@@ -708,10 +824,12 @@
           <span lang="fr"><b>Poser la langue choisie dans la carte</b> — utile seulement si vous
             avez choisi le français ci-dessus.</span>
         </p>
+        <div class="ligne"><span class="cle"><span lang="en">is this step available?</span><span lang="fr">cette étape est-elle faisable&nbsp;?</span></span><span class="val" id="v-etape-langue">…</span></div>
         <button id="b-langue-poser" type="button" disabled>
           <span lang="en">Set the panel's language on the board</span>
           <span lang="fr">Poser la langue de la dalle sur la carte</span>
         </button>
+        <div id="b-langue-poser-raison" hidden class="discret" style="margin-top:8px"></div>
         <p class="discret" style="margin:8px 0 0">
           <span lang="en">The same picker opens, the board's console is woken up, the order is
             sent, and what the board answers is <b>read back</b>. ⛔ Nothing is announced as done
@@ -749,6 +867,7 @@
           <span lang="en"><b>Read the board's console</b> — without reflashing it.</span>
           <span lang="fr"><b>Lire la console de la carte</b> — sans la reflasher.</span>
         </p>
+        <div class="ligne"><span class="cle"><span lang="en">is this step available?</span><span lang="fr">cette étape est-elle faisable&nbsp;?</span></span><span class="val" id="v-etape-console">…</span></div>
         <button id="b-console" type="button">
           <span lang="en">Connect to the board and read its console</span>
           <span lang="fr">Se brancher à la carte et lire sa console</span>
@@ -885,14 +1004,27 @@
         qu'il contient.</span>
     </div>
     <div id="etat-inactif" hidden class="avert" style="margin-top:14px"></div>
+    <!-- 🔴 « ACTIVER » FAIT LA PAIRE AVEC « RETIRER » (dn7-6) — ET IL MANQUAIT.
+         Cette section savait DESACTIVER (`stop`, `retirer`) et ⛔ pas activer :
+         sur les sept verbes de l'outil, AUCUN ne le faisait. `permanence` pose
+         la tache mais son declencheur est l'ouverture de session SEULE, donc
+         rien ne demarre aujourd'hui ; `lancer` demarre l'agent mais ne touche
+         pas au Planificateur, donc rien ne survit au redemarrage. ⇒ le verbe
+         neuf est leur COMPOSITION, et il ⛔ ne demande aucun droit
+         administrateur : la tache qu'il pose est la meme tache limitee. -->
+    <button id="b-agent-poser" type="button" disabled>
+      <span lang="en">Activate the agent</span>
+      <span lang="fr">Activer l'agent</span>
+    </button>
     <button id="b-retirer" type="button">
       <span lang="en">Remove the agent</span>
       <span lang="fr">Retirer l'agent</span>
     </button>
+    <div id="b-agent-poser-raison" hidden class="discret" style="margin-top:8px"></div>
     <details>
       <summary>
-        <span lang="en">What these two verbs are, and why neither needs administrator rights</span>
-        <span lang="fr">Ce que sont ces deux verbes, et pourquoi aucun ne demande de droits administrateur</span>
+        <span lang="en">What these three verbs are, and why none of them needs administrator rights</span>
+        <span lang="fr">Ce que sont ces trois verbes, et pourquoi aucun ne demande de droits administrateur</span>
       </summary>
       <p class="discret" style="margin:0">
         <span lang="en">This page invents nothing&nbsp;: it calls the <code>stop</code> and
@@ -996,6 +1128,54 @@
         même, et <b>poser le firmware sur la carte ⛔ ne dépend pas de
         LibreHardwareMonitor</b>.</span>
     </p>
+    <!-- ═══ CE QUE CETTE PAGE ⛔ N'INSTALLERA PAS, ET POURQUOI ═══ (dn7-6) ══
+         🔴 ECRIT ICI PLUTOT QUE TU. Depuis le 2026-09-10, la page INSTALLE ce
+            qu'elle peut : un bouton joue le geste `pip` ci-dessus. Deux gestes
+            restent A RECOPIER, et un bouton ABSENT sans motif se lit comme un
+            oubli — quelqu'un le « reparerait ». -->
+    <p style="margin:16px 0 0">
+      <span lang="en"><b>Two of the gestures on this page have no button, and that is
+        measured, ⛔ not an omission&nbsp;:</b></span>
+      <span lang="fr"><b>Deux des gestes de cette page n'ont pas de bouton, et c'est mesuré,
+        ⛔ pas un oubli&nbsp;:</b></span>
+    </p>
+    <ul class="discret" style="margin:8px 0 0">
+      <li>
+        <span lang="en"><b>LibreHardwareMonitor</b> — its own script says it plainly: run
+          without <b>administrator rights</b>, its check works but it <b>cannot act</b>, and
+          the task it installs is an elevated one. This installer <b>never asks for those
+          rights</b> — two live checks of this repository refuse the only way it could. ⇒ the
+          command above stays <b>to copy</b>, in a window you opened yourself. ⚠️ ⛔ A button
+          that ran it unelevated would promise a gesture that <b>does nothing</b>, and that
+          would be worse than no button.</span>
+        <span lang="fr"><b>LibreHardwareMonitor</b> — son propre script l'écrit noir sur
+          blanc&nbsp;: lancé sans <b>droits administrateur</b>, sa vérification marche mais il
+          <b>ne peut pas agir</b>, et la tâche qu'il installe est élevée. Cet installeur ⛔ <b>ne
+          demande jamais ces droits</b> — deux vérifications vivantes de ce dépôt refusent le
+          seul chemin qui le permettrait. ⇒ la commande ci-dessus reste <b>à recopier</b>, dans
+          une fenêtre que vous ouvrez vous-même. ⚠️ ⛔ Un bouton qui la jouerait non élevée
+          promettrait un geste qui <b>n'agit pas</b>, et ce serait pire que pas de
+          bouton.</span>
+      </li>
+      <li>
+        <span lang="en"><b>Python&nbsp;3</b> — ⛔ this page cannot ask you to install it,
+          because <b>without it this page does not exist</b>: the file you double-click stops
+          before serving a single byte, and it is <b>that window</b> which carries the link and
+          the four steps. The address is
+          <a href="https://www.python.org/downloads/windows/">https://www.python.org/downloads/windows/</a>,
+          and the one box that matters is <i>« Add python.exe to PATH »</i>. ⚠️ A link that
+          nobody in need can see would be <b>worse than absent</b> — so it lives in both
+          places.</span>
+        <span lang="fr"><b>Python&nbsp;3</b> — ⛔ cette page ne peut pas vous demander de
+          l'installer, parce que <b>sans lui cette page n'existe pas</b>&nbsp;: le fichier que
+          vous double-cliquez s'arrête avant d'avoir servi le moindre octet, et c'est <b>cette
+          fenêtre-là</b> qui porte le lien et les quatre étapes. L'adresse est
+          <a href="https://www.python.org/downloads/windows/">https://www.python.org/downloads/windows/</a>,
+          et la seule case qui compte est <i>«&nbsp;Add python.exe to PATH&nbsp;»</i>.
+          ⚠️ Un lien que personne dans le besoin ne peut voir serait <b>pire qu'absent</b> —
+          il vit donc aux deux endroits.</span>
+      </li>
+    </ul>
     <p class="discret" style="margin:12px 0 0">
       <span lang="en"><b>Owner of the return to a single download&nbsp;: the agent as a standalone
         executable, planned for V0.2.</b> The decision of 2026-09-08 created this gap, and it is
@@ -1075,7 +1255,7 @@
         two verbs above address a Windows scheduled task&nbsp;: elsewhere, they will simply tell
         you they found nothing.</span>
       <span lang="fr">L'agent DeskNode est <b>Windows seulement</b>. Cette page s'ouvre ailleurs, mais
-        les deux verbes ci-dessus s'adressent à une tâche planifiée Windows&nbsp;: ailleurs, ils
+        les trois verbes ci-dessus s'adressent à une tâche planifiée Windows&nbsp;: ailleurs, ils
         vous diront simplement qu'ils n'ont rien trouvé.</span>
     </p>
   </section>
@@ -1145,6 +1325,88 @@ var MOTS = {
                            "⛔ inconnu — le serveur local ne répond pas"],
   "champ.inconnu": ["⛔ unknown — the local server does not answer",
                     "⛔ inconnu — le serveur local ne répond pas"],
+  /* ── LE VOCABULAIRE D'ETAT **D'UNE ETAPE** (dn7-6) ────────────────────
+     ⚠️ TROIS POSITIONS, ⛔ PAS DEUX, et la troisieme ⛔ NE BLOQUE PAS : « non
+        testable ici » ⛔ n'est PAS « bloquée ». Une ignorance ⛔ n'est pas un
+        verdict — c'est la faute que `dn7-1` a payée pour `psutil`, et elle
+        ⛔ ne se rejoue pas ici. La troisième position réemploie donc
+        `etat.non-testable`, ⛔ elle n'a pas de clé à elle. */
+  "etape.prete": ["ready", "prête"],
+  "etape.bloquee": ["BLOCKED — the reason is under the button",
+                    "BLOQUÉE — la raison est sous le bouton"],
+  /* ── LES RAISONS DU DESARMEMENT, ECRITES SOUS LE BOUTON (dn7-6) ───────
+     🔴 « Bloquant veut dire bouton grisé si conditions non remplies »
+        (arbitrage owner du 2026-09-10) — et un bouton grisé SANS raison est
+        une PANNE, ⛔ pas une précondition. Chacune de ces clés dit LE FAIT et
+        LE GESTE, ⛔ jamais l'un sans l'autre. */
+  "raison.flash-absent": ["The install above cannot take place, so there would "
+                          + "be nothing to write a language into. <b>The "
+                          + "gesture</b>&nbsp;: fix what step 2 says is "
+                          + "missing, then this button arms itself.",
+                          "L'installation ci-dessus ne peut pas avoir lieu&nbsp;: "
+                          + "il n'y aurait donc rien où écrire une langue. "
+                          + "<b>Le geste</b>&nbsp;: régler ce que l'étape 2 "
+                          + "signale, et ce bouton s'arme tout seul."],
+  "raison.deps-completes": ["Nothing to install: the agent's two modules are "
+                            + "already there.",
+                            "Rien à installer&nbsp;: les deux modules de "
+                            + "l'agent sont déjà là."],
+  "raison.sans-serveur": ["The page could not reach the server that serves it, "
+                          + "so it ⛔ does not know what is installed. "
+                          + "<b>The gesture</b>&nbsp;: reload this page from "
+                          + "the address the script printed.",
+                          "La page n'a pas pu joindre le serveur qui la sert&nbsp;: "
+                          + "elle ⛔ ne sait donc pas ce qui est installé. "
+                          + "<b>Le geste</b>&nbsp;: recharger cette page depuis "
+                          + "l'adresse que le script a imprimée."],
+  "raison.agent-outil": ["<code>dn_agent_tour.ps1</code> was not found, or this "
+                         + "machine did not answer the task scheduler: there is "
+                         + "nothing to activate. <b>The gesture</b>&nbsp;: fetch "
+                         + "the <b>whole</b> repository, on Windows.",
+                         "<code>dn_agent_tour.ps1</code> est introuvable, ou "
+                         + "cette machine n'a pas répondu au planificateur de "
+                         + "tâches&nbsp;: il n'y a rien à activer. <b>Le "
+                         + "geste</b>&nbsp;: récupérer le dépôt <b>entier</b>, "
+                         + "sous Windows."],
+  "raison.agent-deps": ["At least one of the agent's two Python modules is "
+                        + "missing: its pre-flight would refuse. <b>The "
+                        + "gesture</b>&nbsp;: the <b>Install the agent's "
+                        + "dependencies</b> button, at the top of this page.",
+                        "Il manque au moins un des deux modules Python de "
+                        + "l'agent&nbsp;: son pré-vol refuserait. <b>Le "
+                        + "geste</b>&nbsp;: le bouton <b>Installer les "
+                        + "dépendances de l'agent</b>, en tête de cette page."],
+  "raison.agent-lhm": ["LibreHardwareMonitor is not answering, and the agent's "
+                       + "pre-flight <b>refuses</b> without it, with its own "
+                       + "exit code. <b>The gesture</b>&nbsp;: the command in "
+                       + "<i>What you must install yourself</i>, below — ⛔ this "
+                       + "page has no button for it, and it writes why.",
+                       "LibreHardwareMonitor ne répond pas, et le pré-vol de "
+                       + "l'agent <b>refuse</b> sans lui, avec son propre code "
+                       + "de sortie. <b>Le geste</b>&nbsp;: la commande de "
+                       + "<i>Ce que vous devez installer vous-même</i>, plus "
+                       + "bas — ⛔ cette page n'a pas de bouton pour elle, et "
+                       + "elle écrit pourquoi."],
+  "raison.agent-sans-port": ["⛔ No DeskNode board is enumerated. The tool "
+                            + "would fall back to its own hard-coded port, so "
+                            + "the logon task would be registered on a port "
+                            + "that does not exist and fail <b>silently, every "
+                            + "session</b>. <b>The gesture</b>&nbsp;: plug the "
+                            + "board in, then reload this page.",
+                            "⛔ Aucune carte DeskNode n'est énumérée. L'outil "
+                            + "retomberait sur son port en dur&nbsp;: la tâche "
+                            + "serait posée sur un port qui n'existe pas et "
+                            + "échouerait <b>en silence, à chaque session</b>. "
+                            + "<b>Le geste</b>&nbsp;: brancher la carte, puis "
+                            + "recharger cette page."],
+  /* ⚠️ LA BRANCHE **ARMEE** A SA PROPRE CLE, ⛔ elle n'emprunte plus celle
+     d'un refus. Elle est ecartee aujourd'hui — `armerGeste` n'ecrit RIEN
+     quand le geste est permis —, mais la fabrique EXIGE une cle de `MOTS`,
+     donc la forme est porteuse : passer « l'outil est introuvable » sur le
+     chemin ou TOUT VA BIEN imprimerait un refus sous un bouton qui marche,
+     le jour ou quelqu'un afficherait cette raison-la. */
+  "raison.agent-arme": ["Everything this page can measure is in place.",
+                        "Tout ce que cette page sait mesurer est en place."],
   "port.aucun": ["⛔ no DeskNode board enumerated",
                  "⛔ aucune carte DeskNode énumérée"],
   /* 🔴 LE NOM QUE WINDOWS DONNE AU PORT EST **ATTRIBUE DANS LE CHAMP MEME**.
@@ -1527,6 +1789,11 @@ if (!securise || !estLocal) {
 var sortie = document.getElementById("sortie");
 var bStop = document.getElementById("b-stop");
 var bRetirer = document.getElementById("b-retirer");
+/* Les deux gestes que `dn7-6` ajoute : l'un INSTALLE (les modules de l'agent),
+   l'autre ACTIVE (la permanence, puis le demarrage). Les deux passent par
+   `jouer`, comme les deux verbes d'origine. */
+var bDeps = document.getElementById("b-deps");
+var bAgentPoser = document.getElementById("b-agent-poser");
 /* 🔴 LA PLACE D'ORIGINE DE `#sortie` EST **LUE DANS LE DOCUMENT**, ⛔ jamais
    recodee ici (dn7-4, 2026-09-10). Un `appendChild` vers un identifiant ecrit
    en JavaScript serait une SECONDE DEFINITION de cette place, qui divergerait
@@ -1597,17 +1864,93 @@ function ecrireMot(cle, suffixe, ancre) {
 /* ⚠️ TROIS ETATS, ⛔ PAS DEUX : `null` veut dire « la sonde n'a pas pu
    tourner », ⛔ pas « absent ». Publier une ignorance comme un constat est la
    faute que le serveur vient de cesser de commettre. */
-function troisEtats(v, cleAbsent) {
-  if (v === true) { return "etat.presente"; }
+/* ⚠️ ANNOTE ET DATE LE 2026-09-10 (`dn7-6`) — ⛔ RIEN N'EST EFFACE, ET LE TRIO
+   NE BOUGE PAS. La fonction gagne un TROISIEME argument, OPTIONNEL : la clé du
+   cas VRAI. Sans lui, elle rend exactement ce qu'elle rendait — `etat.presente`
+   —, donc les sept champs d'origine ⛔ ne changent PAS d'un mot. Ce qu'il
+   permet : un TEMOIN D'ETAPE dit « prête », ⛔ pas « présente », sans qu'aucun
+   second trio d'états ne soit inventé à côté de celui-ci. */
+function troisEtats(v, cleAbsent, clePresente) {
+  if (v === true) { return clePresente === undefined ? "etat.presente"
+                                                     : clePresente; }
   if (v === false) { return cleAbsent; }
   return "etat.non-testable";
+}
+
+/* 🔴 LE TEMOIN D'UNE ETAPE : SON MOT **ET SA FORME**, POSES ENSEMBLE (dn7-6).
+   ⛔ Les deux ne se separent pas : un mot sans forme se lit a la lecture, ⛔ pas
+   d'un coup d'œil, et c'est precisement la propriete demandee. La forme est un
+   APLAT — la meme difference de FORME que `dn7-4` a mesuree sur les selecteurs
+   de langue —, ⛔ pas une teinte voisine.
+   ⚠️ LA CLASSE EST **REPOSEE A CHAQUE ECRITURE**, ⛔ jamais laissee : sans ca,
+      un temoin qui passe de « prête » a « inconnu » garderait l'aplat de la
+      position d'avant, et l'œil lirait un etat perime. */
+var FORME_ETAPE = {
+  "etape.prete": "etat-prete",
+  "etape.bloquee": "etat-bloquee"
+};
+function temoinEtape(id, cle) {
+  poserMot(id, cle);
+  var e = document.getElementById(id);
+  if (!e) { return null; }
+  e.className = "val " + (FORME_ETAPE[cle] || "etat-su-non");
+  return null;
+}
+
+/* 🔴 **UNE SEULE FABRIQUE DE DESARMEMENT**, ET C'EST LE MECANISME (dn7-6).
+   Arbitrage owner du 2026-09-10 : « bloquant veu dire btn grisé si conditions
+   non remplis » — ⛔ pas un avertissement qu'on peut ignorer.
+   ⚠️ CE QUI EXISTAIT AVANT, MESURE : `langueOffrir()` etait le SEUL geste
+      desarme de cette page, sur UNE seule condition, et la page portait
+      QUINZE assignations `.disabled = …` dispersees, ⛔ AUCUNE fabrique
+      commune. ⚠️ CORRIGE LE 2026-09-10 : cette phrase disait « DIX-SEPT »,
+      et ⛔ le chiffre d'avant n'est pas efface — re-mesure sur la page TELLE
+      QU'ELLE ETAIT avant cette marche : `.disabled` est ASSIGNE a 15
+      endroits et REFERENCE 18 fois, dont trois LECTURES. « 17 » comptait
+      donc des REFERENCES moins une : un compte de la MAUVAISE CHOSE, publie
+      sur quatre surfaces. En ajouter d'autres aurait ete le defaut, ⛔ pas la
+      solution.
+   ⇒ CETTE FABRIQUE POSE LES DEUX MOITIES D'UN SEUL GESTE : elle grise le
+     bouton **et** elle ecrit LE MOTIF SOUS LUI — un bouton grise sans raison
+     est une panne, ⛔ pas une precondition. Le motif passe par `blocMot`,
+     comme toute prose de cette page : ⛔ jamais un texte nu, qui serait un ilot
+     que la bascule de langue ne toucherait pas.
+   ⛔ CE QU'ELLE NE COUVRE PAS, ET C'EST ECRIT PLUTOT QUE TU : `b-stop` et
+      `b-retirer` gardent leur propre chemin. Ils sont desarmes par l'ABSENCE
+      DE L'OUTIL ou par une machine qui n'a pas repondu au planificateur —
+      ⛔ pas par une precondition du workflow —, et ce chemin-la est deja garde
+      par ailleurs. */
+function armerGeste(id, permis, cleRaison) {
+  var b = document.getElementById(id);
+  if (!b) { return null; }
+  b.disabled = !permis;
+  var r = document.getElementById(id + "-raison");
+  if (!r) { return null; }
+  if (permis) {
+    r.textContent = "";
+    r.hidden = true;
+  } else {
+    blocMot(id + "-raison", cleRaison);
+  }
+  return null;
 }
 
 /* ⚠️ TOUS LES CHAMPS, ⛔ PAS SEULEMENT CELUI QU'ON REGARDE. Le premier `.catch`
    ne posait que `v-tache` : les cinq autres restaient sur leurs points de
    suspension POUR TOUJOURS, ce qui se lit « en cours » alors que c'est fini. */
+/* 🔴 ET LES QUATRE TEMOINS D'ETAPE Y SONT, ⛔ PAS A COTE (dn7-6). Un `id` neuf
+   OUBLIE ICI reste sur ses points de suspension **POUR TOUJOURS** quand le
+   serveur se tait — ce qui se lit « en cours » alors que c'est fini. C'est le
+   defaut que le commentaire ci-dessus decrit deja, et il se re-fabrique a
+   chaque champ ajoute. */
 var CHAMPS = ["v-tache", "v-runlevel", "v-pilote", "v-python",
-              "v-psutil", "v-pyserial", "v-lhm"];
+              "v-psutil", "v-pyserial", "v-lhm",
+              "v-etape-arret", "v-etape-flash", "v-etape-langue",
+              "v-etape-console"];
+/* Le sous-ensemble de `CHAMPS` qui porte AUSSI une FORME. ⛔ Il ⛔ n'est pas
+   une seconde liste concurrente : tout ce qui est ici est deja la-haut. */
+var ETAPES = ["v-etape-arret", "v-etape-flash", "v-etape-langue",
+              "v-etape-console"];
 
 /* 🔴 L'ANCRE EST **OPTIONNELLE**, ET LES DEUX CAS SONT DES FAITS DIFFERENTS
    (dn7-4, 2026-09-10).
@@ -1659,7 +2002,18 @@ function rafraichirEtat(ancre) {
     })
     .catch(function (err) {
       CHAMPS.forEach(function (id) { poserMot(id, "champ.inconnu"); });
+      /* 🔴 ETENDU LE 2026-09-10 (`dn7-6`), ⛔ PAS REECRIT. Les quatre temoins
+         d'etape repassent AUSSI a leur FORME d'ignorance — les remettre au mot
+         sans reposer la classe laisserait l'aplat de la position d'avant sous
+         un texte qui dit « inconnu » —, et les deux gestes pilotes se
+         DESARMENT : la page ne sait plus si leurs preconditions tiennent, et
+         « on ne sait pas » ⛔ n'est pas « c'est bon ». */
+      ETAPES.forEach(function (id) { temoinEtape(id, "champ.inconnu"); });
+      armerGeste("b-deps", false, "raison.sans-serveur");
+      armerGeste("b-agent-poser", false, "raison.sans-serveur");
       document.getElementById("etat-orphelin").hidden = true;
+      afficher("etat-deps", false);
+      afficher("etat-lhm", false);
       blocMot("etat-inactif", "inactif.sans-serveur");
       bStop.disabled = true;
       bRetirer.disabled = true;
@@ -1671,6 +2025,20 @@ function rafraichirEtat(ancre) {
    qui remonte doit RESTER un refus : traduire la sortie de l'outil en « c'est
    fait » est exactement la faute que le verbe `retirer` de l'outil se garde
    lui-meme de commettre (il redemande la tache au systeme). */
+/* 🔴 LA ROUTE D'UN GESTE, ⛔ PAS « api/agent/ » POUR TOUT LE MONDE (dn7-6).
+   Depuis que la page INSTALLE ce qu'elle peut, tous les gestes qu'elle poste
+   ne sont plus des VERBES DE L'OUTIL : celui des dependances est joue par le
+   serveur lui-meme, avec l'interpreteur qui sert cette page, et il ⛔ n'a rien
+   a faire dans le prefixe des verbes.
+   ⚠️ ET IL PASSE PAR **LE MEME** `jouer`, ⛔ pas par une seconde fonction : la
+      place mobile du verdict, le desarmement pendant le geste, le rendu « tel
+      quel » et le re-sondage de l'etat sont les MEMES proprietes — les
+      recopier ailleurs, c'est les laisser diverger. */
+var ROUTES = { "dependances": "api/dependances" };
+function routeDe(verbe) {
+  return ROUTES[verbe] || ("api/agent/" + verbe);
+}
+
 function jouer(verbe, bouton) {
   /* 🔴 DEUX BOUTONS, ⛔ PLUS TROIS — ET C'EST UNE FUSION, PAS UN OUBLI.
      Jusqu'au 2026-09-09, « Libérer le port » postait le MEME `stop` que
@@ -1679,14 +2047,14 @@ function jouer(verbe, bouton) {
      boutons se désarment ENSEMBLE pendant un appel, sinon deux exécutions
      concurrentes du même verbe sur le même port rendraient un verdict qui ne
      dit plus quel tir il décrit. */
-  var boutons = [bStop, bRetirer];
+  var boutons = [bStop, bRetirer, bDeps, bAgentPoser];
   var anciens = boutons.map(function (b) { return b ? b.disabled : true; });
   boutons.forEach(function (b) { if (b) { b.disabled = true; } });
   var contenu = bouton.innerHTML;
   bouton.textContent = "";
   bouton.appendChild(paire("bouton.encours", undefined, false));
   ecrireMot("sortie.encours", " [" + verbe + "]", bouton);
-  fetch("api/agent/" + verbe, { method: "POST", cache: "no-store" })
+  fetch(routeDe(verbe), { method: "POST", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       /* ⚠️ QUI A POSE CE CODE ? La page promet la sortie « telle quelle, code
@@ -1728,6 +2096,17 @@ function jouer(verbe, bouton) {
 
 bStop.addEventListener("click", function () { jouer("stop", bStop); });
 bRetirer.addEventListener("click", function () { jouer("retirer", bRetirer); });
+/* ⚠️ LA MEME GARDE QUE POUR LES BOUTONS DE LANGUE : un bouton manquant leverait
+   sur `null` et le script ENTIER s'arreterait ici — plus rien ne masquerait le
+   bloc d'installation. */
+if (bDeps) {
+  bDeps.addEventListener("click", function () { jouer("dependances", bDeps); });
+}
+if (bAgentPoser) {
+  bAgentPoser.addEventListener("click", function () {
+    jouer("poser", bAgentPoser);
+  });
+}
 
 /* ═══════════════════════════════════════════════════════════════════════
    LA SECTION DE FLASH — CE QU'ELLE MESURE, ET CE QU'ELLE DIT      (dn7-2)
@@ -1768,6 +2147,7 @@ function chargeInutilisable(cleMotif, suffixe) {
   chargeRefusee = true;
   if (blocInstaller) { blocInstaller.hidden = true; }
   langueOffrir();                                 /* dn7-3 — le geste suit */
+  rafraichirTemoins();                            /* dn7-6 — et les temoins */
   var e = document.getElementById("etat-charge");
   if (!e) { return; }
   e.textContent = "";
@@ -1797,6 +2177,7 @@ function moduleAbsent(cleMotif) {
      croire qu'on peut le reactiver ; l'encadre, lui, dit le geste. */
   if (blocInstaller) { blocInstaller.hidden = true; }
   langueOffrir();                                 /* dn7-3 — le geste suit */
+  rafraichirTemoins();                            /* dn7-6 — et les temoins */
   var e = document.getElementById("etat-cdn");
   if (e && cleMotif) {
     var m = document.createElement("div");
@@ -1969,6 +2350,95 @@ function appliquerFlash(e) {
      de la machine est connu, donc l'avertissement hors Windows est déjà à
      l'écran s'il devait y être. */
   reveler();
+
+  /* ═══ LES PRECONDITIONS, LES TEMOINS, ET LE DESARMEMENT ═══════ (dn7-6) ══
+     🔴 ~~C'EST **ICI** ET ⛔ PAS AILLEURS~~ : `reveler()` vient de decider si
+        le bloc d'installation s'offre, et l'etat de l'etape 3 en depend.
+        Poser les temoins AVANT le rendrait faux d'un tour.
+        ⚠️ **ANNOTE ET DATE LE 2026-09-10 — ⛔ LA LIGNE N'EST PAS EFFACEE, ET
+           SA PREMIERE MOITIE ETAIT FAUSSE.** « ⛔ pas ailleurs » est REFUTE
+           par la mesure : `reveler()` est l'UN DES TROIS sites qui decident
+           de cette visibilite. Ce qui RESTE vrai, et qui suffit : l'ordre —
+           `reveler()` D'ABORD, les temoins ENSUITE.
+     ⚠️ TROIS POSITIONS PARTOUT, ⛔ PAS DEUX : `null` veut dire « la sonde n'a
+        pas pu tourner », ⛔ pas « absent » — et une IGNORANCE ⛔ NE BLOQUE
+        RIEN. C'est la faute que `dn7-1` a payee pour `psutil`, et elle ⛔ ne
+        se rejoue pas. */
+  rafraichirTemoins(e);
+}
+
+/* 🔴 LES TEMOINS ET LE DESARMEMENT, DANS **UNE** FONCTION — ⛔ PLUS EN LIGNE
+   DANS `appliquerFlash` (corrige le 2026-09-10, mesure de revue).
+   ⚠️ CE QUE LE COMMENTAIRE D'AVANT AFFIRMAIT, ET QUI ETAIT **FAUX** : « c'est
+      ICI et ⛔ pas ailleurs, `reveler()` vient de decider si le bloc
+      d'installation s'offre ». `reveler()` est l'UN des TROIS sites qui
+      decident de cette visibilite — `moduleAbsent()` et `chargeInutilisable()`
+      sont les deux autres, et ⛔ AUCUN des deux ne repeignait les temoins.
+   🔬 MESURE, ⛔ pas deduite : le module de flash absent (CDN coupe, pare-feu)
+      laissait les QUATRE temoins sur « prête » au-dessus d'un bouton grise
+      dont la raison disait « L'installation ci-dessus ne peut pas avoir
+      lieu ». La page se contredisait a deux lignes d'ecart.
+   ⇒ MEME PATRON QUE `langueOffrir()` : les trois sites l'appellent DEJA, ⛔ et
+     aucun n'est libre de l'oublier. Le dernier etat machine connu est
+     MEMORISE, parce que ces trois sites ⛔ n'en recoivent aucun. */
+var _dernierEtat = null;
+function rafraichirTemoins(e) {
+  if (e) { _dernierEtat = e; }
+  e = _dernierEtat;
+  if (!e) { return null; }
+  var depsCompletes = !(e.manquantes && e.manquantes.length);
+  var lhmRepond = (e.lhm !== false);
+  afficher("etat-deps", !depsCompletes);
+  afficher("etat-lhm", !lhmRepond);
+
+  /* ── LE TEMOIN DE CHAQUE ETAPE ────────────────────────────────────────
+     ⚠️ CHAQUE ETAPE JUGE **SES** PRECONDITIONS, ⛔ pas celles du voisin :
+        l'etape 2 (poser le firmware) ⛔ NE DEPEND NI des modules de l'agent
+        NI de LibreHardwareMonitor, et l'ecrire autrement priverait un inconnu
+        du geste PRINCIPAL pour une dependance de l'AGENT.
+     ⚠️ ET CHAQUE TEMOIN JUGE CE QUI DESARME **SON** BOUTON, ⛔ pas une
+        approximation : l'etape 1 tombe aussi quand LA CONSOLE DE CETTE PAGE
+        tient le port, et l'etape 2 quand le module de flash ⛔ n'est jamais
+        arrive. Sans ca, le temoin disait « prête » sur un bouton grise. */
+  temoinEtape("v-etape-arret",
+              troisEtats(e.tache_presente === null ? null
+                         : !!(e.pilote && !portConsole),
+                         "etape.bloquee", "etape.prete"));
+  temoinEtape("v-etape-flash",
+              troisEtats(!!(securise && estLocal && serie && !chargeRefusee
+                            && !moduleAnnonce),
+                         "etape.bloquee", "etape.prete"));
+  temoinEtape("v-etape-langue",
+              troisEtats(!!(blocInstaller && blocInstaller.hidden === false),
+                         "etape.bloquee", "etape.prete"));
+  temoinEtape("v-etape-console",
+              troisEtats(!!(securise && serie), "etape.bloquee",
+                         "etape.prete"));
+
+  /* ── ET LES DEUX GESTES NEUFS SE DESARMENT, AVEC LEUR MOTIF ───────────
+     ⚠️ LE BOUTON GRISE ⛔ N'EST PAS LA GARDE, et c'est ecrit plutot que tu :
+        la vraie garde reste le PRE-VOL DE L'AGENT, qui refuse avec son propre
+        code si l'etat a vieilli entre le sondage et le clic. Ce bouton dit ce
+        que la page SAIT au moment ou elle le dessine. */
+  armerGeste("b-deps", !depsCompletes, "raison.deps-completes");
+  if (!e.pilote || e.tache_presente === null) {
+    armerGeste("b-agent-poser", false, "raison.agent-outil");
+  } else if (!depsCompletes) {
+    armerGeste("b-agent-poser", false, "raison.agent-deps");
+  } else if (!lhmRepond) {
+    armerGeste("b-agent-poser", false, "raison.agent-lhm");
+  } else if (!e.port_serie) {
+    /* 🔴 ⛔ SANS CARTE ENUMEREE, « ACTIVER » NE DOIT PAS S'ARMER, et le motif
+       est MESURE : le serveur ⛔ ne passe AUCUN `-Serie` quand il n'a pas
+       decouvert de port, donc l'outil garde SON defaut en dur. La tache
+       serait posee sur un port qui n'existe pas, et elle echouerait EN
+       SILENCE a CHAQUE ouverture de session. C'est une precondition que
+       l'outil lui-meme nomme, et elle ⛔ ne grisait rien. */
+    armerGeste("b-agent-poser", false, "raison.agent-sans-port");
+  } else {
+    armerGeste("b-agent-poser", true, "raison.agent-arme");
+  }
+  return null;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -2332,9 +2802,17 @@ if (bDalleFr) {
    la ou le bloc d'installation est revele — les trois endroits qui decident de
    cette visibilite appellent donc cette fonction, ⛔ aucun n'est libre de
    l'oublier. */
+/* ⚠️ ANNOTE ET DATE LE 2026-09-10 (`dn7-6`) — ⛔ RIEN N'EST EFFACE, ET LA
+   POLARITE NE BOUGE PAS D'UN IOTA. Ce qui change : le desarmement passe par LA
+   fabrique commune plutot que par une assignation a lui, ⇒ le motif s'ECRIT
+   desormais SOUS le bouton au lieu d'etre devinable. La phrase ci-dessus reste
+   vraie mot pour mot, y compris « les trois endroits qui decident de cette
+   visibilite appellent donc cette fonction ». */
 function langueOffrir() {
   if (!bLanguePoser) { return null; }
-  bLanguePoser.disabled = !(blocInstaller && blocInstaller.hidden === false);
+  armerGeste("b-langue-poser",
+             !!(blocInstaller && blocInstaller.hidden === false),
+             "raison.flash-absent");
   return null;
 }
 

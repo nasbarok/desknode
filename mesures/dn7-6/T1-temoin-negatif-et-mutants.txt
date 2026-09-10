@@ -1,0 +1,143 @@
+==============================================================================
+T1 — LE TEMOIN NEGATIF, PUIS CHAQUE MUTANT TIRE INDIVIDUELLEMENT
+     gate : tools/verif_preconditions_dn76.py   ·   releve du 2026-09-10
+==============================================================================
+
+------------------------------------------------------------------------------
+1. LE TEMOIN NEGATIF — LES CONTROLES NEUFS JOUES CONTRE `git archive HEAD`,
+   DEPLOYE **HORS DE L ARBRE** (⛔ pas contre un arbre qu on aurait defait)
+------------------------------------------------------------------------------
+   geste : git archive HEAD | tar -x -C <temporaire hors depot>
+           cp tools/verif_preconditions_dn76.py <temporaire>/tools/
+           cd <temporaire> && python3 tools/verif_preconditions_dn76.py
+   HEAD  : a6cf9b1f289d53da4d4f4377354a51bee59b8626
+
+   ⇒ rc = 1, BILAN : 30 OK, 12 KO
+
+   🔬 DOUZE DES TREIZE CONTROLES NEUFS ROUGISSENT SUR L ARBRE D AVANT — ET LE
+      TREIZIEME EST ECRIT ICI PLUTOT QUE TU. `(c3)` (⛔ AUCUN VERT) sort VERT
+      sur `HEAD`, et c est NORMAL : il tient une propriete NEGATIVE — la page
+      ne porte AUCUNE des valeurs vertes rejetees du firmware — qui etait deja
+      vraie avant cette marche. Un temoin negatif ⛔ ne peut pas la faire
+      rougir : ce qui prouve qu il sait rougir, ce sont ses DEUX mutants,
+         · 5 — fait entrer le vert REJETE par la porte MECANIQUE (un huitieme
+               jeton citant la ligne de firmware ou la valeur abandonnee se
+               trouve encore) ⇒ `(c3)` rouge ;
+         · 6 — efface la marque de REJET dans le firmware ⇒ la valeur
+               redevient une source citable, et `(c3)` le DIT.
+      ⛔ Ecrire « 13 sur 13 » ici aurait ete faux.
+
+------------------------------------------------------------------------------
+2. CHAQUE MUTANT, TIRE INDIVIDUELLEMENT
+   « N mutants, N vus rougir » prouve `mutant ⇒ rouge`, ⛔ JAMAIS
+   `controle ⇒ couvert` : le second sens est porte par la reciproque
+   `(c14)`/`(c15)`/`(c16)`, qui est jouee a chaque passe.
+   sain = rc==1 ET une ligne BILAN ET au moins un [KO ] nomme.
+------------------------------------------------------------------------------
+==============================================================================
+T1 — LE TEMOIN NEGATIF, PUIS CHAQUE MUTANT TIRE INDIVIDUELLEMENT
+     ⛔ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`, ⛔ JAMAIS
+     `controle ⇒ couvert` : les deux sens sont mesures SEPAREMENT, et
+     la reciproque `(c14)`/`(c15)`/`(c16)` porte le second.
+==============================================================================
+relevé du 2026-09-10 · gate : tools/verif_preconditions_dn76.py
+libellés lus A COLONNE FIXE [8:66], ⛔ pas par recherche floue
+------------------------------------------------------------------------------
+ 1  SAIN  rc=1  rouge(s)=c1             cible(s)=c1         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | retire le temoin d'UNE etape du workflow ⇒ trois eta
+ 2  SAIN  rc=1  rouge(s)=c1             cible(s)=c1         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | sort un temoin de `CHAMPS` ⇒ il reste sur `…` POUR T
+ 3  SAIN  rc=1  rouge(s)=c2             cible(s)=c2         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | plante un `#rrggbb` dans une regle d'etat ⇒ une coul
+ 4  SAIN  rc=1  rouge(s)=c2             cible(s)=c2         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | ecrit un NOM de jeton qui n'existe pas ⇒ l'aplat dis
+ 5  SAIN  rc=1  rouge(s)=c3             cible(s)=c3         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | fait entrer le VERT REJETE par la porte mecanique ⇒ 
+ 6  SAIN  rc=1  rouge(s)=c3             cible(s)=c3         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | efface la marque de REJET du vert dans le firmware ⇒
+ 7  SAIN  rc=1  rouge(s)=c4             cible(s)=c4         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | desarme un geste HORS de la fabrique ⇒ le motif ⛔ n'
+ 8  SAIN  rc=1  rouge(s)=c4             cible(s)=c4         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | passe a la fabrique une cle de raison qui n'est PAS 
+ 9  SAIN  rc=1  rouge(s)=c5             cible(s)=c5         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | fait ecrire la raison en PROSE NUE au lieu de la fab
+10  SAIN  rc=1  rouge(s)=c6             cible(s)=c6         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | retire le verbe neuf du `[ValidateSet]` de l'outil ⇒
+11  SAIN  rc=1  rouge(s)=c6             cible(s)=c6         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | retire le verbe neuf de `VERBES` ⇒ le serveur refuse
+12  SAIN  rc=1  rouge(s)=c7             cible(s)=c7         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | fait tomber le demarrage du verbe neuf ⇒ « activer »
+13  SAIN  rc=1  rouge(s)=c7             cible(s)=c7         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | RECOPIE un reglage de tache dans le verbe neuf ⇒ deu
+14  SAIN  rc=1  rouge(s)=c8             cible(s)=c8         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | rend la demi-reussite en `0` ⇒ « active » annonce su
+15  SAIN  rc=1  rouge(s)=c8             cible(s)=c8         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | reemploie le code de la demi-reussite AILLEURS ⇒ deu
+16  SAIN  rc=1  rouge(s)=c9             cible(s)=c9         vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | plante une ELEVATION dans le bloc du verbe neuf ⇒ ho
+17  SAIN  rc=1  rouge(s)=c10            cible(s)=c10        vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | ouvre une route qui EXECUTE le geste de LHM ⇒ la pag
+18  SAIN  rc=1  rouge(s)=c11            cible(s)=c11        vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | sort la route neuve de `do_POST` ⇒ elle cesse d'heri
+19  SAIN  rc=1  rouge(s)=c12            cible(s)=c12        vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | ecrit une SECONDE chaine `pip` parallele ⇒ le geste 
+20  SAIN  rc=1  rouge(s)=c10,c13        cible(s)=c13        vu rougir SUR SA CIBLE
+      BILAN : 40 OK, 2 KO   | efface le motif de ce que la page ⛔ n'installe PAS ⇒
+21  SAIN  rc=1  rouge(s)=c14            cible(s)=c14        vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | vide la cible d'un mutant ⇒ un controle garde par ZE
+22  SAIN  rc=1  rouge(s)=c15            cible(s)=c15        vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | declare dans `CIBLES` un controle INEXISTANT ⇒ une c
+23  SAIN  rc=1  rouge(s)=c16            cible(s)=c16        vu rougir SUR SA CIBLE
+      BILAN : 41 OK, 1 KO   | declare une cible pour un mutant qui N'EXISTE PAS
+24  SAIN  rc=1  rouge(s)=c0             cible(s)=c0         vu rougir SUR SA CIBLE
+      BILAN : 26 OK, 1 KO   | declare un mutant dont le CORPS LEVE ⇒ un mutant MOR
+25  SAIN  rc=1  rouge(s)=z              cible(s)=z          vu rougir SUR SA CIBLE
+      BILAN : 39 OK, 1 KO   | replante une SORTIE ANTICIPEE NON DECLAREE ⇒ le bila
+------------------------------------------------------------------------------
+mutants a regarder : AUCUN — 25/25 vus rougir
+mutant INCONNU 999 ⇒ rc=2 (attendu 2 : une ERREUR D'APPEL, ⛔ pas un defaut)
+--liste-mutants ⇒ rc=0, 25 ligne(s)
+
+------------------------------------------------------------------------------
+3. LES SIX MUTANTS D AUTRES GATES QUE CETTE MARCHE A CASSES, ET REPARES
+   ⚠️ ⛔ LES GATES D AUTRUI ROUGISSENT SUR CE QUE VOTRE MARCHE ECRIT — mesure
+      du 2026-09-10 : `tools/verif_campagne_dn56.py` est sortie ROUGE (7 OK,
+      1 KO) sur SIX mutants devenus PERIMES ou VISANT A COTE, tous a cause de
+      litteraux que cette marche a touches. ⛔ Aucun n etait « du sujet dn7-6 ».
+
+   · verif_banc_langue_dn73.py#23  rc=3 ⇒ ancre `bLanguePoser.disabled = …`
+       DISPARUE : le desarmement passe desormais par la fabrique commune.
+       ⇒ ancre mise a jour, FAUTE REPLANTEE INCHANGEE (polarite inversee).
+   · verif_installeur_dn71.py#9 et #10  rc=3 ⇒ `A_VERBES` citait deux verbes,
+       le serveur en expose TROIS. ⇒ ancre mise a jour, valeur d avant nommee.
+   · verif_placement_dn74.py#14 et #24  rc=0 ⇒ les regles d etat NEUVES
+       portaient MOT POUR MOT la declaration d aplat des selecteurs de langue :
+       le `replace(…, 1)` de ces mutants tombait sur MA regle, que leur
+       controle ⛔ ne balaie pas. ⇒ ils changeaient des octets (donc ⛔ pas de
+       rc=3) EN VISANT A COTE, et sortaient VERTS : un NO-OP DEGUISE.
+   · verif_placement_dn74.py#21      rc=3 ⇒ meme cause, vue par son compte
+       (`count(a) != 2` ⇒ 3 occurrences).
+   ⇒ CORRECTIF : les trois regles neuves ecrivent `background-color`, ⛔ pas la
+     forme raccourcie, et le commentaire qui l explique ⛔ NE CITE PAS ces
+     declarations mot pour mot — ces mutants lisent la page AVEC ses
+     commentaires. ⛔ Aucun mutant d autrui n a ete affaibli.
+
+   apres correctif : les six confrontes un a un ⇒ rc=1, un BILAN, un [KO ]
+   nomme chacun (c4 · c7 · c8 · c13 · c10 · c13), et
+   `tools/verif_campagne_dn56.py` ⇒ rc=0, BILAN : 8 OK, 0 KO, **18 cibles**
+   (17 a la borne de depart ⇒ +1, la gate neuve est DECOUVERTE).
+
+=============================================================================
+⚠️ SUPERSEDE LE 2026-09-10 PAR `T4` — ⛔ CE RELEVE N'EST PAS EFFACE.
+=============================================================================
+Ce fichier est le releve de LA PASSE D'IMPLEMENTATION, et ses chiffres — 25
+mutants, temoin negatif a `30 OK / 12 KO` — decrivent CETTE passe-la.
+La VERIFICATION puis la REVUE ont porte la gate a **21 controles, 30 mutants,
+`52 OK / 0 KO`**. Les cinq controles ajoutes, et POURQUOI :
+  (c17) une regle CSS bien formee mais INATTEIGNABLE (`*/` orphelin) ;
+  (c18) les trois issues du geste `pip`, JOUEES et ⛔ plus seulement lues ;
+  (c19) la route que la PAGE poste vs celle que le SERVEUR sert ;
+  (c20) les codes de `poser` RENDUS, ⛔ pas aplatis en refus nu ;
+  (c21) la POLARITE de la fabrique de desarmement.
+🔬 Les quatre premiers ont ete DEMONTRES : chacun laissait HUIT gates vertes.
+⇒ pour les chiffres qui font foi, lire `T4`.

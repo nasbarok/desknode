@@ -172,6 +172,13 @@ INTERFACE_COM = "MI_00"
 RE_COM = re.compile(r"\((COM[0-9]+)\)")
 # Le pilote refuse tout `-Serie` hors de cette forme (`dn_agent_tour.ps1:625`) :
 # on ne lui passe donc QUE ce qu'il accepte, ⛔ jamais une chaine devinee.
+# ⚠️ ANCRE PERIMEE, ANNOTEE ET DATEE LE 2026-09-10 (`dn7-6`) — ⛔ LA LIGNE
+#    CI-DESSUS N'EST PAS EFFACEE (`NFR3`), ET SON FOND RESTE VRAI. Ce qui a
+#    cesse de l'etre, c'est SON ADRESSE : la validation `^COM[0-9]+$` vit
+#    desormais a `dn_agent_tour.ps1:703`, dans le verbe `permanence` — `:625`
+#    y porte un `exit 4` SANS RAPPORT. ⇒ une adresse `fichier:ligne` se perime
+#    au premier commit, et celle-ci pointait un lecteur vers la mauvaise
+#    garde.
 RE_PORT_VALIDE = re.compile(r"^COM[0-9]+$")
 
 # 🔴 CE QUE `stop` REND, ET CE QUE CHAQUE CODE VEUT DIRE — RELU DANS L'OUTIL
@@ -180,6 +187,36 @@ RE_PORT_VALIDE = re.compile(r"^COM[0-9]+$")
 #       reprise par WSL : l'agent EST arrete, mais la preuve demandee (rouvrir
 #       le port) ne peut pas etre produite. Le lire comme un echec et le lire
 #       comme un succes sont DEUX FAUTES DIFFERENTES — ⇒ on rend LE FAIT.
+# ═══ CE QUE `poser` REND — RELU DANS L'OUTIL, ⛔ PAS DEVINE ═══ (dn7-6) ═══
+# 🔴 POURQUOI CETTE TABLE EXISTE, ET C'EST LA MEME RAISON QUE `CODES_STOP` :
+#    sans elle, la queue de `jouer_verbe()` rend TOUT code non nul comme « le
+#    refus remonte TEL QUEL ». Or `13` ⛔ N'EST PAS UN REFUS : l'outil ecrit
+#    lui-meme « Ni un succes ni un echec total : les deux seraient FAUX ».
+#    ⇒ la page CONTREDISAIT sa propre sortie dans le meme panneau — la sortie
+#    brute disant « LA PERMANENCE EST POSEE ET VERIFIEE » au-dessus d'un
+#    verdict disant « refus ».
+# ⚠️ `12` EST LE REFUS DUR DE LHM (`dn7-5`), relaye par `permanence` : le
+#    nommer ICI est ce que la ligne 9 de la matrice d'E/S demande — « la page
+#    relaie ce code EN NOMMANT LHM », ⛔ pas seulement dans la sortie brute.
+CODES_POSER = {
+    0: "✅ la tache est POSEE ET VERIFIEE, et l'agent tourne MAINTENANT.",
+    13: ("⚠️ LA PERMANENCE EST POSEE ET VERIFIEE — seul le DEMARRAGE IMMEDIAT "
+         "n'a pas eu lieu. L'agent repartira a la prochaine ouverture de "
+         "session. ⛔ Ce n'est ni un succes ni un echec : les deux seraient "
+         "FAUX."),
+    12: ("⛔ LibreHardwareMonitor est INJOIGNABLE, et le pre-vol de l'agent "
+         "REFUSE sans lui. ⛔ RIEN n'a ete pose. Le geste est celui de LHM, "
+         "ecrit dans l'ecart declare — ⛔ pas `pip`."),
+    3: ("⛔ l'outil, l'agent ou le port n'ont pas ete trouves : RIEN n'a ete "
+        "pose. ⛔ Ce n'est pas un succes."),
+    9: ("⛔ la tache a ete posee mais elle ⛔ NE PASSE PAS son propre "
+        "controle : ⛔ ne pas la croire posee."),
+    10: ("⛔ la permanence est POSEE, et AUCUN agent n'etait vivant apres le "
+         "delai d'attente. Le journal de l'agent dit pourquoi."),
+    11: ("⛔ un AUTRE lancement tenait le verrou : RIEN n'a ete pose par ce "
+         "geste-ci. ⛔ Ce n'est pas un succes."),
+}
+
 CODES_STOP = {
     0: ("rendu",
         "✅ le port a ete REOUVERT apres l'arret : il est rendu. C'est "
@@ -209,7 +246,15 @@ PORT_DEMANDE = 0
 #      etat · prevol · lancer · tache · stop · permanence · retirer
 #    ⛔ On n'en reimplemente aucun, et on n'en invente aucun : une gate relit ce
 #    `[ValidateSet]` dans le fichier et refuse tout verbe qui n'y est pas.
-VERBES = ("stop", "retirer")
+# 🎯 ANNOTE ET DATE LE 2026-09-10 (`dn7-6`) — ⛔ RIEN N'EST EFFACE, LE COMPTE
+#    CHANGE. Le titre ci-dessus disait « LES DEUX SEULS VERBES », et il en
+#    expose desormais **TROIS** : `poser` s'ajoute, sur arbitrage owner du
+#    2026-09-10 (« ok pour le nouveau verbe qui lance l'agent »). Ce qui reste
+#    vrai, mot pour mot : ⛔ on n'en reimplemente aucun, on n'en invente aucun
+#    ICI, et une gate relit le `[ValidateSet]` du fichier pour refuser tout
+#    verbe qui n'y est pas. `poser` est la COMPOSITION de `permanence` et de
+#    `lancer` — il vit dans l'outil, ⛔ pas dans ce serveur.
+VERBES = ("stop", "retirer", "poser")
 
 # Les modules dont l'AGENT a besoin — ⛔ pas ce serveur, qui n'en veut aucun.
 DEPENDANCES_AGENT = ("psutil", "pyserial")
@@ -251,6 +296,13 @@ PLAFOND_CORPS_LHM = 65536
 #    permanence ; SANS ARGUMENT il VERIFIE et ne change RIEN. ⛔ Ce n'est pas un
 #    module pip, et ⛔ pas une ligne d'installateur recopiee.
 GESTE_LHM = "tools\\dn_lhm_tour.ps1 -Poser -Permanence tache"
+# 🔴 ⛔ ET IL N'Y A **AUCUNE ROUTE** QUI JOUE CE GESTE-LA, ⛔ pas par oubli.
+#    `tools/dn_lhm_tour.ps1` ECRIT LUI-MEME (l.186-187, l.233-235, l.456) que
+#    sans elevation « -Poser et -Permanence NE POURRONT PAS agir », et la
+#    tache qu'il pose est ELEVEE. Le seul chemin d'elevation depuis ce dossier
+#    est interdit par DEUX gates vivantes. ⇒ un bouton qui lancerait ce script
+#    non eleve promettrait un geste qui ⛔ N'AGIT PAS : la commande reste A
+#    RECOPIER, et la page ecrit POURQUOI.
 # Ce qui tombe SANS LHM — MESURE dans `agent/dn_agent.py`, ⛔ pas suppose : la
 # grandeur 4 (temperature du CPU) et les trois vitesses de ventilateur. Le
 # reste ne bouge pas : le % CPU, les GHz, les Mo/s et l'AMBIANCE survivent.
@@ -759,7 +811,18 @@ def jouer_verbe(verbe):
     arguments = ["-File", pilote, verbe]
     if port and RE_PORT_VALIDE.match(port):
         arguments += ["-Serie", port]
-    rc, sortie, cmd, echec = _powershell(arguments)
+    # 🔴 LE PLAFOND DE `poser` EST **RE-DERIVE**, ⛔ PAS HERITE (dn7-6).
+    #    Les 90 s par defaut de `_powershell()` ont ete choisies pour des
+    #    verbes qui INTERROGENT. `poser` COMPOSE : deux `powershell.exe`
+    #    imbriques, et `lancer` SEUL peut depenser 30 s d'attente sur son
+    #    verrou (`dn_agent_tour.ps1`, `WaitOne(30000)`) PUIS 10 s de scrutation
+    #    — avant meme son propre sous-processus de pre-vol. ⇒ un lancement
+    #    dispute depasse 90 s a lui tout seul, et la page dirait « etat
+    #    INCONNU » d'une tache REELLEMENT POSEE. C'est le meme motif que le
+    #    plafond genereux du geste `pip`, applique au verbe le plus cher que
+    #    cette page puisse poster.
+    rc, sortie, cmd, echec = _powershell(
+        arguments, timeout=DELAI_POSER if verbe == "poser" else 90)
     d = {"commande": " ".join(cmd), "sortie": sortie or "",
          "port_serie": port, "port_nom": nom_port, "port_motif": motif_port,
          "rc": rc if rc is not None else -1, "origine_pilote": origine,
@@ -822,9 +885,136 @@ def jouer_verbe(verbe):
                              "port mesure. Ce verdict porte sur ce defaut."
                              % (motif_port or "motif inconnu"))
         return d
+    # 🔴 `poser` A SA TABLE, POUR LA MEME RAISON QUE `stop` A LA SIENNE : sa
+    #    demi-reussite `13` ⛔ n'est PAS un refus, et l'aplatir ferait
+    #    CONTREDIRE a la page sa propre sortie brute.
+    if verbe == "poser":
+        phrase = CODES_POSER.get(rc)
+        d["verdict"] = phrase if phrase else (
+            "⛔ l'outil a rendu %r, qui n'est AUCUN des codes documentes de "
+            "`poser`. ⛔ On ne conclut ⛔ ni « pose » ni « rien fait » : lire "
+            "la sortie ci-dessus." % rc)
+        return d
     d["verdict"] = ("✅ l'outil a rendu 0." if rc == 0 else
                     "⛔ l'outil a rendu %d — le refus remonte TEL QUEL, ⛔ il ne "
                     "devient pas un succes." % rc)
+    return d
+
+
+# ═══ LE GESTE DES DEPENDANCES, **JOUE** — ⛔ PLUS SEULEMENT PUBLIE (dn7-6) ══
+# 🔴 ARBITRAGE OWNER DU 2026-09-10, VERBATIM : « elle install dans la mesure
+#    du posible sinon elle expose ». `pip install --user …` est NON ELEVE, il
+#    tourne avec l'interpreteur QUI SERT DEJA CETTE PAGE, et il n'exige rien
+#    d'autre. ⇒ c'est le seul des deux gestes publies que la page PEUT jouer.
+ROUTE_DEPENDANCES = "/api/dependances"
+# ⚠️ UN PLAFOND **GENEREUX ET EXPLICITE**, ⛔ pas celui d'une sonde : une
+#    installation telecharge des roues, peut compiler, et rien ne la cadence.
+#    Le confondre avec les 90 s de `_powershell()` ferait rendre « delai
+#    depasse » sur un geste qui allait aboutir.
+DELAI_DEPENDANCES = 900
+# Ce qu'un Python SANS `pip` imprime — MESURE, ⛔ pas suppose : `python -m pip`
+# rend un `No module named pip` sur son erreur standard, avec un code non nul.
+MARQUE_SANS_PIP = "No module named pip"
+# 🔴 LE PLAFOND DE `poser`, NOMME ET SEPARE (dn7-6) — motif a `jouer_verbe()`.
+DELAI_POSER = 300
+# 🔴 ⛔ DEUX INSTALLATIONS EN MEME TEMPS, JAMAIS. Le serveur est un
+#    `ThreadingHTTPServer` : un second onglet, ou un simple rechargement,
+#    poste une seconde fois. Deux `pip` concurrents ecrivant dans le MEME
+#    `site-packages` utilisateur est une corruption, ⛔ pas une lenteur.
+#    ⚠️ Le refus est IMMEDIAT (`blocking=False`) : faire ATTENDRE le second
+#       tiendrait une poignee HTTP pendant l'installation entiere.
+_VERROU_PIP = threading.Lock()
+
+
+def arguments_dependances():
+    """La commande jouee, **DERIVEE** de `GESTE_DEPENDANCES`.
+
+    🔴 ⛔ PAS UNE SECONDE CHAINE PARALLELE : la page PUBLIE ce geste a
+       recopier, et le jouer depuis une autre redaction ferait DEUX sources de
+       verite — celle qu'on lit et celle qui tourne. Elles divergeraient, et
+       c'est la page qui mentirait.
+    🔴 ET LE PREMIER MOT EST **REMPLACE**, ⛔ pas le reste : `pip` nu resout
+       vers n'importe quel interpreteur du `PATH` — celui du Store, un
+       environnement virtuel oublie, un Python 2. `sys.executable -m` cible
+       l'interpreteur QUI SERT CETTE PAGE, c'est-a-dire celui dont l'agent se
+       servira. ⚠️ Le reste des mots — le verbe et ses commutateurs — est pris
+       TEL QUEL dans la chaine publiee.
+    ⚠️ Rend `None` si la chaine publiee ne commence plus par `pip` : ⛔ on ne
+       DEVINE pas une commande, on refuse."""
+    mots = GESTE_DEPENDANCES.split()
+    if not mots or mots[0] != "pip":
+        return None
+    return [sys.executable, "-m"] + mots
+
+
+def jouer_dependances():
+    """Joue le geste des dependances, NON ELEVE, et relaie tout TEL QUEL.
+
+    🔴 TROIS ISSUES DISTINGUEES, comme `_powershell()` le fait deja :
+       reussite · `pip` INDISPONIBLE · DELAI DEPASSE. ⛔ Jamais un succes
+       annonce sur un geste qui n'a pas eu lieu, ⛔ jamais une trace nue."""
+    if not _VERROU_PIP.acquire(blocking=False):
+        return {"commande": "", "sortie": "", "rc": 2, "rc_pose_par": "la page",
+                "verdict": "⚠️ une installation TOURNE DEJA (autre onglet, ou "
+                           "rechargement) : celle-ci n'a PAS ete lancee. ⛔ Ce "
+                           "n'est ni un succes ni un echec — attendre la "
+                           "premiere."}
+    try:
+        return _jouer_dependances()
+    finally:
+        _VERROU_PIP.release()
+
+
+def _jouer_dependances():
+    """Le geste lui-meme. ⛔ Toujours appele SOUS `_VERROU_PIP`."""
+    arguments = arguments_dependances()
+    if arguments is None:
+        return {"commande": "", "sortie": "", "rc": 2, "rc_pose_par": "la page",
+                "verdict": "⛔ le geste publie ne commence pas par `pip` : "
+                           "rien n'a ete tente. ⛔ Ce n'est pas un succes."}
+    d = {"commande": " ".join(arguments), "rc_pose_par": "l'outil"}
+    try:
+        r = subprocess.run(arguments, cwd=RACINE, capture_output=True,
+                           text=True, encoding="utf-8", errors="replace",
+                           timeout=DELAI_DEPENDANCES)
+    # 🔴 LE DELAI DEPASSE EST RENDU A PART, ET POUR LA MEME RAISON QUE DANS
+    #    `_powershell()` : `TimeoutExpired` derive de `SubprocessError`, et le
+    #    ranger avec lui ferait dire « le geste n'a PAS eu lieu » alors que
+    #    l'installation A TOURNE et peut AVOIR ABOUTI.
+    except subprocess.TimeoutExpired:
+        d.update(sortie="", rc=-1, rc_pose_par="la page",
+                 verdict="⚠️ DELAI DEPASSE (%d s) : l'installation a tourne "
+                         "mais n'a pas rendu la main. Elle a PEUT-ETRE abouti "
+                         "— etat INCONNU. ⛔ Ce n'est ni un succes ni un "
+                         "echec." % DELAI_DEPENDANCES)
+        return d
+    except (OSError, subprocess.SubprocessError) as exc:
+        d.update(sortie="%s : %s" % (type(exc).__name__, exc), rc=-1,
+                 rc_pose_par="la page",
+                 verdict="⛔ l'installation n'a pas pu etre LANCEE : le geste "
+                         "n'a PAS eu lieu. ⛔ Ce n'est pas un succes.")
+        return d
+    sortie = (r.stdout or "") + (r.stderr or "")
+    d.update(sortie=sortie, rc=r.returncode)
+    # ⚠️ GARDE SUR LE CODE DE RETOUR, ⛔ pas sur le texte seul (dn7-6) : une
+    #    installation qui REUSSIT peut porter cette chaine dans sa sortie (un
+    #    journal de construction, les diagnostics d'une roue). La tester sans
+    #    le `rc` ferait annoncer « le geste n'a PAS eu lieu » sur un geste
+    #    ABOUTI — le MIROIR exact de la faute que ce bloc existe pour eviter.
+    if r.returncode != 0 and MARQUE_SANS_PIP in sortie:
+        # ⛔ UN PYTHON SANS `pip` N'EST PAS UNE INSTALLATION QUI A ECHOUE :
+        #    c'est un geste qui n'a pas pu commencer, et son remede est
+        #    AILLEURS. Les confondre enverrait relancer un bouton inutile.
+        d["verdict"] = ("⛔ `pip` n'est pas disponible pour cet interpreteur : "
+                        "le geste n'a PAS eu lieu, et il redevient un geste A "
+                        "RECOPIER. ⛔ Ce n'est pas un succes.")
+        return d
+    d["verdict"] = ("✅ l'installation a rendu 0. ⚠️ Ce que ca dit : `pip` a "
+                    "rendu 0. Ce qui TRANCHE, c'est l'etat re-sonde "
+                    "ci-dessus, ⛔ pas ce code." if r.returncode == 0
+                    else "⛔ l'installation a rendu %d — le refus remonte TEL "
+                         "QUEL, ⛔ il ne devient pas un succes."
+                         % r.returncode)
     return d
 
 
@@ -965,6 +1155,16 @@ class Poignee(BaseHTTPRequestHandler):
         if not self._garde():
             return
         chemin = self.path.split("?", 1)[0]
+        # 🔴 LA ROUTE NEUVE HERITE DE LA GARDE **SANS UNE LIGNE DE CODE**, et
+        #    c'est pour ca qu'elle vit ICI : `_garde()` est appelee en PREMIERE
+        #    ligne de `do_POST`, AVANT le moindre parsing de chemin. La sortir
+        #    d'ici — dans une methode a elle, dans `do_GET` — la ferait
+        #    repondre SANS refus `Origin`/`Host`, et ⚠️ `(c27)` de
+        #    `verif_installeur_dn71.py` ⛔ NE CONNAIT QUE LES DEUX VERBES
+        #    EXISTANTS : il epinglerait VERT le meme defaut ailleurs.
+        if chemin == ROUTE_DEPENDANCES:
+            self._json(200, jouer_dependances())
+            return
         prefixe = "/api/agent/"
         if chemin.startswith(prefixe):
             self._json(200, jouer_verbe(chemin[len(prefixe):]))

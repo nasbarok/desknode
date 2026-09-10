@@ -1,0 +1,115 @@
+=============================================================================
+T4 — BORNE D'ARRIVEE **APRES LES CORRECTIFS DE VERIFICATION** (2026-09-10)
+=============================================================================
+⚠️ T3 N'EST PAS EFFACE. Il reste le releve de la passe d'implementation, et il
+   etait VERT — c'est precisement ce qui rend ce fichier necessaire : la
+   verification a trouve un defaut QUE T3 N'A PAS VU, et deux trous de garde.
+
+🔴 CE QUE LA VERIFICATION A TROUVE, ET QUI ETAIT VERT PARTOUT
+-----------------------------------------------------------------------------
+(1) LE COMMENTAIRE DU TEMOIN SE REFERMAIT **TROP TOT**, dans `index.html`.
+    Le bloc ouvert a `:114` se fermait a `:145`, laissant QUATORZE lignes de
+    prose HORS commentaire, refermees par un `*/` ORPHELIN a `:159`.
+    ⇒ pour un navigateur, cette prose devient le PREAMBULE d'un selecteur, et
+      la premiere regle qui suit — `.val.etat-prete`, c'est-a-dire l'etat
+      « tout va bien » que l'owner voulait VOIR — est AVALEE.
+    🔬 MESURE, ⛔ pas deduite : balayage des delimiteurs de gauche a droite sur
+       le bloc `<style>` ⇒ « `*/` orphelins : [159] ».
+    🔬 TEMOIN : arbre COMPLET, le defaut replante et RIEN d'autre ⇒
+         verif_preconditions_dn76 : 42 OK, 0 KO   (VERTE)
+         verif_page_dn722         : 56 OK, 0 KO   (VERTE)
+         verif_placement_dn74     : 42 OK, 0 KO   (VERTE)
+       ⇒ **QUATRE gates vertes sur du code faux**, la famille que ce depot a
+         deja payee quatre fois pendant `dn7-4` et trois fois pendant `dn7-5`.
+    ⇒ CORRIGE : le `*/` premature est retire, le bloc redevient UN commentaire.
+
+(2) POURQUOI `(c2)` NE POUVAIT PAS LE VOIR — et c'est le trou, ⛔ pas la gate.
+    `style_de()` retire les commentaires par une EXPRESSION REGULIERE, donc
+    COMME ON VOUDRAIT qu'ils soient ecrits. Un `*/` orphelin ne la derange pas :
+    la regle reste dans le texte, `(c2)` la trouve, la juge bien formee — et
+    elle EST bien formee. Elle est juste INATTEIGNABLE.
+    ⇒ un controle qui lit du TEXTE ⛔ ne dit RIEN de ce qu'un PARSEUR atteint.
+    ⇒ CONTROLE NEUF `(c17)` + mutant 26, qui REPLANTE ces octets-la.
+
+(3) LES LIGNES 5 ET 6 DE LA MATRICE D'E/S ETAIENT JOUEES PAR **RIEN**.
+    `(c12)` confronte le TEXTE de la derivation au geste publie — utile, et
+    ⛔ muet sur ce que la fonction REND. Le clic « installer » et le cas
+    « `pip` absent chez l'inconnu » n'etaient EXECUTES par aucun test.
+    ⇒ CONTROLE NEUF `(c18)` + mutant 27 : les TROIS issues de
+      `jouer_dependances()` sont JOUEES, `subprocess.run` REMPLACE (⛔ rien
+      n'est installe), trois verdicts DISTINCTS exiges, `rc` relaye tel quel.
+
+🔬 BORNES MESUREES APRES CORRECTIFS
+-----------------------------------------------------------------------------
+run_gates.sh          : BILAN : 42 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 44 gates (459s)
+                        (depart : BILAN : 41 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 43 gates)
+unique ROUGE          : tools/verif_dossier_dn415.py — 23 OK, 10 KO, PREEXISTANTE
+  ⇒ les 10 KO CONFRONTES, cockpit A SA BORNE vs cockpit APRES dn7-6 :
+    APPARUS : AUCUN · DISPARUS : AUCUN  ⇒ ce sont LES MEMES, ⛔ pas le meme compte
+verif_preconditions_dn76 : 46 OK, 0 KO  (CONTROLES_PREVUS = 1 + 27 + 18 = 46)
+  · 27 mutants tires UN PAR UN : 0 ecart, le controle rougi == la cible DECLAREE
+  · --mutant 999 ⇒ rc=2
+  · temoin negatif (arbre a a6cf9b1) ⇒ 32 OK, 14 KO — dont (c17) et (c18) ROUGES
+campagne dn56         : 8 OK, 0 KO · 18 cibles (17 avant) · 561 mutants · 0 muet, 0 mort
+gates exposees        : dn71 28/0 · dn722 56/0 · dn72 30/0 · dn74 42/0 · dn75 47/0
+                        banc_dn73 45/0 · langue_dalle_dn73 61/0
+gates de prose        : licences_dn52 34/0 · langues_dn442 31/0 · ledger_dn416 35/0
+NFR7.2 git diff firmware/ : 0 octet
+installeur/ profondeur 1  : 4 fichiers suivis
+empreinte de l'arbre avant/apres la passe : IDENTIQUE (713eac97a5c89ff9)
+  ⇒ la passe ⛔ ne chevauche AUCUNE mutation de l'arbre
+
+⛔ CE QUE CE RELEVE NE FERME PAS
+-----------------------------------------------------------------------------
+Les lignes 7, 8 et 9 de la matrice d'E/S — « Activer » joue pour de vrai, la
+demi-reussite `exit 13`, et le refus `12` relaye — sont du PowerShell : elles
+⛔ ne peuvent pas tourner ici. Elles se mesurent COTE WINDOWS, et leur
+protocole est `T2-A-JOUER-COTE-WINDOWS.md`, qui ⛔ n'a PAS ete joue.
+⇒ `AC7.6.4` reste OUVERTE sur cette moitie, et elle est portee au ledger.
+
+=============================================================================
+T6 — BORNE APRES LA REVUE 4 COUCHES (2026-09-10) — ⛔ T4 N'EST PAS EFFACE
+=============================================================================
+T4 ci-dessus est la borne d'APRES VERIFICATION. La REVUE a ensuite rendu 34
+constats, dont QUATRE trous DEMONTRES par la couche de verification — chacun
+laissant HUIT gates vertes — et DEUX defauts produit annoncant un SUCCES FAUX.
+
+run_gates.sh          : BILAN : 42 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 44 (467s)
+                        0 divergence
+unique ROUGE          : verif_dossier_dn415.py — 23 OK, 10 KO, PREEXISTANTE,
+                        KO confrontes ligne a ligne : 0 apparu, 0 disparu
+verif_preconditions_dn76 : 52 OK, 0 KO  (1 + 30 mutants + 21 controles)
+  · 30 mutants tires UN PAR UN : 0 ecart, cible DECLAREE == controle rougi
+  · --mutant 999 ⇒ rc=2
+  · temoin negatif (arbre a a6cf9b1) : 32 OK, 14 KO
+banc                  : 27 cas (26 avant) · verif_banc_langue_dn73 45 OK, 0 KO
+campagne dn56         : 8 OK, 0 KO · 18 cibles · 564 mutants · 0 muet, 0 mort
+ledger_dn416          : 35 OK, 0 KO (§9 regenere par la commande de la gate)
+licences_dn52         : 34 OK, 0 KO · langues_dn442 : 31 OK, 0 KO
+NFR7.2 git diff firmware/ : 0 octet · installeur/ profondeur 1 : 4
+syntaxe PowerShell    : PARSE OK — 0 erreur (VRAI parseur, WSL interop)
+                        ⚠️ aucune gate de ce depot ne fait ce controle
+empreinte avant/apres : IDENTIQUE (258756151307c81a)
+
+LES SIX REGRESSIONS DEMONTREES, REJOUEES APRES CORRECTIF — TOUTES ROUGES :
+  route cliente divergente ............ dn76  51 OK, 1 KO
+  polarite de la fabrique inversee .... dn76  51 OK, 1 KO
+  aplat de BLOQUEE = celui de PRETE ... banc  44 OK, 1 KO
+  bandeau LHM inverse ................. banc  44 OK, 1 KO
+  bandeau deps inverse ................ banc  44 OK, 1 KO
+  etape 1 toujours prete .............. banc  44 OK, 1 KO
+
+⚠️ LE PIEGE EN CASCADE A ETE PAYE, ET IL EST ECRIT : les correctifs de prose
+   ont fait passer TROIS mutants d'AUTRES gates en rc=3 — dn76#26,
+   banc_langue_dn73#30, langue_dalle_dn73#29 — donc MUETS, donc pris pour des
+   gardiens vivants par la campagne. C'est une gate d'UN AUTRE SUJET qui a
+   rougi sur ce que cette marche ecrivait. Les trois ancres sont re-visees sur
+   des formes STABLES, et un commentaire d'origine detruit par megarde en
+   deplacant une insertion a ete RESTAURE.
+
+⛔ CE QUE CETTE BORNE NE FERME TOUJOURS PAS : tout ce qui n'est vrai que SOUS
+   WINDOWS est juge PAR LECTURE. Le verbe qui pose, son code de demi-reussite,
+   le relais du refus de LHM et le plafond de 300 s ⛔ ne sont EXECUTES nulle
+   part — le controle qui joue les codes double le lanceur PowerShell, donc il
+   prouve le RENDU du code, ⛔ pas que l'outil le produise. Le protocole
+   T2-A-JOUER-COTE-WINDOWS.md ⛔ N'A PAS ete joue.

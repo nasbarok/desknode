@@ -85,6 +85,48 @@ police distante est une page qui ne s'ouvre pas quand le réseau est mauvais.
 > `var(--dn-accnt)` ne serait déclaré nulle part et disparaîtrait **en silence** au rendu. C'est
 > `tools/verif_placement_dn74.py (c13)` qui confronte les noms employés à ceux de `:root`.
 
+> 🔴 **ANNOTÉ ET DATÉ LE 2026-09-10 (`dn7-6`) — ⛔ AUCUN JETON N'EST AJOUTÉ, ⛔ AUCUNE COLONNE
+> N'EST TOUCHÉE.** Ce qui est écrit ici, c'est **pourquoi le témoin d'état des quatre étapes
+> du workflow n'est pas vert**, et **quel geste le changerait**.
+>
+> L'owner a demandé, verbatim, des *« pastilles vertes »*. **Trois mesures**, prises avant
+> qu'une ligne soit écrite, disent que la teinte n'est pas le levier — et ⛔ aucune des trois
+> n'est un argument :
+> *(i)* ce fichier n'est ⛔ **pas** une charte : c'est une **liste fermée de sept rôles**,
+> chacun **relevé** dans le firmware, et il écrit sa propre règle deux paragraphes plus haut —
+> *« les couleurs ne sont pas inventées ici, elles sont relevées là-bas »*. ⛔ **Aucun des
+> sept n'est vert.**
+> *(ii)* le vert **existe** dans le firmware, et il y est **REJETÉ, daté** : `0x4ade80` a été
+> la première passe de `dn4-4`, et le constat owner **à l'œil** de `dn4-13` — *« ça ne se voit
+> pas bien »* sur un PCB **vert** — l'a remplacé par `0x3b82f6`. Ses **trois** occurrences
+> dans `firmware/` sont **toutes** des annotations de ce rejet.
+> *(iii)* `dn7-4` a déjà tranché **sur cette page même**, et par la mesure : *« l'aplat est
+> une différence de FORME, ⛔ pas de teinte »*, après que deux teintes voisines aient fait lire
+> une position pour l'autre **à l'owner, en séance**.
+>
+> ⇒ ce que la demande veut — **voir d'un coup d'œil** — est tenu par la **forme** (l'aplat,
+> comme les deux sélecteurs de langue) et par le **vocabulaire du produit** : les trois
+> positions du témoin sont exactement celles de la dalle, `W_COL_REELLE` / `W_COL_SIMULEE` /
+> `W_COL_ABSENTE`, choisies là-bas par un `switch` à trois branches. Les trois règles ajoutées
+> n'emploient donc **que** `--dn-accent`, `--dn-avertissement`, `--dn-trait`, `--dn-eteint` et
+> `--dn-fond` — **tous déjà déclarés dans la table ci-dessus**.
+>
+> 🔴 **ET LA PORTE MÉCANIQUE EST FERMÉE, ⛔ pas seulement déconseillée.** `(c18)` de
+> `tools/verif_installeur_dn71.py` vérifie qu'une couleur déclarée **est** à la ligne de
+> firmware citée. `#4ade80` **y est** — dans un commentaire qui dit qu'on l'a **abandonnée**.
+> Un huitième jeton vert citant cette ligne **passerait la gate** tout en publiant une valeur
+> morte comme identité vivante : c'est *« une gate verte sur du code faux »*.
+> ⇒ `tools/verif_preconditions_dn76.py (c3)` refuse cette valeur **nommément**, et il
+> **re-mesure** d'abord qu'elle est bien rejetée là-bas — le jour où quelqu'un la remet en
+> service, il le dira.
+>
+> ⚠️ **LE GESTE QUI CHANGERAIT CE TÉMOIN, ET SON PORTEUR** : ⛔ ce n'est **pas** une
+> préférence à réviser ici. C'est **un arbitrage owner** qui amende cette table avec un
+> **huitième rôle** dont la source firmware est **vivante** — ⛔ pas une annotation de rejet.
+> Tant qu'aucune ligne de firmware ne porte un vert **en service**, il n'y a **rien à
+> relever**, et une couleur inventée ici casserait la règle que ce fichier existe pour tenir.
+> ⛔ Un écart sans porteur écrit est un oubli déguisé ; celui-ci en a un.
+
 ## Pourquoi ces sept-là, et ⛔ pas d'autres
 
 - **Le fond est un noir pur, et c'est la dalle qui le dit.** `W_AMB_CASE_BG` vaut `0x000000` :

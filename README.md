@@ -574,6 +574,8 @@ ferait donc échouer l'outil qui existe déjà.
 | **Installer DeskNode sur la carte** | ESP Web Tools, **épinglé `10.4.0`**, avec `installeur/charge/manifest.json` | les **quatre** morceaux aux **quatre** offsets, ⛔ sans binaire fusionné ; la version annoncée est **lue dans le binaire servi**, et une gate refuse qu'elles diffèrent |
 | 🆕 **Se brancher à la carte et lire sa console** | **rien du dépôt** : la page ouvre **son** port avec l'accès série du navigateur, à **115200** bauds | une gate vérifie que l'entrée est un élément **distinct** du bouton de flash, que le débit est **déclaré une fois** et que les **trois refus** sont nommés séparément |
 | 🆕 **Poser la langue de la dalle sur la carte** | la commande console `langue` que le **firmware livre déjà** — ⛔ la page ne construit aucun mécanisme, elle pose **le choix** | **deux** gates : l'une lit la structure — le choix précède le flash, l'anglais **n'écrit rien**, l'invite est attendue **avant** l'envoi, le succès n'est atteignable que **depuis la relecture** — l'autre **EXÉCUTE** le script de la page contre un port de banc d'essai et rejoue les **neuf** lignes de sa matrice, plus neuf chemins nommés par deux revues |
+| 🆕 **Installer les dépendances de l'agent** | **rien de l'outil** : le serveur local joue lui-même le geste publié juste en dessous, **non élevé**, avec **l'interpréteur qui sert cette page** | la commande jouée est **dérivée** de la chaîne publiée, ⛔ pas une seconde copie ; sa sortie et son code de retour vous sont rendus **tels quels**, et l'état est **re-mesuré** ensuite — ⛔ ce n'est pas le code de `pip` qui tranche |
+| 🆕 **Activer l'agent** | un **verbe neuf** de `tools/dn_agent_tour.ps1`, qui **compose** la pose de la tâche planifiée **et** le démarrage immédiat | la tâche est **redemandée au système** et le processus **constaté vivant**, ⛔ pas déduits du message ; et l'issue « tâche posée, agent non démarré » a **son propre code**, parce que ⛔ ni un succès ni un échec ne serait vrai |
 | **Retirer l'agent** | le verbe `retirer` du même outil | la tâche est **redemandée au système** après coup, ⛔ le message de sortie ne fait pas foi |
 
 ⇒ Ces **cinq** gestes **n'inventent rien** — et **deux d'entre eux** *(arrêter, retirer)*
@@ -627,6 +629,21 @@ redits ici : une table dupliquée est une table qui divergera.
 > soit**. Que la position remplie se lise comme « choisie » d'un coup d'œil se ferme **à l'œil
 > de l'owner**, sur la page servie, et cette observation ⛔ **n'avait pas été relevée** quand
 > ce bloc a été écrit.
+
+> 🎯 **COMPLÉTÉ LE 2026-09-10 (`dn7-6`) — ⛔ RIEN N'EST EFFACÉ, ET LA TABLE CHANGE DE COMPTE.**
+> Elle portait **cinq** lignes ; elle en porte **sept**. ⚠️ **La phrase juste au-dessus,
+> *« Ces cinq gestes n'inventent rien »*, a donc cessé d'être exacte sur DEUX points, et elle
+> est nommée ici plutôt que réécrite** : le compte n'est plus cinq, et *« n'inventent rien »*
+> n'est plus vrai de tous — le geste **« Activer l'agent »** appelle un **verbe neuf**, écrit
+> pour cette marche. ⛔ Ce qui reste vrai mot pour mot : il ne **réimplémente** rien, il
+> **compose** deux verbes que le dépôt livrait déjà, et il ⛔ **ne redéclare aucun réglage de
+> la tâche planifiée** — le niveau limité vient **avec** le bloc réemployé, ⛔ pas d'une
+> consigne qu'on pourrait oublier.
+> 🔴 **ET LE FIL CONDUCTEUR DE `dn7` EST AMENDÉ, DATÉ, PAR DÉCISION OWNER** : *« `dn7` EXPOSE,
+> ⛔ elle ne construit rien »* était vrai de `dn7-1` à `dn7-3` ; il **cesse ici**, sur
+> l'arbitrage du 2026-09-10 — *« elle installe dans la mesure du possible, sinon elle
+> expose »*. ⛔ La phrase d'avant n'est pas effacée : elle décrivait exactement ce que la
+> page faisait ces trois marches-là.
 
 🆕 **Relire la carte ne passe plus par le bouton qui la flashe.** Jusqu'au 2026-09-09, le
 **seul** chemin vers les logs de la carte était le bouton d'installation : pour **regarder**
@@ -746,6 +763,33 @@ elle qui rend ce coût lisible ; *(ii)* la tâche de LHM démarre **élevée** �
 session et celle de l'agent ⛔ **non** — les deux tirent sur le **même** événement, donc elles
 **se courent après**. La reprise existe déjà et **porte sa borne** : **3 reprises à 1 minute**.
 ⇒ **au-delà d'environ trois minutes, l'agent est absent TOUTE LA SESSION**, en silence.
+
+🎯 **DEPUIS LE 2026-09-10 (`dn7-6`), LA PAGE INSTALLE LA PREMIÈRE DE CES TROIS CHOSES —
+⛔ ET ELLE ÉCRIT POURQUOI ELLE N'INSTALLE PAS LES DEUX AUTRES.** ⛔ Rien de ce qui précède
+n'est effacé : les trois manques sont toujours là, et c'est **le geste** qui a changé pour
+l'un d'eux.
+
+- ✅ **Les deux modules Python** ont désormais un **bouton** sur la page. Il joue la commande
+  publiée juste au-dessus, **non élevé**, avec **l'interpréteur qui sert la page** — donc
+  celui dont l'agent se servira, ⛔ pas le premier `pip` du `PATH`. La commande jouée est
+  **dérivée** de cette chaîne-là, ⛔ ce n'est pas une seconde rédaction qui divergerait. Sa
+  sortie et son code vous sont rendus **tels quels**, et ⚠️ **ce n'est ⛔ pas le code de `pip`
+  qui tranche** : l'état est **re-mesuré** ensuite, et c'est cette mesure qui décide.
+- ⛔ **LibreHardwareMonitor n'a ⛔ pas de bouton, et le motif est une mesure.** Son propre
+  script écrit noir sur blanc que, lancé sans **droits administrateur**, sa vérification
+  marche mais qu'il **ne peut pas agir** — et la tâche qu'il pose est élevée. Cet installeur
+  ⛔ **ne demande jamais ces droits** ; deux vérifications vivantes de ce dépôt refusent le
+  seul chemin qui le permettrait. ⇒ la commande reste **à recopier**, dans une fenêtre que
+  vous ouvrez vous-même. ⚠️ Un bouton qui la jouerait non élevée promettrait un geste qui
+  **n'agit pas** : ce serait **pire** que pas de bouton.
+- ⛔ **Python 3 non plus — et ⛔ ce n'est pas le même motif.** La page ⛔ **ne peut pas** en
+  faire une précondition : **sans Python, la page n'existe pas**. Le fichier que vous
+  double-cliquez s'arrête **avant d'avoir servi le moindre octet**, et c'est **cette
+  fenêtre-là** qui porte le lien et la marche à suivre. ⇒ le lien vit donc **aux deux
+  endroits** — dans cette fenêtre, et ici :
+  <https://www.python.org/downloads/windows/>, la seule case qui compte étant
+  *« Add python.exe to PATH »*. ⚠️ Un lien que personne **dans le besoin** ne peut voir serait
+  **pire qu'absent**.
 
 ⚠️ **Ce n'est ⛔ ni un oubli ni une panne : c'est le prix, écrit, d'une décision datée.** Le
 2026-09-08, l'owner a tranché qu'un **script lançable** suffisait pour la première version,

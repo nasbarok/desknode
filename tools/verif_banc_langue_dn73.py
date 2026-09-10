@@ -129,12 +129,26 @@ CAS_MATRICE = (
 #    DECLARE ». Ces deux-la mesurent OU se pose `#sortie` — sous le bouton
 #    clique apres un verbe, a sa place d'origine apres un fait de PAGE — et
 #    c'est la seule moitie d'`AC7.4.1` qu'une machine puisse tenir.
+#  · les SIX cas de PRECONDITION — DECLARES LE 2026-09-10 par `dn7-6`, et pour
+#    la meme raison que les deux precedents : `(c3)` exige que tout cas ajoute
+#    soit DECLARE. ⚠️ ILS FERMENT UN RESIDU QUE `dn7-5` AVAIT LAISSE ECRIT :
+#    son `poserMot("v-lhm", …)` n'etait traverse par AUCUN harnais. Ils
+#    mesurent quel MOT et quelle FORME chaque etape porte, et quel geste se
+#    DESARME avec quel motif — la moitie d'`AC7.6.2` qu'une machine tienne.
+#    ⛔ `tout-est-la` est la LIGNE DE REFERENCE : sans elle, « grise » ne se
+#    distinguerait de rien. ⛔ `psutil-manquant` porte la ligne de partage qui
+#    n'est PAS intuitive : le FLASH ⛔ n'est PAS bloque par une dependance de
+#    l'AGENT. ⛔ `lhm-non-testable` porte l'inverse d'un verdict : une
+#    IGNORANCE ⛔ ne bloque RIEN — la faute que `dn7-1` a payee pour `psutil`.
 CAS_HORS_MATRICE = ("relecture-sans-le-code", "pose-par-le-selecteur",
                     "nvs-refusee", "selecteur-deja-en-vol", "selecteur-annule",
                     "clic-reel-sur-francais", "flash-revele-arme-le-geste",
                     "module-absent-desarme-le-geste",
                     "ecriture-qui-rejette-en-vol",
-                    "fait-de-page-a-la-maison", "verdict-sous-le-bouton")
+                    "fait-de-page-a-la-maison", "verdict-sous-le-bouton",
+                    "tout-est-la", "psutil-manquant", "lhm-absent",
+                    "lhm-non-testable", "hors-windows", "serveur-muet",
+                    "outil-absent-etape-bloquee")
 CAS_ATTENDUS = len(CAS_MATRICE) + len(CAS_HORS_MATRICE)
 
 RE_CAS = re.compile(r"^CAS (\S+)\s+(OK|KO)\s*(.*)$", re.M)
@@ -166,6 +180,22 @@ SIGNATURE_FILET = "BANC ⛔ CHAINE NON RESOLUE"
 ANCRES_DELAIS = ("ctx.DELAI_INVITE = DELAI_PAGE;",
                  "ctx.DELAI_REPONSE = DELAI_PAGE;",
                  'typeof ctx.DELAI_INVITE !== "number"')
+# 🔴 ET IL DOIT **EXERCER LES CHEMINS DE PRECONDITION** (`dn7-6`), ⛔ pas
+#    seulement les declarer. Trois choses, et chacune ferme un trou different :
+#     · la FABRIQUE de desarmement est **ENVELOPPEE**, ⛔ jamais remplacee — un
+#       harnais qui la remplace fabrique lui-meme la suite qu'il attend, et il
+#       sortirait VERT sur une page ou plus rien ne se grise ;
+#     · les temoins d'etape sont MONTES **AVANT** `runInContext` — le fichier
+#       documente le cas vecu : un element non monte rend le banc VERT sur des
+#       branches MORTES ;
+#     · le chemin est ROUTE depuis la fonction de cas, sinon il ne se joue pas.
+ANCRES_PRECONDITION = (
+    "const r = vraiArmer(id, permis, cle);",
+    'geste2.insertBefore(doc.getElementById("v-etape-flash"), null);',
+    "if (cas.etatMachine !== undefined) { return jouerPrecondition(ctx, els, cas); }",
+    "attendTemoins", "attendArmes")
+A_MONTAGE_PRECONDITION = 'doc.getElementById("v-etape-flash")'
+A_EXECUTION = "vm.runInContext"
 
 LARGEUR_LIBELLE = 58
 
@@ -259,11 +289,25 @@ CIBLES[27] = ("c4",)
 MUTANTS[28] = ("BANC : le filet sort non nul SANS sa signature ⇒ un "
                "`Traceback` serait pris pour un filet qui a joue")
 CIBLES[28] = ("c7",)
+MUTANTS[29] = ("PAGE : traite « LHM non testable » comme « LHM absent » "
+               "⇒ une IGNORANCE publiee comme un verdict, et ca BLOQUE")
+CIBLES[29] = ("c4",)
+MUTANTS[30] = ("PAGE : fait dependre le FLASH des modules de l'agent ⇒ "
+               "le geste PRINCIPAL bloque pour une dependance a lui")
+CIBLES[30] = ("c4",)
+MUTANTS[31] = ("BANC : REMPLACE la fabrique de desarmement au lieu de "
+               "l'envelopper ⇒ il fabrique la suite qu'il attend")
+CIBLES[31] = ("c12",)
+MUTANTS[32] = ("PAGE : ne repose plus la FORME du temoin ⇒ un mot juste "
+               "sous l'aplat de l'etat PRECEDENT")
+CIBLES[32] = ("c4",)
 
-# ⚠️ LE COMPTE DU CHEMIN NORMAL : 1 pre-vol + un controle par mutant + les 11
+# ⚠️ LE COMPTE DU CHEMIN NORMAL : 1 pre-vol + un controle par mutant + les 12
 #    controles numerotes. Il se PERIME si on ajoute un controle sans le mettre
 #    a jour — et c'est voulu : c'est ce qui rend (z) FALSIFIABLE.
-CONTROLES_PREVUS = 40
+# ⚠️ ANNOTE LE 2026-09-10 (`dn7-6`) : il valait ~~40~~ pour 28 mutants et 11
+#    controles numerotes ; `(c12)` et quatre mutants s'ajoutent.
+CONTROLES_PREVUS = 1 + len(MUTANTS) + 12
 
 _MUTANT = 0
 
@@ -425,6 +469,29 @@ def le_banc_regle_les_attentes(banc):
     """Le banc REPOSE-t-il les attentes de la page, et echoue-t-il FERME ?"""
     absentes = [a for a in ANCRES_DELAIS if a not in (banc or "")]
     return not absentes, absentes
+
+
+def le_banc_exerce_les_preconditions(banc):
+    """Le banc EXERCE-t-il les chemins de precondition, ⛔ ou les recopie-t-il ?
+
+    🔴 TROIS TROUS DIFFERENTS, FERMES ENSEMBLE (`dn7-6`) :
+       · la fabrique de desarmement est **ENVELOPPEE** — la REMPLACER ferait
+         fabriquer au banc la suite qu'il attend, et il sortirait VERT sur une
+         page ou plus rien ne se grise ;
+       · le temoin d'etape est MONTE **AVANT** `runInContext` — ce fichier
+         documente deja le cas vecu, et `dn7-5` en avait laisse le residu ;
+       · le chemin est ROUTE depuis la fonction de cas, sinon il ne joue pas."""
+    absentes = [a for a in ANCRES_PRECONDITION if a not in (banc or "")]
+    if absentes:
+        return False, ("ancre(s) absente(s) : %s"
+                       % " · ".join(x[:38] for x in absentes[:2]))
+    i_montage = (banc or "").find(A_MONTAGE_PRECONDITION)
+    i_exec = (banc or "").find(A_EXECUTION)
+    if i_montage < 0 or i_exec < 0 or i_montage > i_exec:
+        return False, ("le temoin d'etape est monte APRES l'execution — la "
+                       "branche serait MORTE, et le banc VERT dessus")
+    return True, ("fabrique ENVELOPPEE, temoins montes avant l'execution, "
+                  "chemin route")
 
 
 def le_banc_juge_la_suite(banc):
@@ -623,13 +690,24 @@ def muter(etat):
         ).replace(
             b, 'bDalleFr.addEventListener("click", function () { poserDalle("en"); });', 1)
     elif _MUTANT == 23:
-        a = ("  bLanguePoser.disabled = "
-             "!(blocInstaller && blocInstaller.hidden === false);")
+        # ⚠️ ANCRE MISE A JOUR LE 2026-09-10 (`dn7-6`), ⛔ PAS PAR CONFORT : le
+        #    desarmement passe desormais par LA fabrique commune, et l'ancre
+        #    d'avant — ~~`bLanguePoser.disabled = !(…)`~~ — a disparu du
+        #    produit. Un mutant dont l'ancre a disparu rend l'etat INCHANGE,
+        #    donc `rc=3`, donc il tombe dans les MUETS de
+        #    `tools/verif_campagne_dn56.py` : c'est une gate D'UN AUTRE SUJET
+        #    qui rougit sur ce qu'une autre marche a ecrit. La FAUTE
+        #    REPLANTEE, elle, ⛔ n'a pas bouge d'un mot : la polarite est
+        #    INVERSEE, et le geste s'offre justement quand le flash est
+        #    impossible.
+        a = ('  armerGeste("b-langue-poser",\n'
+             "             !!(blocInstaller && blocInstaller.hidden === false),")
         if a not in p.get(PAGE, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[PAGE] = p[PAGE].replace(
-            a, "  bLanguePoser.disabled = "
-               "!!(blocInstaller && blocInstaller.hidden === false);", 1)
+            a, '  armerGeste("b-langue-poser",\n'
+               "             !(blocInstaller && blocInstaller.hidden === false),",
+            1)
     elif _MUTANT == 24:
         a = ('  e.appendChild(portConsole ? paire("langue.port-tenu", undefined, true)\n'
              '                            : paire("langue.port-libre", undefined, true));')
@@ -661,6 +739,43 @@ def muter(etat):
         if a not in p.get(BANC, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[BANC] = p[BANC].replace(a, '    console.log("BANC interrompu — "', 1)
+    elif _MUTANT == 29:
+        # 🔴 LA FAUTE QUE `dn7-1` A PAYEE POUR `psutil`, REPLANTEE SUR LHM :
+        #    `null` veut dire « la sonde n'a pas pu tourner », ⛔ pas « absent ».
+        a = "  var lhmRepond = (e.lhm !== false);"
+        if a not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(
+            a, "  var lhmRepond = (e.lhm === true);", 1)
+    elif _MUTANT == 30:
+        # 🔴 LE CONTRESENS QUE `dn7-5` A ECARTE : priver un inconnu du geste
+        #    PRINCIPAL pour une dependance de l'AGENT.
+        a = ("troisEtats(!!(securise && estLocal && serie && !chargeRefusee\n                            && !moduleAnnonce),")
+        if a not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(
+            a, "troisEtats(!!(securise && estLocal && serie && !chargeRefusee "
+               "&& !moduleAnnonce && depsCompletes),", 1)
+    elif _MUTANT == 31:
+        # 🔴 LE HARNAIS QUI SE MESURE LUI-MEME : il REMPLACE la fabrique au lieu
+        #    de l'envelopper, et fabrique donc la suite qu'il attend.
+        a = ("    const r = vraiArmer(id, permis, cle);\n"
+             "    armes.push(id + (permis ? \" ARME\" : \" GRISE=\" + cle));\n"
+             "    return r;")
+        if a not in p.get(BANC, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[BANC] = p[BANC].replace(
+            a, "    armes.push(id + (permis ? \" ARME\" : \" GRISE=\" + cle));\n"
+               "    return null;", 1)
+    elif _MUTANT == 32:
+        # 🔴 LE MOT SANS SA FORME : le temoin garde l'aplat de l'etat PRECEDENT
+        #    sous un texte qui dit autre chose.
+        a = '  e.className = "val " + (FORME_ETAPE[cle] || "etat-su-non");'
+        if a not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(
+            a, '  if (FORME_ETAPE[cle]) { e.className = "val "'
+               ' + FORME_ETAPE[cle]; }', 1)
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e
@@ -856,6 +971,12 @@ def main():
                  if rc_t != RC_FILET
                  else "⛔ la SIGNATURE du filet est absente : rc=%d ne prouve "
                       "pas QUI a mis fin au banc" % RC_FILET))
+
+    ok, det = le_banc_exerce_les_preconditions(banc)
+    ctrl(ok, "(c12) le banc EXERCE les chemins de precondition", det if ok
+         else "⛔ %s — un chemin qu'aucun harnais ne traverse est une gate "
+              "verte qui ne garde RIEN, et `dn7-5` en avait laisse le residu "
+              "ecrit" % det)
 
     ok, absentes = le_banc_regle_les_attentes(neuf["fichiers"].get(BANC, ""))
     ctrl(ok, "(c8) le banc REPOSE les attentes de la page",

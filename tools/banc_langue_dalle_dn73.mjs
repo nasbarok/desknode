@@ -245,6 +245,31 @@ function faireContexte(src, choix) {
   geste1.insertBefore(doc.getElementById("etat-port-tenu"), null);
   section4.insertBefore(doc.getElementById("b-retirer"), null);
   section4.insertBefore(doc.getElementById("apres-retirer"), null);
+  // 🔴 LES ELEMENTS DE `dn7-6` SONT MONTES **AVANT** `runInContext`, ET POUR LA
+  //    MEME RAISON QUE CEUX DE `dn7-4` : le script LIT ses boutons AU
+  //    CHARGEMENT. ⚠️ Le fichier documente deja le cas vecu — un element non
+  //    monte avant l'execution rend le banc VERT sur des branches MORTES —, et
+  //    `dn7-5` en avait laisse le residu : son `poserMot("v-lhm", …)` n'etait
+  //    traverse par AUCUN harnais.
+  //    ⚠️ QUATRE TEMOINS D'ETAPE, un par `<li>` du workflow, et ils vivent
+  //       CHACUN DANS SON GESTE — les entasser dans un seul conteneur ferait
+  //       mesurer une page qui n'existe pas.
+  const entete = faireConteneur("sec-suite-entete");
+  const geste2 = faireConteneur("geste-2");
+  const geste3 = faireConteneur("geste-3");
+  const geste4 = faireConteneur("geste-4");
+  entete.insertBefore(doc.getElementById("etat-deps"), null);
+  entete.insertBefore(doc.getElementById("etat-lhm"), null);
+  entete.insertBefore(doc.getElementById("b-deps"), null);
+  entete.insertBefore(doc.getElementById("b-deps-raison"), null);
+  geste1.insertBefore(doc.getElementById("v-etape-arret"), null);
+  geste2.insertBefore(doc.getElementById("v-etape-flash"), null);
+  geste3.insertBefore(doc.getElementById("v-etape-langue"), null);
+  geste3.insertBefore(doc.getElementById("b-langue-poser"), null);
+  geste3.insertBefore(doc.getElementById("b-langue-poser-raison"), null);
+  geste4.insertBefore(doc.getElementById("v-etape-console"), null);
+  section4.insertBefore(doc.getElementById("b-agent-poser"), null);
+  section4.insertBefore(doc.getElementById("b-agent-poser-raison"), null);
 
   // 🔴 LE CHOIX VIT DANS L'ATTRIBUT, EXACTEMENT COMME DANS LE DOCUMENT : le
   //    banc le POSE ici parce qu'il n'a pas de HTML, mais la page le LIT par
@@ -312,6 +337,14 @@ function jouer(src, cas) {
   //    Ils mesurent OU LE TRANSCRIPT SE TROUVE, et rien d'autre : c'est la
   //    seule propriete de `AC7.4.1` qu'une machine puisse tenir.
   if (cas.verbe !== undefined) { return jouerVerbe(ctx, els, cas); }
+
+  // 🔴 LES CAS DE **PRECONDITION** NE PASSENT PAS NON PLUS PAR LE GESTE DE
+  //    LANGUE (`dn7-6`). Ils mesurent ce que la page fait d'un ETAT DE MACHINE :
+  //    quel temoin porte chaque etape, et quel geste se DESARME — avec quel
+  //    motif. C'est la moitie d'`AC7.6.2` qu'une machine puisse tenir ; l'autre
+  //    — un bouton REELLEMENT grise sous les yeux de quelqu'un — se ferme
+  //    cote Windows, a l'œil.
+  if (cas.etatMachine !== undefined) { return jouerPrecondition(ctx, els, cas); }
 
   // 🔴 ON RELEVE LA **SUITE** DES ISSUES ANNONCEES, ⛔ PAS SEULEMENT LA
   //    DERNIERE. `blocMot` est l'unique fabrique par laquelle le geste annonce
@@ -460,6 +493,90 @@ function jouerVerbe(ctx, els, cas) {
       }));
   });
 }
+
+// ── LES PRECONDITIONS, ET LE GESTE QUI SE DESARME ────────────── (dn7-6) ──
+// 🔴 CE QUE CE CHEMIN MESURE, ⛔ ET CE QU'IL NE MESURE PAS. Il dit quel MOT et
+//    quelle FORME chaque etape porte apres un etat de machine donne, et quel
+//    geste est arme ou grise, AVEC SA RAISON. ⛔ Il ⛔ ne dit RIEN de ce que
+//    l'œil voit : ni rendu, ni contraste, ni lisibilite. `AC7.6.1` se ferme A
+//    L'ŒIL DE L'OWNER, ⛔ pas ici.
+// ⚠️ LA FABRIQUE DE DESARMEMENT EST **ENVELOPPEE**, ⛔ JAMAIS REMPLACEE : la
+//    remplacer ferait mesurer le banc lui-meme, et la page pourrait etre
+//    cassee sans que rien ne bouge.
+function jouerPrecondition(ctx, els, cas) {
+  const vide = {
+    etatLangue: "", etatConsole: "", relais: "", relaisCache: true,
+    classe: "", poserDesarme: undefined, ecrits: [], octets: 0, suite: [],
+    enVol: false, verrouRendu: 0
+  };
+  const armes = [];
+  const vraiArmer = ctx.armerGeste;
+  ctx.armerGeste = function (id, permis, cle) {
+    const r = vraiArmer(id, permis, cle);
+    armes.push(id + (permis ? " ARME" : " GRISE=" + cle));
+    return r;
+  };
+  const TEMOINS = ["v-etape-arret", "v-etape-flash", "v-etape-langue",
+                   "v-etape-console"];
+  // 🔴 LE MOT **ET** LA FORME, DANS LA MEME MESURE — ⛔ pas l'un sans l'autre :
+  //    un mot juste sous une forme perimee est exactement le defaut que la
+  //    page se garde de commettre, et il serait invisible a qui ne mesure
+  //    qu'une moitie.
+  const forme = (e) => {
+    const c = (e.className || "?").replace("val ", "");
+    const t = e.textContent || "";
+    const mot = t.includes("ready") ? "prete"
+      : t.includes("BLOCKED") ? "bloquee"
+        : t.includes("not testable") ? "non-testable"
+          : t.includes("unknown") ? "inconnu" : "?";
+    return c + ":" + mot;
+  };
+  const lire = () => TEMOINS.map((id) => forme(els[id] || {}));
+  // 🔴 LA VISIBILITE DES DEUX BANDEAUX, MESUREE (`dn7-6`, correctif de revue).
+  //    ⚠️ ELLE NE SE DEDUIT ⛔ PAS DE L'ARMEMENT : `#b-deps` vit DANS
+  //       `#etat-deps`, donc le banc pouvait relever « b-deps ARME » sur un
+  //       bouton que la page venait de RENDRE INVISIBLE. Et inverser
+  //       `afficher("etat-lhm", …)` laissait HUIT gates vertes — le bandeau
+  //       de LHM s'affichant sur une machine SAINE et se taisant sur une
+  //       machine ou le pre-vol de l'agent REFUSERA.
+  const bandeaux = () => ["etat-deps", "etat-lhm"].map(
+    (id) => id + ((els[id] || {}).hidden === false ? " VU" : " CACHE"));
+  // ⚠️ ON ATTEND LE CHARGEMENT : `rafraichirEtat()` part sur un `fetch` qui
+  //    rejette (« hors banc »), et c'est SA branche `.catch` qui pose l'etat
+  //    d'IGNORANCE. Le cas `serveur-muet` mesure EXACTEMENT ca, ⛔ il ne le
+  //    simule pas.
+  return new Promise((r) => setTimeout(r, 80)).then(() => {
+    if (cas.etatMachine === null) {
+      return Object.assign({}, vide, { temoins: lire(), armes, bandeaux: bandeaux() });
+    }
+    // ⛔ CE QUE LE BANC REMET, ET IL LE DIT : sans serveur, le chargement a
+    //    deja refuse la charge locale (`charge/manifest.json` ne repond pas) —
+    //    un fait du BANC, ⛔ pas de la page. Le laisser en place ferait juger
+    //    l'etape 2 sur une panne que le cas ne decrit pas. ⇒ on rend a la page
+    //    l'etat ou son serveur repond, PUIS on lui donne l'etat de machine du
+    //    cas, et on ne releve que ce qui suit.
+    ctx.chargeRefusee = false;
+    armes.length = 0;
+    ctx.appliquerFlash(cas.etatMachine);
+    return new Promise((r) => setTimeout(r, 40)).then(
+      () => Object.assign({}, vide, { temoins: lire(), armes, bandeaux: bandeaux() }));
+  });
+}
+
+// L'ETAT DE MACHINE SAIN — la forme que `etat_machine()` rend REELLEMENT.
+// ⚠️ Chaque cas en DERIVE le sien : recopier l'objet entier a chaque fois
+//    ferait diverger les cas les uns des autres, et la difference — la seule
+//    chose que le cas mesure — cesserait d'etre lisible.
+const ETAT_SAIN = {
+  windows: true, pilote: "C:\\dn\\tools\\dn_agent_tour.ps1",
+  tache_presente: false, tache_runlevel: "Limited", tache_nom: "DeskNode agent",
+  python_version: "3.13.0", psutil: true, pyserial: true,
+  manquantes: [], non_testables: [], lhm: true, arbre_parent: true,
+  port_serie: "COM3", port_nom: "", port_motif: "", charge: { complete: true }
+};
+const avec = (o) => Object.assign({}, ETAT_SAIN, o);
+const QUATRE_PRETES = ["etat-prete:prete", "etat-prete:prete",
+                       "etat-prete:prete", "etat-prete:prete"];
 
 // ── LES NEUF LIGNES DE LA MATRICE, PLUS LES TROIS CHEMINS NOMMES ───────────
 // ⚠️ CHAQUE CAS PORTE LE NOM DE SA LIGNE DANS LE DOSSIER, ⛔ pas un numero :
@@ -682,6 +799,114 @@ const CAS = [
     //    verdict quatre gestes plus bas SUR LE CLIC QUI VENAIT DE LE FERMER.
     attendPlaces: ["sec-suite apres (tete)", "geste-1 apres b-stop",
                    "geste-1 apres b-stop", "geste-1 apres b-stop"]
+  },
+  // ── LES SIX CAS DE **PRECONDITION**, AJOUTES LE 2026-09-10 (`dn7-6`) ─────
+  {
+    // 🔴 TOUT EST LA : les quatre etapes sont PRETES, et « activer l'agent »
+    //    est ARME. C'est la ligne de reference — sans elle, « grise » ne se
+    //    distinguerait de rien.
+    nom: "tout-est-la",
+    quoi: "charge complete, modules et LHM presents ⇒ 4 etapes PRETES",
+    choix: "en", etatMachine: ETAT_SAIN,
+    attendLangueVide: true, ecritures: 0,
+    attendBandeaux: ["etat-deps CACHE", "etat-lhm CACHE"],
+    attendTemoins: QUATRE_PRETES,
+    attendArmes: ["b-langue-poser ARME",
+                  "b-deps GRISE=raison.deps-completes",
+                  "b-agent-poser ARME"]
+  },
+  {
+    // 🔴 LA LIGNE DE PARTAGE, ET ELLE N'EST PAS INTUITIVE : ⛔ LE FLASH N'EST
+    //    **PAS** BLOQUE par une dependance de l'AGENT. Priver un inconnu du
+    //    geste PRINCIPAL pour ca est le contresens que `dn7-5` a ecarte.
+    nom: "psutil-manquant",
+    quoi: "un module manque ⇒ l'agent est GRISE, ⛔ pas le flash",
+    choix: "en", etatMachine: avec({ psutil: false, manquantes: ["psutil"] }),
+    attendLangueVide: true, ecritures: 0,
+    attendBandeaux: ["etat-deps VU", "etat-lhm CACHE"],
+    attendTemoins: QUATRE_PRETES,
+    attendArmes: ["b-langue-poser ARME", "b-deps ARME",
+                  "b-agent-poser GRISE=raison.agent-deps"]
+  },
+  {
+    // 🔴 LE TROU NEUF DE `dn7-5` : LHM est un prerequis DUR de l'agent, et la
+    //    page SAVAIT qu'il etait absent sans s'en servir pour rien.
+    nom: "lhm-absent",
+    quoi: "LHM ne repond pas ⇒ l'activation est GRISEE, avec SON motif",
+    choix: "en", etatMachine: avec({ lhm: false }),
+    attendLangueVide: true, ecritures: 0,
+    attendBandeaux: ["etat-deps CACHE", "etat-lhm VU"],
+    attendTemoins: QUATRE_PRETES,
+    attendArmes: ["b-langue-poser ARME",
+                  "b-deps GRISE=raison.deps-completes",
+                  "b-agent-poser GRISE=raison.agent-lhm"]
+  },
+  {
+    // 🔴 UNE IGNORANCE ⛔ N'EST PAS UN VERDICT : « non testable ici » ⛔ n'est
+    //    PAS « absent », et elle ⛔ NE BLOQUE PAS. C'est la faute que `dn7-1`
+    //    a payee pour `psutil`, et elle ⛔ ne se rejoue pas.
+    nom: "lhm-non-testable",
+    quoi: "LHM NON TESTABLE ⇒ l'activation reste ARMEE, ⛔ pas grisee",
+    choix: "en", etatMachine: avec({ lhm: null }),
+    attendLangueVide: true, ecritures: 0,
+    attendBandeaux: ["etat-deps CACHE", "etat-lhm CACHE"],
+    attendTemoins: QUATRE_PRETES,
+    attendArmes: ["b-langue-poser ARME",
+                  "b-deps GRISE=raison.deps-completes",
+                  "b-agent-poser ARME"]
+  },
+  {
+    // ⛔ LA MACHINE N'A PAS REPONDU AU PLANIFICATEUR : l'etape 1 ⛔ n'est ni
+    //    prete ni bloquee — elle est NON TESTABLE, et le dire autrement
+    //    publierait une ignorance comme un constat.
+    nom: "hors-windows",
+    quoi: "le planificateur ne repond pas ⇒ etape 1 NON TESTABLE",
+    choix: "en", etatMachine: avec({ tache_presente: null, windows: false }),
+    attendLangueVide: true, ecritures: 0,
+    attendBandeaux: ["etat-deps CACHE", "etat-lhm CACHE"],
+    attendTemoins: ["etat-su-non:non-testable", "etat-prete:prete",
+                    "etat-prete:prete", "etat-prete:prete"],
+    attendArmes: ["b-langue-poser ARME",
+                  "b-deps GRISE=raison.deps-completes",
+                  "b-agent-poser GRISE=raison.agent-outil"]
+  },
+  {
+    // 🔴 LE SERVEUR SE TAIT — ET C'EST LE CHARGEMENT REEL QUI LE PRODUIT, ⛔ pas
+    //    une simulation : le `fetch` du banc rejette. TOUS les temoins repassent
+    //    a l'ignorance ET LEUR FORME AVEC, et les deux gestes pilotes se
+    //    desarment : « on ne sait pas » ⛔ n'est pas « c'est bon ».
+    nom: "serveur-muet",
+    quoi: "le serveur ne repond pas ⇒ temoins INCONNUS, gestes DESARMES",
+    choix: "en", etatMachine: null,
+    attendLangueVide: true, ecritures: 0,
+    attendBandeaux: ["etat-deps CACHE", "etat-lhm CACHE"],
+    attendTemoins: ["etat-su-non:inconnu", "etat-su-non:inconnu",
+                    "etat-su-non:inconnu", "etat-su-non:inconnu"],
+    attendArmes: ["b-langue-poser GRISE=raison.flash-absent",
+                  "b-deps GRISE=raison.sans-serveur",
+                  "b-agent-poser GRISE=raison.sans-serveur"]
+  },
+  {
+    // 🔴 L'ETAT DONT CETTE MARCHE PORTE LE NOM, ET ⛔ AUCUN HARNAIS NE L'AVAIT
+    //    JAMAIS EXERCE (correctif de revue, 2026-09-10). Les six cas neufs
+    //    attendaient QUATRE_PRETES, `non-testable` ou `inconnu` : la chaine
+    //    `etat-bloquee:bloquee` n'apparaissait dans AUCUNE attente, donc la
+    //    branche ⛔ n'etait jamais executee.
+    // 🔬 CE QUE CA LAISSAIT PASSER, **DEMONTRE** : peindre `etape.bloquee`
+    //    avec l'aplat de `prete` — c'est-a-dire « lire une position pour
+    //    l'autre », la faute meme que `dn7-4` a corrigee a l'œil de l'owner —
+    //    laissait HUIT gates vertes.
+    // ⚠️ ET LE CAS MESURE LE MOT **ET** LA FORME : `etat-bloquee:bloquee`.
+    nom: "outil-absent-etape-bloquee",
+    quoi: "l'outil est absent ⇒ etape 1 BLOQUEE, mot ET aplat",
+    choix: "en", etatMachine: avec({ pilote: "" }),
+    attendLangueVide: true, ecritures: 0,
+    attendBandeaux: ["etat-deps CACHE", "etat-lhm CACHE"],
+    attendTemoins: ["etat-bloquee:bloquee", "etat-prete:prete",
+                    "etat-prete:prete", "etat-prete:prete"],
+    attendArmes: ["b-langue-poser ARME",
+                  "b-deps GRISE=raison.deps-completes",
+                  "b-agent-poser GRISE=raison.agent-outil"]
   }
 ];
 
@@ -827,6 +1052,16 @@ function principal() {
       //    `pas-d-acces-serie`, qui attendait la MEME chaine des deux cotes.
       const consoleSans = !c.attendConsoleSans
         || !r.etatConsole.includes(c.attendConsoleSans);
+      // 🔴 LE TEMOIN DE CHAQUE ETAPE, ET LE MOTIF DE CHAQUE DESARMEMENT
+      //    (`dn7-6`) — DES CHAINES, ⛔ pas des booleens : « pas le bon etat »
+      //    doit DIRE lequel il porte, sinon le KO envoie chercher a l'aveugle.
+      const temoinsJustes = !c.attendTemoins
+        || JSON.stringify(r.temoins || []) === JSON.stringify(c.attendTemoins);
+      const armesJustes = !c.attendArmes
+        || JSON.stringify(r.armes || []) === JSON.stringify(c.attendArmes);
+      const bandeauxJustes = !c.attendBandeaux
+        || JSON.stringify(r.bandeaux || [])
+           === JSON.stringify(c.attendBandeaux);
       // 🔴 LE VERROU D'ECRITURE EST RENDU **A CHAQUE ECRITURE**, ⛔ pas « en
       //    general » : un verrou garde fait partir `port.close()` en REJET, et
       //    le port reste tenu EN SILENCE. MESURE : sans cette ligne, retirer
@@ -841,7 +1076,8 @@ function principal() {
         || (posees === 1 && r.suite[r.suite.length - 1] === "langue.posee");
       const bon = vuLangue && vuConsole && vuRelais && oct && zero && dit && arme
         && parti && relaisJuste && verrou && !r.enVol && succesJuste
-        && placeJuste && transcritJuste && consoleSans;
+        && placeJuste && transcritJuste && consoleSans
+        && temoinsJustes && armesJustes && bandeauxJustes;
       if (bon) { ok++; } else { ko++; }
       const motifs = [];
       if (!vuLangue) { motifs.push("issue lue : " + (r.etatLangue.slice(0, 70) || "(vide)")); }
@@ -870,6 +1106,18 @@ function principal() {
       if (!consoleSans) {
         motifs.push("⛔ LE BLOC CONSOLE PORTE « " + c.attendConsoleSans
           + " », qui appartient au bloc de langue");
+      }
+      if (!bandeauxJustes) {
+        motifs.push("⛔ BANDEAUX " + JSON.stringify(r.bandeaux)
+          + " au lieu de " + JSON.stringify(c.attendBandeaux));
+      }
+      if (!temoinsJustes) {
+        motifs.push("⛔ TEMOINS : " + JSON.stringify(r.temoins || [])
+          + " au lieu de " + JSON.stringify(c.attendTemoins));
+      }
+      if (!armesJustes) {
+        motifs.push("⛔ ARMEMENT : " + JSON.stringify(r.armes || [])
+          + " au lieu de " + JSON.stringify(c.attendArmes));
       }
       console.log("CAS " + c.nom.padEnd(28) + " " + (bon ? "OK " : "KO ")
         + " ecritures=" + r.ecrits.length + "/" + c.ecritures + " octets=" + r.octets

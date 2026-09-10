@@ -101,7 +101,13 @@ A_ADRESSE = 'ADRESSE = "127.0.0.1"'
 A_URL = 'url = "http://%s:%d/" % (ADRESSE, port_reel)'
 A_BIND = "ThreadingHTTPServer((ADRESSE, PORT_DEMANDE), Poignee)"
 A_LU = "srv.server_address[1]"
-A_VERBES = 'VERBES = ("stop", "retirer")'
+# ⚠️ ANCRE MISE A JOUR LE 2026-09-10 (`dn7-6`), ⛔ PAS PAR CONFORT : le
+#    serveur expose desormais un TROISIEME verbe (`poser`), et une ancre
+#    litterale qui ne suit pas son produit rend ses mutants PERIMES —
+#    `rc=3`, donc « muets » pour `tools/verif_campagne_dn56.py`, qui rougit
+#    alors sur ce qu'une AUTRE marche a ecrit. Valeur d'avant, nommee :
+#    ~~`VERBES = ("stop", "retirer")`~~.
+A_VERBES = 'VERBES = ("stop", "retirer", "poser")'
 A_RETIRER = 'if verbe == "retirer":'
 A_REQUETE = "encore, _rl = tache_presente()"
 A_GESTE_PIP = "pip install --user psutil pyserial"

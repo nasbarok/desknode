@@ -1199,6 +1199,8 @@ def muter(etat):
         a = ("  if (blocInstaller) { blocInstaller.hidden = true; }\n"
              "  langueOffrir();                                 "
              "/* dn7-3 — le geste suit */\n"
+             "  rafraichirTemoins();                            "
+             "/* dn7-6 — et les temoins */\n"
              "  var e = document.getElementById(\"etat-cdn\");")
         if a not in p.get(PAGE, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3

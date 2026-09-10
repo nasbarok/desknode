@@ -49,7 +49,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('etat', 'prevol', 'lancer', 'tache', 'stop', 'permanence', 'retirer')]
+    [ValidateSet('etat', 'prevol', 'lancer', 'tache', 'stop', 'permanence', 'poser', 'retirer')]
     [string]$Action = 'etat',
 
     [string]$Serie = 'COM3',
@@ -844,6 +844,87 @@ switch ($Action) {
     if ($run) { Stop2 "Une cle HKCU\...\Run existe pour cet agent : DEUX lanceurs. A retirer."; exit 9 }
     Dire "aucune cle HKCU\...\Run : un seul lanceur."
     exit 0
+}
+
+# --------------------------------------------------------------------------
+# POSER = **ACTIVER**, ET C'EST LA COMPOSITION DE 'permanence' ET DE 'lancer'.
+# !!! LE TROU EST MESURE, PAS SUPPOSE (dn7-6, 2026-09-10) : sur les SEPT
+#     verbes de ce fichier, AUCUN n'ACTIVE.
+#       . 'permanence' POSE la tache, mais son declencheur est -AtLogOn SEUL
+#         => rien ne demarre avant la PROCHAINE ouverture de session ;
+#       . 'lancer' DEMARRE l'agent, mais il ne touche PAS au Planificateur
+#         => rien ne SURVIT a la session.
+#     " Activer " a une definition observable : l'agent tourne MAINTENANT et
+#     il tournera DEMAIN. Chaque moitie seule est FAUSSE, et un inconnu qui
+#     clique " activer " sur l'une des deux verrait soit rien se passer, soit
+#     tout disparaitre au reboot.
+# !!! IL NE REDECLARE **AUCUN** REGLAGE DE TACHE, ET C'EST LA PROPRIETE :
+#     -RunLevel Limited, -AtLogOn et la reprise viennent AVEC le bloc
+#     reemploye. C'est ce qui tient NFR7.5 PAR CONSTRUCTION plutot que par une
+#     consigne qu'on pourrait oublier - et la garde vivante de 'permanence'
+#     (RunLevel != Limited => exit 9) rougirait si quelqu'un l'elevait.
+# !!! LE PATRON EXISTE DEJA : 'lancer' s'auto-invoque en sous-processus pour
+#     jouer 'prevol' et RELAIE son code. On reemploie, on n'invente pas.
+'poser' {
+    Titre 'ACTIVER (permanence, puis demarrage)'
+    $moiPs1 = $MyInvocation.MyCommand.Path
+    $tem = $(if ($Temoin) { '-Temoin' } else { '' })
+    # !!! -Python EST **TRANSMIS**, sinon il est SILENCIEUSEMENT PERDU.
+    #     Quelqu'un qui choisit son interpreteur pour 'poser' verrait la tache
+    #     posee sur un AUTRE Python que celui qu'il a nomme - et il n'aurait
+    #     aucun moyen de le savoir.
+    $py = $(if ($Python) { @('-Python', $Python) } else { @() })
+
+    Titre 'POSER LA PERMANENCE'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $moiPs1 permanence `
+        -Serie $Serie -Duree $Duree @py $tem | ForEach-Object { Write-Host $_ }
+    # !!! `$null` N'EST PAS `0`, ET `exit $null` REND **0**.
+    #     Si powershell.exe n'a pas pu etre lance du tout, $LASTEXITCODE reste
+    #     $null : le test `-ne 0` est VRAI, on tombe dans la branche d'echec,
+    #     et `exit $null` sort en **0** - la page annonce alors " l'outil a
+    #     rendu 0 " sur un geste qui n'a RIEN fait. Un SUCCES FAUX, qui est
+    #     pire qu'un echec. => on le nomme `3`, comme les autres " rien n'a
+    #     pu etre lance " de ce fichier.
+    $codePermanence = $(if ($null -eq $LASTEXITCODE) { 3 } else { $LASTEXITCODE })
+    if ($codePermanence -ne 0) {
+        # Le code est RELAYE TEL QUEL : 3 (outil ou agent introuvable, port
+        # invalide) et 9 (tache non conforme) disent deja ce qui s'est passe,
+        # et les traduire ferait perdre l'information.
+        Stop2 ("la permanence n'a PAS ete posee (code " + $codePermanence + ").")
+        Stop2 "  => RIEN n'a ete demarre : activer sans permanence serait une"
+        Stop2 "     moitie de geste, et elle ne survivrait pas a la session."
+        exit $codePermanence
+    }
+
+    Titre 'DEMARRER MAINTENANT'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $moiPs1 lancer `
+        -Serie $Serie -Duree $Duree @py $tem | ForEach-Object { Write-Host $_ }
+    # !!! MEME GARDE : $null vaudrait 0, donc " demarre " sur rien.
+    $codeLancer = $(if ($null -eq $LASTEXITCODE) { 3 } else { $LASTEXITCODE })
+
+    # !!! ON **MESURE**, on ne deduit PAS du message : c'est la meme regle que
+    #     'retirer', qui redemande la tache au systeme plutot que de croire sa
+    #     propre sortie.
+    $i = Get-Instances
+    if ($i.Confirmes.Count -gt 0) {
+        foreach ($c in $i.Confirmes) { Dire ("agent VIVANT  PID=" + $c.ProcessId) }
+        Dire ("tache '" + $NOM_TACHE + "' posee, et l'agent tourne MAINTENANT.")
+        exit 0
+    }
+    if (($codeLancer -eq 0) -or ($codeLancer -eq 10)) {
+        # !!! LA MOITIE QUI A REUSSI EST **DITE**, ET ELLE A SON PROPRE CODE.
+        #     Rendre 0 mentirait ; rendre le code de 'lancer' effacerait une
+        #     permanence POSEE ET VERIFIEE. Ni un succes ni un echec total :
+        #     les deux seraient FAUX.
+        #     Le code 13 a ete MESURE LIBRE dans ce fichier (0,3..12 servent).
+        Stop2 "LA PERMANENCE EST POSEE ET VERIFIEE, mais AUCUN agent n'est vivant."
+        Stop2 "  => la tache repartira a la PROCHAINE ouverture de session ;"
+        Stop2 "     ce qui n'a pas eu lieu, c'est le demarrage IMMEDIAT."
+        Stop2 ("  Le journal dit pourquoi : " + $LOG)
+        exit 13
+    }
+    Stop2 ("permanence POSEE ; le demarrage a rendu " + $codeLancer + " - relaye tel quel.")
+    exit $codeLancer
 }
 
 # --------------------------------------------------------------------------
