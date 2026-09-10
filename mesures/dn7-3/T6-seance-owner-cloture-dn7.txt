@@ -177,3 +177,40 @@ CE QUE CE RELEVE PROUVE, ET CE QU'IL NE PROUVE PAS
 ⛔ NE PROUVE PAS : les trois refus de la console, toujours jamais vus.
 ⛔ NE PROUVE PAS : quoi que ce soit sur une AUTRE machine. n = 1, un poste, un
    navigateur, une carte.
+
+--------------------------------------------------------------------------------
+5. ADDENDUM 2026-09-10 — LA MOITIE FIRMWARE D'AC7.3.5, ET UNE CONFIRMATION
+--------------------------------------------------------------------------------
+Carte attachee a WSL selon le rituel (BUSID RESOLU = 3-5, ⛔ pas recite), agent
+a l'arret, port /dev/ttyACM0. Rendue en « Shared » apres la mesure.
+
+(1) CONFIRMATION INDEPENDANTE D'AC7.3.2 — par un AUTRE canal que le navigateur.
+    $ langue
+    langue de l'ecran : FR   (⛔ defaut = EN)
+    ⇒ la carte porte TOUJOURS le francais, des heures et une coupure
+      d'alimentation plus tard, lu par le REPL depuis WSL. L'œil de l'owner au
+      bandeau et le firmware lui-meme DISENT LA MEME CHOSE, par deux instruments
+      independants.
+
+(2) LE REFUS D'UN CODE QUE LE BINAIRE NE PORTE PAS — VU.
+    $ langue de
+    🔴 REFUS [REPL: code de retour non nul] : Command returned non-zero error code: 0x1 (ERROR)
+    🔴 REFUS : « de » n'est pas une langue connue.
+    --- fin : 1 lignes emises ---
+    rc=1
+    ⇒ la carte REFUSE, elle le DIT, et elle rend NON NUL.
+    🎯 ET LE LITTERAL EST EXACTEMENT CELUI SUR LEQUEL LA PAGE S'ANCRE :
+      `RE_REFUS_CARTE = /n'est pas une langue connue/` (installeur/index.html).
+      ⇒ l'ancre de la page est REELLE et COURANTE, ⛔ plus supposee.
+
+⚠️ LA MOITIE « VUE PAR LA PAGE » RESTE OUVERTE. Ce tir prouve que la CARTE
+   refuse et que l'ancre est bonne ; ⛔ il ne prouve pas que la PAGE relaie ce
+   refus a l'ecran — non atteignable sans l'editer (section 3).
+
+🔴 UN PIEGE PAYE, ET C'EST MA FAUTE, ⛔ PAS CELLE DE LA CARTE. Le premier tir a
+   rendu une capture VIDE avec rc=0, et j'ai failli y lire « la commande n'a rien
+   dit ». C'etait `--refus-tolere` qui prend une COMMANDE EN ARGUMENT : il a
+   avale `"langue de"` comme sa valeur, et l'outil n'avait plus RIEN a envoyer.
+   ⇒ le re-tir avec `--timeout` et la lecture de la sortie BRUTE (`cat -v`) l'a
+     montre. C'est exactement le piege n°11 du skill, et la regle a tenu : ⛔ ne
+     jamais laisser une capture muette corroborer une hypothese.
