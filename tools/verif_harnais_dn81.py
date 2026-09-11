@@ -201,8 +201,9 @@ CIBLES[7] = ("c2b",)
 MUTANTS[8] = ("REPLANTE une ancre `📍` dont le motif ne differe du vrai que "
               "d'UNE LETTRE — le piege d'une normalisation-tamis")
 CIBLES[8] = ("c2b",)
-MUTANTS[9] = ("REPLANTE la population VIDE de (c2c) : les ancres qui "
-              "exigent la normalisation sont reecrites en forme litterale")
+MUTANTS[9] = ("REPLANTE la population VIDE de (c2c) : dans LE LEDGER, tout "
+              "motif qui n'est trouve qu'apres normalisation est reecrit en "
+              "un motif LITTERAL de sa propre cible")
 CIBLES[9] = ("c2c",)
 MUTANTS[10] = ("REPLANTE un TEMOIN NEGATIF qui n'en est pas un : une paire "
                "`REFUSE` dont le motif est REELLEMENT present")
@@ -216,12 +217,34 @@ CIBLES[12] = ("c3a",)
 MUTANTS[13] = ("REPLANTE la population VIDE de (c3c) : plus aucune region "
                "de `dn8` ne nomme une structure")
 CIBLES[13] = ("c3c",)
+MUTANTS[14] = ("REPLANTE une gate qui joue MOINS de controles qu'elle "
+               "n'annonce : un controle de fond est SAUTE")
+CIBLES[14] = ("z",)
+MUTANTS[15] = ("REPLANTE une region de `dn8` en `grep` PUR **A COTE** de la "
+               "region qui parse — le cas que le mutant 11 ⛔ ne peut PAS "
+               "atteindre, puisqu'il remplace sur tout le fichier")
+CIBLES[15] = ("c3b",)
 
-# ⚠️ LE COMPTE DU CHEMIN NORMAL : 1 pre-vol + un controle par mutant declare
-#    + les 12 controles de fond. ⛔ Il est ECRIT parce que `bilan()` le
-#    verifie : une gate qui joue MOINS de controles qu'annonce sort VERTE sur
-#    une population retrecie.
-CONTROLES_PREVUS = 1 + len(MUTANTS) + 11
+# ⚠️ **LE SEUL IDENTIFIANT QUE ⛔ AUCUN MUTANT NE VISE, ET SON MOTIF.**
+#    `(c0)` est le PRE-VOL : c'est lui qui garde les mutants eux-memes (cible
+#    et libelle declares, mutant sans EFFET ⇒ `rc=3`, mutant qui LEVE ⇒ `rc=1`).
+#    Un mutant qui le viserait devrait se saboter lui-meme. ⚠️ Ce qui le garde
+#    a la place est un TEMOIN REEL, ⛔ pas une promesse : une copie de `tools/`
+#    ou l'ancre litterale d'un mutant est cassee fait sortir la gate en
+#    **`rc=3`** — releve dans `mesures/dn8-1/T2`.
+IDS_SANS_MUTANT = {
+    "c0": "le pre-vol GARDE les mutants ; temoin rc=3 dans mesures/dn8-1/T2",
+}
+
+# ⚠️ ⛔ Il est ECRIT parce que `bilan()` le VERIFIE : une gate qui joue MOINS
+#    de controles qu'annonce sort VERTE sur une population RETRECIE.
+# ⚠️ LE COMPTE DU CHEMIN NORMAL, ET IL SE LIT : **2** pre-vols fixes (le
+#    terrain, puis la reciproque cibles/identifiants) + **un controle par
+#    mutant declare** + les **11** controles de fond (`c1a`-`c1d`, `c2a`-`c2d`,
+#    `c3a`-`c3c`). ⚠️ Le commentaire d'origine disait « 12 controles de fond »
+#    alors que le code en comptait 11 et que le tir en emettait 11 : le chiffre
+#    ecrit ⛔ ne decrivait pas le code. Corrige, ⛔ pas efface.
+CONTROLES_PREVUS = 2 + len(MUTANTS) + 11
 
 _MUTANT = 0
 
@@ -641,10 +664,39 @@ def sujets_de(bloc, source_entier, fichier_entier=False):
     return trouve
 
 
-def parse_ou_declare(langue, bloc, source_entier):
-    """(a un parseur, declare son aveuglement) pour cette langue."""
+def _sans_jetons(texte, fichier_entier=False):
+    """La matiere ou l'on cherche un parseur — ⛔ pas le texte brut.
+
+    🔴 CORRECTIF DE REVUE (2026-09-11) — **LA PRECAUTION ETAIT PRISE D'UN SEUL
+       COTE.** `sujets_de` ecartait deja les litteraux EGAUX a un jeton declare
+       (« une table de detection n'est pas son propre sujet ») ; la recherche
+       de PARSEUR, elle, lisait le texte brut. Deux trous mesures :
+       · `"yaml.safe_load"`, ecrit dans la table `STRUCTURES` de CE fichier,
+         lui accordait l'exemption YAML **sur sa propre table** ;
+       · une region en `grep` pur greffee dans `verif_ledger_dn416.py` sortait
+         `(True, True)` **parce qu'une AUTRE region du meme fichier** porte
+         `yaml.safe_load` — (c3b) restait vert sur un controle aveugle.
+    ⇒ les litteraux EGAUX a un jeton declare sortent de la matiere, et les
+      lignes de COMMENTAIRE d'une region aussi (elles ⛔ ne s'executent pas).
+    """
+    t = texte if fichier_entier else re.sub(r"(?m)^\s*#.*$", " ", texte)
+    for j in {j for _, ps in STRUCTURES.values() for j in ps}:
+        t = t.replace('"%s"' % j, " ").replace("'%s'" % j, " ")
+    return t
+
+
+def parse_ou_declare(langue, bloc, source_entier, fichier_entier=False):
+    """(a un parseur, declare son aveuglement) pour cette langue.
+
+    ⚠️ **LES DEUX SE JUGENT DANS LE BLOC**, ⛔ pas dans le module : un controle
+       ⛔ n'herite ni du parseur ni de l'aveuglement de son voisin. Le module ne
+       sert qu'a une chose — constater que la constante d'aveuglement est bien
+       POSEE quelque part (une affectation de module ⛔ ne peut pas vivre dans
+       une region), sa **CHARGE** devant, elle, etre DANS le bloc.
+    """
     _, parseurs = STRUCTURES[langue]
-    a_parseur = any(p in bloc or p in source_entier for p in parseurs)
+    matiere = _sans_jetons(bloc, fichier_entier)
+    a_parseur = any(p in matiere for p in parseurs)
     # ⛔ LA DECLARATION EST UNE **DONNEE LUE PAR LE CODE**, ⛔ pas un
     #    commentaire ni une prose de docstring : elle doit etre AFFECTEE au
     #    niveau module ET **CHARGEE** quelque part. Sans la charge, une
@@ -652,7 +704,7 @@ def parse_ou_declare(langue, bloc, source_entier):
     #    ce depot a deja paye (« le jeton d'exemption n'a aucun echappement :
     #    le citer dans un commentaire l'ACCORDE »).
     attendu = "AVEUGLEMENT_%s" % langue.upper()
-    posee = chargee = False
+    posee = False
     try:
         arbre = ast.parse(source_entier)
     except SyntaxError:
@@ -662,9 +714,7 @@ def parse_ou_declare(langue, bloc, source_entier):
             for c in n.targets:
                 if isinstance(c, ast.Name) and c.id == attendu:
                     posee = True
-        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load) \
-                and n.id == attendu:
-            chargee = True
+    chargee = re.search(r"\b%s\b" % re.escape(attendu), matiere) is not None
     return a_parseur, (posee and chargee)
 
 
@@ -730,9 +780,24 @@ def muter(etat):
             e["ledger"],
             "  📍 desknode:tools/dn_gates.py (motif `NOMS_PARTAGEZ`)")
     elif _MUTANT == 9:
-        # Toute ancre dont le motif exige la normalisation est reecrite dans
-        # la forme LITTERALE de sa cible ⇒ la population de (c2c) se VIDE.
-        e["normalisation_forcee_vide"] = True
+        # 🔴 CORRECTIF DE REVUE (2026-09-11) — CE MUTANT **DEBRANCHAIT** LA
+        #    GARDE AU LIEU DE REPLANTER LA FAUTE, ce que l'en-tete de ce
+        #    fichier interdit en toutes lettres. Son corps entier etait
+        #    `e["normalisation_forcee_vide"] = True`, un drapeau lu au SEUL
+        #    endroit qui remplit la population de (c2c) : ⛔ aucune ancre
+        #    n'etait touchee, et son libelle pretendait le contraire.
+        #    ⚠️ DEMONTRE : en deplacant l'`append` AU-DESSUS du test de
+        #       normalisation, (c2c) comptait **94** ancres en restant vert
+        #       alors qu'il ne prouvait plus rien — et le mutant sortait rouge
+        #       **quand meme**. Un mutant qui rougit sur une garde debranchee
+        #       ne prouve que l'existence du drapeau.
+        # ⇒ IL REECRIT MAINTENANT LE LEDGER : tout motif qui ⛔ ne se trouve
+        #   QU'APRES normalisation est remplace par un motif **LITTERAL de sa
+        #   propre cible**. Les ancres restent donc toutes VIVANTES — (c2b)
+        #   reste vert — et c'est la POPULATION de (c2c) qui se vide, pour de
+        #   vrai. C'est la faute REELLE : un ledger ou plus rien n'exige la
+        #   normalisation rend le controle (c2b) vert PAR CONSTRUCTION.
+        e["ledger"] = _delitteralise(e["ledger"], e["cockpit"])
     elif _MUTANT == 10:
         # Un temoin `REFUSE` dont le motif est REELLEMENT present : le temoin
         # ne refute plus rien, et (c2d) doit le dire.
@@ -754,6 +819,38 @@ def muter(etat):
         deb = src.rfind("\n", 0, m.start()) + 1
         fin = src.find("\n", m.end())
         s[cible] = src[:deb] + src[fin + 1:]
+    elif _MUTANT == 14:
+        # 🔴 CORRECTIF DE REVUE — `(z)` AVAIT UN CONSOMMATEUR VIVANT ET ⛔ AUCUN
+        #    TIR NE LE FAISAIT TOMBER : les 13 mutants basculaient un controle
+        #    SANS changer le compte, et les sorties anticipees passent
+        #    `anticipee`, qui desarme `(z)` par construction. Retirer le
+        #    `rc = 1` de `dn_gates.bilan` laissait la gate VERTE en emettant
+        #    moins de controles qu'annonce — c'est-a-dire exactement ce que
+        #    `(z)` est cense empecher.
+        # ⇒ CE MUTANT REPLANTE LA FAUTE, ⛔ il ne debranche pas `(z)` : il fait
+        #   SAUTER un controle de fond. Le compte emis tombe a %d-1, `bilan`
+        #   le voit, et `(z)` rougit.
+        e["controles_sautes"] = ("c2d",)
+    elif _MUTANT == 15:
+        # 🔴 LE CAS QUE LE MUTANT 11 ⛔ NE PEUT PAS ATTEINDRE : il remplace
+        #    `yaml.safe_load` sur TOUT le fichier, donc il enleve le parseur a
+        #    la seule region qui en a un. Le vrai trou est ailleurs — une
+        #    NOUVELLE region, en `grep` pur, **a cote** d'une region qui parse.
+        #    Avant le correctif, elle heritait du parseur de sa voisine et
+        #    (c3b) restait VERT sur un controle aveugle.
+        # ⛔ Le code injecte ⛔ ne s'execute JAMAIS : il vit dans l'etat.
+        cible = "tools/verif_ledger_dn416.py"
+        src = s.get(cible, "")
+        m = RE_REGION_DEB.search(src, src.find("le tracker se LIT"))
+        if not m:
+            return e
+        greffe = (
+            "    # >>> DN8-REGION — mutant 15 : un controle de `dn8` qui juge\n"
+            "    #     le tracker AU MOTIF, sans parseur et sans aveuglement.\n"
+            "    ctrl(\"dn8-1:\" in txt_trk, \"(m15) le tracker cite dn8-1\",\n"
+            "         \"lu au motif dans %s\" % REL_TRACKER)\n"
+            "    # <<< DN8-REGION\n")
+        s[cible] = src[:m.start()] + greffe + src[m.start():]
     elif _MUTANT == 13:
         # ⚠️ LA MUTATION NE PORTE QUE **DANS LA REGION** : renommer la
         #    constante PARTOUT renommait aussi sa DEFINITION, la valeur
@@ -772,6 +869,56 @@ def muter(etat):
                         "REL_TRACKER", "\"(le tracker)\"")
                     + src[m2.end():])
     return e
+
+
+def _delitteralise(ledger, cockpit):
+    """Reecrit, DANS LE LEDGER, tout motif d'ancre qui ⛔ ne se trouve QU'APRES
+    normalisation, en un motif **LITTERAL de sa propre cible**.
+
+    ⛔ CE N'EST PAS UN DEBRANCHEMENT : les ancres restent toutes ATTEIGNABLES
+    et tous leurs motifs restent TROUVABLES — (c2a) et (c2b) restent verts.
+    C'est la POPULATION de (c2c) qui se vide, et c'est la faute reelle : un
+    ledger dont plus aucun motif n'exige la normalisation rend (c2b) vert par
+    construction, et ⛔ personne ne le dirait.
+    ⚠️ SI RIEN N'EST REECRIT, le texte ressort INCHANGE ⇒ no-op ⇒ `rc=3`.
+    """
+    for lig, _txt, dep, chem, motifs in ancres_du(ledger):
+        if dep is None or not motifs:
+            continue
+        reel = resout(dep, chem, cockpit)
+        if reel is None or not os.path.isfile(reel):
+            continue
+        try:
+            cont = io.open(reel, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        ncont = norm(cont)
+        for mo in motifs:
+            if mo in cont or norm(mo) not in ncont:
+                continue
+            lit = _litteral_de(cont)
+            if lit is None:
+                continue
+            lignes = ledger.split("\n")
+            lignes[lig - 1] = lignes[lig - 1].replace("`%s`" % mo,
+                                                      "`%s`" % lit, 1)
+            ledger = "\n".join(lignes)
+    return ledger
+
+
+def _litteral_de(contenu):
+    """Un fragment de la cible qui s'y trouve **LITTERALEMENT**, et qui ⛔ ne
+    perturbe pas la grammaire d'une ancre (⛔ ni accent grave, ⛔ ni `·`, ⛔ ni
+    parenthese, ⛔ ni marqueur que la normalisation retire)."""
+    for l in contenu.split("\n"):
+        t = l.strip()
+        if len(t) >= 20 and not re.search(r"[`·()]", t) and norm(t) != "":
+            frag = t[:30].strip()
+            if frag and frag in contenu and frag != norm(frag):
+                return frag
+            if frag and frag in contenu:
+                return frag
+    return None
 
 
 def _plante_ancre(ledger, ligne):
@@ -842,6 +989,31 @@ def main():
         print("              ⛔ jamais clone a cote du code. Sans lui il n'y")
         print("              a AUCUNE ancre `📍` a rejouer.")
         print("      REMEDE : `--cockpit <chemin>` si le depot est ailleurs.")
+        # 🔴 dn8-1 / CORRECTIF DE REVUE — **EN MODE MUTANT, UN PREREQUIS ABSENT
+        #    EST UN ROUGE, ⛔ PAS UN 4.** Mesure du 2026-09-11 :
+        #    `verif_campagne_dn56.py` ⛔ n'est PAS dans `NON_JOUABLES`, elle
+        #    TOURNE EN CI ; elle decouvre a l'AST toute gate qui declare
+        #    `--liste-mutants`, joue chacun de ses mutants, et classe tout
+        #    `rc != 1` en « NE ROUGISSENT PLUS ». Sur un runner (cockpit
+        #    absent) les 13 mutants rendaient 4 ⇒ `BILAN : 7 OK, 1 KO` la ou le
+        #    parent rendait `8 OK, 0 KO`. **La suite etait ROUGE EN CI.**
+        # ⇒ C'est la convention que `verif_temoin_filtre_dn447.py` publie deja :
+        #   « 1 si un controle rougit OU si un prerequis manque ». Elle ne vaut
+        #   QUE pour le mode mutant : demander a une gate de prouver qu'un
+        #   mutant rougit alors qu'elle n'a pas de terrain, c'est une demande
+        #   IMPOSSIBLE — et une demande impossible se refuse en ROUGE NOMME,
+        #   ⛔ jamais par un code qui veut dire « pas un rouge ».
+        # ⛔ ET LE CHEMIN SANS `--mutant` GARDE SON 4 : c'est LUI que la table
+        #   `NON_JOUABLES` de `run_gates.sh` declare, et le declarer autrement
+        #   ferait rougir la passe entiere en « DECLARATION DEMENTIE ».
+        # ⛔ ⛔ PAS PAR LES `EXCEPTIONS` DE dn56 : elles sont a DOUBLE SENS et
+        #   ressortiraient `PERIMEE` partout ou le cockpit EST present.
+        if _MUTANT:
+            ctrl(False, "(c0) le cockpit est la — REQUIS en mode mutant",
+                 "⛔ mutant %d demande SANS terrain : la gate ⛔ ne peut pas "
+                 "prouver qu'il rougit. ⛔ rc=1, ⛔ pas 4." % _MUTANT)
+            return bilan(1, "mutant %d demande sans cockpit" % _MUTANT,
+                         prevus=CONTROLES_PREVUS)
         print("      ⛔ CE N'EST PAS UN VERDICT SUR LE CODE, et ⛔ pas un skip :")
         print("         rc=%d, declare dans la table NON_JOUABLES de"
               " tools/run_gates.sh." % RC_PREREQUIS)
@@ -880,6 +1052,32 @@ def main():
             return bilan(1, "un mutant est declare a moitie",
                          prevus=CONTROLES_PREVUS)
 
+    # 🔴 CORRECTIF DE REVUE — **LA TABLE `CIBLES` N'ETAIT REJOUEE PAR
+    #    PERSONNE.** `(c0)` n'assertait que `bool(CIBLES.get(n))` : une cible
+    #    pouvait nommer `c9z`, un identifiant qui n'existe nulle part, et la
+    #    colonne « cible » du releve n'etait qu'une CAPTURE que rien ne
+    #    rejouait. ⚠️ `verif_campagne_dn440.py` applique deja exactement cette
+    #    propriete (`attendus` / `touche` / `surplus`) : elle est reprise ici.
+    # ⇒ LES DEUX SENS, et c'est le point : « tout id vise EXISTE » ⛔ ne dit
+    #   RIEN de « tout controle EST vise ». Le second est celui qui manque
+    #   toujours — « N mutants, N vus rougir » prouve `mutant ⇒ rouge`, ⛔ pas
+    #   `controle ⇒ couvert ».
+    # ⚠️ ET C'EST `dn_gates.ids_par_ast` QUI LES LIT, ⛔ pas un `grep` : le
+    #    helper existait pour ca et n'avait **ZERO appelant**. `(z)` vit dans
+    #    `dn_gates.bilan`, ⛔ pas ici — les deux fichiers sont donc lus.
+    ids_moi = dn_gates.ids_par_ast(os.path.abspath(__file__)) or set()
+    ids_mod = dn_gates.ids_par_ast(dn_gates.__file__) or set()
+    vises = {c for cs in CIBLES.values() for c in cs}
+    fantomes = sorted(vises - (ids_moi | ids_mod))
+    nus = sorted(ids_moi - vises - set(IDS_SANS_MUTANT))
+    ctrl(bool(ids_moi) and not fantomes and not nus,
+         "(c0) les cibles de mutants et les ID se recouvrent",
+         "%d id(s) lus a l'AST, %d vise(s), %d exempte(s) declaree(s)"
+         % (len(ids_moi), len(vises), len(IDS_SANS_MUTANT))
+         if not fantomes and not nus and ids_moi
+         else "⛔ cible(s) FANTOME(S) : %s · controle(s) vise(s) par AUCUN "
+              "mutant : %s" % (fantomes or "∅", nus or "∅"))
+
     par = inventaire_legacy(set(perim))
     emp_bilan_modal = None
     cible_bilan = modal(par, "bilan").prose
@@ -905,7 +1103,8 @@ def main():
         "norm_doit": NORM_DOIT,
         "norm_refuse": NORM_REFUSE,
         "modal_bilan": emp_bilan_modal or "def bilan(rc, a=\"\"):\n    pass\n",
-        "normalisation_forcee_vide": False,
+        "cockpit": a.cockpit,
+        "controles_sautes": (),
     }
 
     # 🔴 UN MUTANT QUI MEURT SORTIRAIT EN TRACEBACK, SANS `BILAN` — or « pas
@@ -1000,7 +1199,7 @@ def main():
             derives.append("%s (module %s ≠ modal %s)"
                            % (nom, emp_mine or "—", md.code or "—"))
     ctrl(bool(verbatim) and not derives,
-         "(c1b) les corps repris VERBATIM sont bien les corps MODAUX",
+         "(c1b) les corps VERBATIM sont bien les corps MODAUX",
          "%d/%d nom(s) verbatim, empreinte identique au corps le plus joue "
          "des gates" % (len(verbatim), len(noms)) if not derives
          else "⛔ %d DERIVE(S) : %s" % (len(derives), " · ".join(derives)))
@@ -1051,7 +1250,7 @@ def main():
                                  "IDENTIQUE, donc une COPIE" if e == emp_mod
                                  else "DIVERGENT"))
     ctrl(not copies,
-         "(c1d) aucun fichier du perimetre dn8 ne RE-DEFINIT un helper",
+         "(c1d) aucun fichier de dn8 ne RE-DEFINIT un helper",
          "%d fichier(s) balaye(s) : %s" % (len(perim), ", ".join(perim))
          if not copies
          else "⛔ %d COPIE(S) — elle(s) doivent IMPORTER `dn_gates` : %s"
@@ -1085,8 +1284,7 @@ def main():
             if mo in cont:
                 continue
             if norm(mo) in ncont:
-                if not neuf["normalisation_forcee_vide"]:
-                    apres_norm.append("l.%d `%s` → %s" % (lig, mo[:40], chem))
+                apres_norm.append("l.%d `%s` → %s" % (lig, mo[:40], chem))
                 continue
             motifs_absents.append("l.%d `%s` → %s" % (lig, mo[:40], chem))
 
@@ -1125,14 +1323,19 @@ def main():
             faux_temoins.append("REFUSE/%s : `%s` RAPPROCHE de `%s` — la "
                                 "normalisation est un TAMIS"
                                 % (etiq, motif[:30], cible[:30]))
-    ctrl(bool(neuf["norm_doit"]) and bool(neuf["norm_refuse"])
-         and not faux_temoins,
-         "(c2d) la normalisation rapproche, et ⛔ elle ne TAMISE pas",
-         "%d temoin(s) DOIT + %d temoin(s) REFUSE, tous tenus"
-         % (len(neuf["norm_doit"]), len(neuf["norm_refuse"]))
-         if not faux_temoins
-         else "⛔ %d TEMOIN(S) EN ECHEC : %s"
-              % (len(faux_temoins), " · ".join(faux_temoins[:4])))
+    # ⚠️ LE SEUL SITE `sautable` DE LA GATE, et il est ECRIT : c'est la faute
+    #    que le mutant 14 REPLANTE — une gate qui joue moins de controles
+    #    qu'elle n'annonce. ⛔ Il ⛔ ne debranche PAS `(z)`, qui vit dans
+    #    `dn_gates.bilan` et reste entier : il rend la POPULATION fautive.
+    if "c2d" not in neuf["controles_sautes"]:
+        ctrl(bool(neuf["norm_doit"]) and bool(neuf["norm_refuse"])
+             and not faux_temoins,
+             "(c2d) la normalisation rapproche, et ⛔ elle ne TAMISE pas",
+             "%d temoin(s) DOIT + %d temoin(s) REFUSE, tous tenus"
+             % (len(neuf["norm_doit"]), len(neuf["norm_refuse"]))
+             if not faux_temoins
+             else "⛔ %d TEMOIN(S) EN ECHEC : %s"
+                  % (len(faux_temoins), " · ".join(faux_temoins[:4])))
 
     # ══ (c3) UN CONTROLE DE `dn8` QUI JUGE UNE STRUCTURE LA FAIT PARSER ══
     print("\n── (c3) CE QUE `dn8` JUGE, `dn8` LE PARSE ────────────────────────")
@@ -1164,13 +1367,14 @@ def main():
         for langue in sorted(sujets_de(bloc, entier,
                                        fichier_entier=origine in perim)):
             population.append("%s→%s" % (origine, langue))
-            a_p, a_d = parse_ou_declare(langue, bloc, entier)
+            a_p, a_d = parse_ou_declare(langue, bloc, entier,
+                                        fichier_entier=origine in perim)
             if not a_p and not a_d:
                 aveugles.append("%s juge du %s SANS parseur et SANS "
                                 "`AVEUGLEMENT_%s`"
                                 % (origine, langue.upper(), langue.upper()))
     ctrl(not aveugles,
-         "(c3b) tout controle de dn8 PARSE, ou DECLARE son aveuglement",
+         "(c3b) tout controle de dn8 PARSE, ou DECLARE son trou",
          "%d couple(s) (bloc, structure) : %s"
          % (len(population), ", ".join(population[:6]))
          if not aveugles

@@ -74,13 +74,20 @@ CI/défaut) — aucune gate ne reçoit d'argument. Brut : `T0-borne-entree.txt`,
 | **TOTAL** | **1814 OK / 10 KO** | **1842 OK / 10 KO** | **OK +28 · KO +0** | |
 
 **Gates au glob `tools/verif_*.py` : 44 ⇒ 45.** ⛔ Aucune gate perdue.
+
+⚠️ **LE TABLEAU CI-DESSUS EST LE TIR T3/T4, ⛔ IL N'EST PAS RÉÉCRIT.** La revue de
+code a fait passer `verif_harnais_dn81.py` de **25** à **28 OK / 0 KO** (+1 contrôle,
++2 mutants) ⇒ le TOTAL d'arrivée se lit **1845 OK / 10 KO**, ⛔ pas 1842. Les 44 autres
+gates ont été **re-tirées après le correctif** et sont **inchangées au caractère près**
+— `verif_dossier_dn415.py` compris, toujours à **23 OK / 10 KO**. ⛔ Le chiffre
+d'origine est daté, ⛔ pas effacé.
 🎯 **ΔKO = 0 sur les 45 gates, gate par gate.** ⛔ Aucune gate ne perd un OK.
 
 ### Les trois gates qui bougent, et ce qu'elles ont gagné
 
 | gate | écart | ce que c'est |
 |---|---|---|
-| `verif_harnais_dn81.py` | 🆕 **25 OK / 0 KO** | la gate neuve (`AC8.1.1`, `AC8.1.3`, `AC8.1.4`) |
+| `verif_harnais_dn81.py` | 🆕 **28 OK / 0 KO** | la gate neuve (`AC8.1.1`, `AC8.1.3`, `AC8.1.4`). ⚠️ ~~25~~ **28** depuis la revue de code : +1 contrôle (la réciproque cibles/identifiants) et +2 mutants (`z`, la région `grep` pure). Le chiffre d'origine est **daté, ⛔ pas effacé** |
 | `verif_ledger_dn416.py` | **+1 OK** | **UN SEUL** contrôle ajouté — l'exception nommée à la frontière de l'epic (`AC8.1.2`) |
 | `verif_campagne_dn440.py` | **+2 OK** | les deux mutants `Y1`/`Y2` qui gardent ce contrôle. ⚠️ Elle l'avait **épinglé comme nu** (`GARDÉS PAR RIEN : 1`) avant qu'ils n'existent |
 
@@ -185,8 +192,41 @@ n'a pas bougé.
 
 | tir | rc |
 |---|---|
-| arbre sain, cockpit présent | **0** (`25 OK / 0 KO`) |
-| `--cockpit /nonexistent` | **4** (prérequis absent, motif + remède imprimés) |
+| arbre sain, cockpit présent | **0** (`28 OK / 0 KO`) |
+| `--cockpit /nonexistent`, **sans** `--mutant` | **4** (prérequis absent, motif + remède imprimés) |
+| cockpit absent, **avec** `--mutant` | **1** — voir la section suivante |
 | `--mutant 99` (inconnu) | **2** (erreur d'appel, ⛔ pas un défaut) |
 | `--mutant 3` sur un arbre où son ancre a disparu | **3** (mutant **PÉRIMÉ**, ⛔ pas un vert) |
-| `--mutant 1`…`13` | **1**, **un seul KO**, **sur le contrôle déclaré en cible** |
+| `--mutant 1`…`15` | **1**, **un seul KO**, **sur le contrôle déclaré en cible** |
+
+## Ce que la revue de code a trouvé, et qui est fermé
+
+🔴 **La suite était ROUGE EN CI, et ⛔ aucune de mes passes ne pouvait le voir.**
+`tools/verif_campagne_dn56.py` ⛔ n'est **pas** dans `NON_JOUABLES` : elle **tourne en
+CI**, découvre à l'AST toute gate déclarant `--liste-mutants`, joue chacun de ses mutants
+et classe tout `rc != 1` en *« NE ROUGISSENT PLUS »*. Sur un runner (cockpit absent) mes
+13 mutants rendaient **`rc=4`**.
+
+| tir | parent `1920f17` | à ma livraison | après le correctif |
+|---|---|---|---|
+| `env HOME=<vide> python3 tools/verif_campagne_dn56.py` | `8 OK / 0 KO` | **`7 OK / 1 KO`** | `8 OK / 0 KO` |
+
+⇒ **en mode mutant, un prérequis absent est un ROUGE NOMMÉ, ⛔ pas un `4`** — la
+convention que `verif_temoin_filtre_dn447.py` publie déjà. ⛔ Le chemin **sans**
+`--mutant` garde son `4` : c'est **lui** que la table `NON_JOUABLES` déclare.
+⛔ ⛔ **Pas** par les `EXCEPTIONS` de `dn56` : elles sont à **double sens** et
+ressortiraient `PERIMEE` partout où le cockpit **est** présent.
+
+⚠️ **Trois autres défauts, tous sur `verif_harnais_dn81.py`, tous avec leur témoin :**
+
+| défaut | ce qu'il valait | le témoin qui le ferme |
+|---|---|---|
+| **le mutant 9 DÉBRANCHAIT la garde** — son corps entier était un drapeau, ⛔ aucune ancre réécrite, et son libellé prétendait le contraire | en déplaçant l'`append` au-dessus du test de normalisation, `(c2c)` comptait **94** ancres en restant vert **et le mutant sortait rouge quand même** | il réécrit maintenant **le ledger** : tout motif qui ne se trouve qu'après normalisation devient un motif **littéral de sa propre cible** ⇒ `(c2a)`/`(c2b)` restent verts, `(c2c)` rougit |
+| **`parse_ou_declare` accordait l'exemption sur un jeton trouvé n'importe où dans le module**, docstrings et commentaires compris — alors que `sujets_de` prenait déjà la précaution symétrique | une région en `grep` pur greffée **à côté** de la région qui parse sortait `(True, True)` : `(c3b)` vert sur un contrôle aveugle | le parseur **et** la charge de l'aveuglement se cherchent **dans le bloc**, littéraux égaux à un jeton déclaré écartés. **Mutant 15** le rejoue : `rc=0` avec l'ancienne recherche, **`rc=1`** avec le correctif — et le **mutant 11 ⛔ ne peut pas** l'atteindre (il remplace sur tout le fichier) |
+| **`(z)` avait un consommateur vivant et ⛔ AUCUN tir ne le faisait tomber** : les 13 mutants basculaient un contrôle **sans changer le compte**, et les sorties anticipées passent `anticipee`, qui le désarme par construction | une gate pouvait émettre moins de contrôles qu'annoncé sans que rien ne le dise | **mutant 14** fait **sauter** un contrôle de fond ⇒ `27 émis pour 28 prévus` ⇒ `(z)` rougit |
+| **la table `CIBLES` n'était rejouée par personne** — `(c0)` n'assertait que `bool(CIBLES.get(n))`, et la colonne « cible » de `T2` n'était qu'une **capture** | une cible pouvait nommer `c9z`, un identifiant qui n'existe nulle part ; et un contrôle pouvait n'être visé par **aucun** mutant | `(c0)` lit les identifiants **à l'AST** via `dn_gates.ids_par_ast` — qui avait **zéro appelant** — et vérifie **les deux sens**. Témoins : `CIBLES[15]=("c9z")` ⇒ `cible(s) FANTÔME(S)` · `CIBLES[13]=("c3a")` ⇒ `contrôle(s) visé(s) par AUCUN mutant : ['c3c']` |
+
+⚠️ **Un seul identifiant n'est visé par aucun mutant, et c'est déclaré** (`IDS_SANS_MUTANT`) :
+`(c0)`, le pré-vol — c'est **lui** qui garde les mutants (cible déclarée, mutant sans effet
+⇒ `rc=3`, mutant qui lève ⇒ `rc=1`). Un mutant qui le viserait devrait se saboter lui-même.
+Ce qui le garde à la place est le **témoin `rc=3`** relevé dans `T2`, ⛔ pas une promesse.

@@ -52,10 +52,15 @@ jouee, et l'empreinte que `verif_harnais_dn81.py` compare ne voudrait plus
 rien dire.
 
 ⚠️ **LES SEULES DIVERGENCES SONT LES DEPENDANCES DE CONTEXTE, ET ELLES SONT
-   TOUTES ECRITES.** Quatre corps modaux lisent une variable de LEUR module
-   d'origine (`__file__`, `CONTROLES_PREVUS`, `RE_STYLE`, `RE_ID_CTRL`). Portes
-   tels quels ici, ils liraient le contexte de CE fichier — c'est-a-dire le
-   mauvais. ⇒ ces lectures deviennent des **PARAMETRES**, et chaque
+   TOUTES ECRITES.** **TROIS** corps modaux (`style_de`, `bilan`,
+   `ids_par_ast` — c'est la liste `TRANSFORMES` de `verif_harnais_dn81.py`)
+   lisent **QUATRE** variables de LEUR module d'origine (`RE_STYLE`,
+   `CONTROLES_PREVUS`, puis `__file__` et `RE_ID_CTRL` pour le meme corps).
+   ⚠️ **CETTE LIGNE DISAIT « QUATRE CORPS », ET C'ETAIT FAUX** : elle comptait
+   les VARIABLES en croyant compter les corps. Corrigee le 2026-09-11 a la
+   revue de code, ⛔ pas effacee — c'est la classe de defaut que ce module
+   existe pour instrumenter. Portes tels quels ici, ces corps liraient le
+   contexte de CE fichier — c'est-a-dire le mauvais. ⇒ ces lectures deviennent des **PARAMETRES**, et chaque
    transformation est nommee dans le docstring du helper concerne. ⛔ Rien
    d'autre n'a bouge.
 
@@ -139,6 +144,11 @@ def style_de(page, rx=None):
        redevenus indiscernables. C'est le meme piege que `sans_commentaires`
        ferme cote script — une gate qui lit de la prose prouve un `grep`,
        ⛔ pas une propriete. Le mutant 20 le REPLANTE.
+    ⚠️ **CE RENVOI EST IMPORTE AVEC LE CORPS, ET IL POINTE AILLEURS** :
+       « le mutant 20 » est celui de `verif_placement_dn74.py`, d'ou ce
+       corps vient. ⛔ Il n'existe PAS dans `verif_harnais_dn81.py`, dont
+       la table de mutants est numerotee independamment. Dit plutot que
+       corrige : reecrire le corps modal le ferait cesser d'etre modal.
 
     ── PROVENANCE ──────────────────────────────────────────────────────────
     Corps modal : **1 copie sur 2**, **2** implementations distinctes.

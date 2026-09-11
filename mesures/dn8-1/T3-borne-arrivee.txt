@@ -63,3 +63,14 @@ campagne_ctrl_dn440.py --liste             rc=2     usage: campagne_ctrl_dn440.p
 import dn_police/dn_sites/dn_trace         rc=0     import OK
 import dn_gates (dn8-1)                    rc=0     dn_gates: 8
 compileall tools/                          rc=0
+
+⚠️ ANNOTATION DU 2026-09-11, APRES LA REVUE DE CODE — ⛔ RIEN N'EST REECRIT
+   CI-DESSUS. `verif_harnais_dn81.py` passe de 25 a 28 OK / 0 KO (+1 controle :
+   la reciproque cibles/identifiants ; +2 mutants : `z` et la region `grep` pure).
+   ⇒ TOTAL d'arrivee : 1845 OK / 10 KO.
+   Les 44 autres gates ont ete RE-TIREES apres le correctif : INCHANGEES au
+   caractere pres, `verif_dossier_dn415.py` toujours a 23 OK / 10 KO.
+   ⛔ ET UN DEFAUT QUE CE RELEVE NE POUVAIT PAS VOIR : `verif_campagne_dn56.py`
+     joue les mutants des autres gates ; elle etait a `7 OK, 1 KO` **EN CI**
+     (HOME sans cockpit) alors qu'elle rend `8 OK, 0 KO` au poste. Un releve
+     tire au POSTE est aveugle a un rouge qui n'existe QUE sur le runner.
