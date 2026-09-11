@@ -1,0 +1,41 @@
+==============================================================================
+dn8-1 / T1 — LE TEMOIN NEGATIF DU TRACKER (AC8.1.2)
+  arbre desknode 1920f17 + les changements de dn8-1 · cockpit 6c1dfcb
+  date : 2026-09-11
+==============================================================================
+
+⛔ TOUTE MUTATION SE JOUE SUR UNE **COPIE JETABLE** DU COCKPIT, jamais sur le
+   cockpit vivant. C'est le patron de verif_campagne_dn440.py.
+
+── (1) LE COCKPIT SAIN ──────────────────────────────────────────────────────
+  [OK ] le tracker se LIT en UTF-8                                     101 cle(s) au tracker
+  [OK ] le tracker se PARSE en YAML                                    development_status : 101 cle(s), toutes vues aussi par le ba
+BILAN : 36 OK, 0 KO
+   rc = 0
+
+── (2) TEMOIN PRESCRIT PAR LE DOSSIER : `epic-dn8` re-indentee 2 ⇒ 4 ───────
+   ⚠️ IL ROUGIT, MAIS **PAS SEUL** : `epic-dn8` est cite 13 fois comme
+      porteur au ledger ⇒ 3 autres controles tombent avec lui, et AUCUN des
+      trois ne dit que le tracker ne se parse pas.
+  [KO ] le tracker se PARSE en YAML                                    ⛔ LE TRACKER NE SE PARSE PAS — ParserError: while parsing a block mapping in "<unicode string>", line 342, column 3: epic-dn1: done # CLOS le 2026-0 ... ^ expected <block end>, but found '<block
+  [KO ] toute cle de porteur EXISTE au tracker (⛔ tous verdicts)       ⛔ 13 CLE(S) FANTOME(S) : l.6684 `epic-dn8`, l.6819 `epic-dn8`, l.6891 `epic-dn8`, l.6915 `epic-dn8`, l.6936 `epic-dn8`, l.7075 `epic-dn8`, l.7198 `epic-dn8`, l.7290 `epic-dn8`, l.7424 `epic-dn8`, l.7499 `epic-dn8`, l.7591 `epic-dn8`, l.7620 `epic-dn8`, l.7678 `epic-dn8`
+  [KO ] tout porteur A VENIR existe au tracker                         ⛔ 13 INCONNU(S) : l.6684→epic-dn8, l.6819→epic-dn8, l.6891→epic-dn8, l.6915→epic-dn8, l.6936→epic-dn8, l.7075→epic-dn8, l.7198→epic-dn8, l.7290→epic-dn8, l.7424→epic-dn8, l.7499→epic-dn8, l.7591→epic-dn8, l.7620→epic-dn8, l.7678→epic-dn8
+  [KO ] tout porteur de la liste AC5.6 du tracker est VIVANT           ⛔ 12 INCONNU(S) DU TRACKER : item 1→epic-dn8, item 2→epic-dn8, item 3→epic-dn8, item 4→epic-dn8, item 5→epic-dn8, item 6→epic-dn8, item 7→epic-dn8, item 8→epic-dn8, item 9→epic-dn8, item 10→epic-dn8, item 13→epic-dn8, item 18→epic-dn8
+⛔ 4 ECHEC(S) sur 36 controles.
+   rc = 1
+
+── (3) LE TEMOIN HONNETE : une cle que PERSONNE ne cite ─────────────────────
+   cle mutee : dn8-6-la-version-se-voit-sur-la-dalle (2 ⇒ 4 espaces)
+   🔴 AVANT ce controle, CE MEME ARBRE MUTE rendait `BILAN : 35 OK, 0 KO`,
+      rc=0 — mesure du 2026-09-11, gate a HEAD 1920f17.
+  [KO ] le tracker se PARSE en YAML                                    ⛔ LE TRACKER NE SE PARSE PAS — ParserError: while parsing a block mapping in "<unicode string>", line 342, column 3: epic-dn1: done # CLOS le 2026-0 ... ^ expected <block end>, but found '<block
+⛔ 1 ECHEC(S) sur 36 controles.
+   rc = 1
+
+── (4) LE CHEMIN CI : PyYAML ABSENT (stdlib, ⛔ aucun pip install) ──────────
+   banc : un PYTHONPATH qui masque `yaml` par un module qui leve ImportError
+  [NON JOUE] le tracker se PARSE en YAML (_bmad-output/implementation-artifacts/sprint-status-desknode.yaml)
+      ⛔ PyYAML ABSENT (PyYAML masque par le banc dn8-1 (CI stdlib)) — le controle de parse du tracker n'est PAS JOUE. Ce que cette gate ne voit alors PAS : une indentation qui rend le tracker illisible pour tout parseur, sans changer une seule ligne au balayage textuel. ⛔ Ce n'est ⛔ NI un OK ⛔ NI un KO : c'est un trou DECLARE, et il se referme avec `pip install PyYAML` hors CI.
+BILAN : 35 OK, 0 KO
+   rc = 0
+   ⇒ ⛔ AUCUN Traceback, ⛔ aucun vert muet : le controle se DECLARE non joue.

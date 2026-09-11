@@ -1,0 +1,60 @@
+==============================================================================
+dn8-1 / T2 — CHAQUE CONTROLE NEUF EST VU ROUGIR SUR UN MUTANT QUI **REPLANTE**
+  la faute (AC8.1.6) · date : 2026-09-11
+==============================================================================
+
+⛔ AUCUN MUTANT NE DEBRANCHE UNE GARDE : un mutant qui coupe le controle ne
+   prouve que son existence. Chacun repose la faute DANS L'ETAT.
+⛔ LE NO-OP EST GARDE EN rc=3 : un mutant dont l'ancre a disparu ⛔ n'est PAS
+   un controle vert.
+
+── LA TABLE DES MUTANTS ─────────────────────────────────────────────────────
+   1  [c1d]  REPLANTE une re-definition DIVERGENTE de `ctrl` dans un fichier du perimetre dn8
+   2  [c1d]  REPLANTE une re-definition IDENTIQUE de `plat` (meme corps que le module) — une copie reste une copie
+   3  [c1b]  REPLANTE une DERIVE du corps de `plat` dans `dn_gates` : il est declare VERBATIM, il ne l'est plus
+   4  [c1a]  REPLANTE la divergence entre `NOMS_PARTAGES` et `__all__` — une liste recopiee qui a decroche
+   5  [c1c]  REPLANTE une DECLARATION DE TRANSFORMATION PERIMEE : le corps redevient le modal, la declaration reste
+   6  [c2a]  REPLANTE une ancre `📍` dont le CHEMIN n'existe pas
+   7  [c2b]  REPLANTE une ancre `📍` dont le MOTIF a disparu de sa cible
+   8  [c2b]  REPLANTE une ancre `📍` dont le motif ne differe du vrai que d'UNE LETTRE — le piege d'une normalisation-tamis
+   9  [c2c]  REPLANTE la population VIDE de (c2c) : les ancres qui exigent la normalisation sont reecrites en forme litterale
+  10  [c2d]  REPLANTE un TEMOIN NEGATIF qui n'en est pas un : une paire `REFUSE` dont le motif est REELLEMENT present
+  11  [c3b]  REPLANTE un controle de `dn8` qui juge du YAML SANS parseur et SANS declaration d'aveuglement
+  12  [c3a]  REPLANTE un marqueur de region NON APPARIE (l'ouverture reste, la fermeture disparait)
+  13  [c3c]  REPLANTE la population VIDE de (c3c) : plus aucune region de `dn8` ne nomme une structure
+
+── LE TIR — un mutant, un controle vise, un KO ──────────────────────────────
+mutant   cible  rc   KO   sur-c  BILAN
+1        c1d    1    1    c1d    BILAN : 24 OK, 1 KO
+2        c1d    1    1    c1d    BILAN : 24 OK, 1 KO
+3        c1b    1    1    c1b    BILAN : 24 OK, 1 KO
+4        c1a    1    1    c1a    BILAN : 24 OK, 1 KO
+5        c1c    1    1    c1c    BILAN : 24 OK, 1 KO
+6        c2a    1    1    c2a    BILAN : 24 OK, 1 KO
+7        c2b    1    1    c2b    BILAN : 24 OK, 1 KO
+8        c2b    1    1    c2b    BILAN : 24 OK, 1 KO
+9        c2c    1    1    c2c    BILAN : 24 OK, 1 KO
+10       c2d    1    1    c2d    BILAN : 24 OK, 1 KO
+11       c3b    1    1    c3b    BILAN : 24 OK, 1 KO
+12       c3a    1    1    c3a    BILAN : 24 OK, 1 KO
+13       c3c    1    1    c3c    BILAN : 24 OK, 1 KO
+
+── LA GARDE DU NO-OP : un mutant PERIME rend 3, ⛔ pas 0 ────────────────────
+   banc : une COPIE de tools/ ou l'ancre litterale du mutant 3 est cassee
+  [KO ] (c0) le mutant 3 a bien un EFFET                         ⛔ SANS EFFET — son ancre litterale a disparu de la cible. ⛔ Ce n'est PAS un controle vert : rc=3, mutant PERIME.
+⛔ SORTIE ANTICIPEE — 15 controle(s) emis sur 25 prevus : le mutant 3 n'a eu aucun effet
+BILAN : 14 OK, 1 KO
+   rc = 3
+
+── LES AUTRES CODES DE SORTIE ──────────────────────────────────────────────
+   mutant INCONNU          ⇒ rc = 2  (2 = erreur d'appel, ⛔ pas un defaut)
+   cockpit ABSENT          ⇒ rc = 4  (4 = prerequis, declare NON_JOUABLE)
+   arbre SAIN              ⇒ rc = 0
+
+── LES DEUX MUTANTS DU TRACKER, DANS LA CAMPAGNE dn4-40 ────────────────────
+   [OK] Y1-tracker-indente-cite      VU ROUGE sur verif_ledger_dn416.py:1221 (+ 3 couple(s) declare(s))
+   [OK] Y2-tracker-indente-non-cite  VU ROUGE sur verif_ledger_dn416.py:1221
+── `controle ⇒ couvert` : LES CONTROLES GARDES PAR RIEN ───────
+   ⚠️ GARDES PAR RIEN        : 0
+BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien
+BILAN : 62 OK, 0 KO

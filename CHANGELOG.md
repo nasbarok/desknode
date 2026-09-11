@@ -10,6 +10,29 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Added
 
+- 🆕 **The checks now parse what they judge, and their shared helpers live in one place**
+  (`dn8-1`, 2026-09-11). A new module, `tools/dn_gates.py`, holds the eight helper names the
+  checks had been copying — measured that day across the 44 checks: **101 copies for 8 names,
+  in 57 distinct implementations**, `ctrl` alone in **19**. ⚠️ **The figure in the planning
+  notes was 51 copies and 5 implementations for one of them; both numbers are written down
+  and neither is erased** — the first was a textual count, this one reads the syntax tree,
+  and that difference is precisely what this work exists to install. A new check,
+  `tools/verif_harnais_dn81.py`, fails on a helper re-defined inside the perimeter this epic
+  writes — **whether the body differs or is identical**, because an identical copy is still a
+  copy — on a `📍` anchor of the planning ledger whose target cannot be reached or whose
+  pattern is no longer in it, and on a control written by this epic that judges YAML, HTML,
+  CSS or PowerShell **without a parser and without naming what it cannot see**.
+- 🆕 **One control added to the ledger check: the planning tracker is now parsed.** Measured
+  on a throwaway copy on 2026-09-11 — ⛔ never on the live tracker: a single key re-indented
+  from two spaces to four makes the file **unreadable to any YAML parser**, and the check
+  returned **`BILAN : 35 OK, 0 KO`, exit code 0** all the same, because it matched
+  `^  key:` line by line and the re-indented line simply left the population. 🔴 **And the
+  witness the notes prescribed hid this**: re-indenting `epic-dn8` *did* turn the check red —
+  but for the wrong reason, three failures all saying *"13 phantom keys"*, because that key
+  happens to be cited thirteen times as an owner. A key **nobody cites** broke the file in
+  complete silence. Both witnesses are replayed by `tools/verif_campagne_dn440.py`, and it is
+  the second one that proves the new control carries anything.
+
 - 🆕 **The install page now installs what it can, and it blocks on what it cannot.** Five
   requests from the owner in session on 2026-09-10 — ⛔ raised by no check in this repository.
   Each of the workflow's four steps carries a **three-position** state witness, in the
@@ -325,6 +348,15 @@ Work towards the first public release, `v0.1.0-beta`.
   the tool's own header says what it deliberately does not.
 
 ### Changed
+
+- ⚠️ **Five `📍` anchors of the planning ledger pointed at nothing, and they were re-routed
+  in place** (`dn8-1`, 2026-09-11). Measured over the **94** targets carried by **86** anchor
+  lines: one named a capture file that never existed, two named patterns that had been
+  removed from the tools they point at, and two named sentences no longer on the install
+  page. ⚠️ **Seven more are reachable only after normalisation** — accents, mixed case, dash
+  runs, the ⛔/⚠️ markers this repository scatters through its prose — and that population is
+  itself a control: if it ever empties, the normalisation is proven by nothing and the check
+  says so.
 
 - 🆕 **`dn7` stops only exposing, and that is an owner decision, ⛔ not a drift.** The thread
   of this epic was *« `dn7` exposes, it builds nothing »* — true from `dn7-1` to `dn7-3`, and

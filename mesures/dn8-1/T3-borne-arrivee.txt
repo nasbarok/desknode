@@ -1,0 +1,65 @@
+==============================================================================
+dn8-1 / T3 — BORNE D'ARRIVEE : LE **COMPTE** DE CHAQUE GATE
+  date : 2026-09-11 · meme invocation qu'au T0 (sans --cockpit)
+==============================================================================
+
+gate                                     T0 OK   T0 KO   T3 OK   T3 KO  source
+--------------------------------------------------------------------------------
+verif_affiliation_dn65.py                   23       0      23       0  publie
+verif_banc_langue_dn73.py                   45       0      45       0  publie
+verif_bme680_retard_dn45.py                 15       0      15       0  publie
+verif_boitier_dn64.py                       29       0      29       0  publie
+verif_bom_dn61.py                           24       0      24       0  publie
+verif_cablage_dn62.py                       37       0      37       0  publie
+verif_campagne_dn440.py                     60       0      62       0  publie
+verif_campagne_dn56.py                       8       0       8       0  publie
+verif_courbe_dn413.py                       58       0      58       0  publie
+verif_cumul_ambient_dn45.py                 23       0      23       0  publie
+verif_d4_nvs_dn45.py                         6       0       6       0  publie
+verif_decoupe_horloge_dn418.py               7       0       7       0  derive
+verif_demarrage_dn443.py                    58       0      58       0  publie
+verif_dossier_d5_dn45.py                    12       0      12       0  publie
+verif_dossier_dn415.py                      23      10      23      10  publie
+verif_flash_dn72.py                         30       0      30       0  publie
+verif_harnais_dn413.py                      22       0      22       0  publie
+verif_harnais_dn81.py                        —       —      25       0  publie
+verif_hist_dn413.py                         56       0      56       0  publie
+verif_installeur_dn71.py                    28       0      28       0  publie
+verif_instruments_dn423.py                 163       0     163       0  publie
+verif_journal_soak_dn45.py                  26       0      26       0  publie
+verif_langue_dalle_dn73.py                  61       0      61       0  publie
+verif_langues_dn442.py                      31       0      31       0  publie
+verif_ledger_dn416.py                       35       0      36       0  publie
+verif_licences_dn52.py                      34       0      34       0  publie
+verif_lissage_dn45.py                       21       0      21       0  publie
+verif_miroir_horloge_dn418.py               18       0      18       0  derive
+verif_page_dn722.py                         56       0      56       0  publie
+verif_paliers_dn441.py                      42       0      42       0  publie
+verif_photos_dn63.py                        28       0      28       0  publie
+verif_placement_dn74.py                     42       0      42       0  publie
+verif_polices_dn440.py                      11       0      11       0  publie
+verif_preconditions_dn76.py                 52       0      52       0  publie
+verif_prerequis_dn75.py                     47       0      47       0  publie
+verif_rebouclage_dn45.py                    30       0      30       0  publie
+verif_reprise_horloge_dn418.py              44       0      44       0  derive
+verif_selection_dn49.py                     70       0      70       0  publie
+verif_serie_dn412.py                        50       0      50       0  publie
+verif_source_lhm_dn48.py                    47       0      47       0  derive
+verif_sr03.py                                0       0       0       0  derive
+verif_temoin_filtre_dn447.py                 5       0       5       0  publie
+verif_veille_dn33.py                       267       0     267       0  publie
+verif_verrou_lvgl_dn413.py                  60       0      60       0  publie
+verif_xip_dn422.py                          10       0      10       0  publie
+--------------------------------------------------------------------------------
+TOTAL                                     1814      10    1842      10
+
+gates au glob : 44 ⇒ 45   ⛔ AUCUNE gate perdue
+ΔKO = 0 sur les 45 gates — ⛔ aucune gate ne perd un OK.
+
+── LES OUTILS QUI NE SONT **PAS** DES GATES ───────────────────────
+— ⛔ AUCUNE gate ne les garde ==
+run_gates.sh -h                            rc=0     # ════════════════════════════════════════════════════════════════════════════
+campagne_ctrl_dn440.py --liste             rc=2     usage: campagne_ctrl_dn440.py [-h] [--cockpit COCKPIT]
+import dn_police/dn_sites/dn_trace         rc=0     import OK
+import dn_gates (dn8-1)                    rc=0     dn_gates: 8
+compileall tools/                          rc=0

@@ -155,6 +155,57 @@ import re
 import sys
 import unicodedata
 
+# >>> DN8-REGION — tout ce qui suit jusqu'au marqueur de fin est ECRIT PAR dn8,
+#     et c'est a ce titre que `tools/verif_harnais_dn81.py` (c3) le juge. ⛔ Le
+#     RESTE de ce fichier appartient a `dn4` et n'est PAS dans le perimetre :
+#     `epic-dn8` installe le garde-fou pour ce qu'elle ECRIT.
+# ══ dn8-1 / AC8.1.2 — LE TRACKER SE **PARSE**, ⛔ IL NE SE BALAIE PLUS SEUL ══
+#
+# 🔴 CE QUE CETTE GATE LAISSAIT PASSER, ET C'EST MESURE LE 2026-09-11 sur une
+#    COPIE JETABLE du cockpit (⛔ jamais sur le cockpit vivant) :
+#    la cle `dn8-6-la-version-se-voit-sur-la-dalle` RE-INDENTEE DE 2 A 4
+#    ESPACES rend le tracker **ILLISIBLE pour tout parseur YAML**
+#    (`yaml.ParserError`) — et cette gate rendait **`BILAN : 35 OK, 0 KO`,
+#    rc=0**. Un caractere. Zero rouge.
+#    ⚠️ ET LE TEMOIN PRESCRIT PAR LE DOSSIER (`epic-dn8` re-indentee) ROUGIT,
+#       LUI — mais **POUR LE MAUVAIS MOTIF** : 3 KO qui disent tous
+#       « 13 CLE(S) FANTOME(S) : epic-dn8 », ⛔ jamais « le tracker ne se
+#       parse pas ». Il ne rougit que parce que `epic-dn8` se trouve etre cite
+#       13 fois comme PORTEUR. Une cle que personne ne cite — et il y en a —
+#       casse le fichier EN SILENCE. ⇒ le temoin honnete est la cle NON CITEE,
+#       et les deux sont joues dans `mesures/dn8-1/`.
+#
+# ⚠️ `yaml` N'EST PAS DANS LA STDLIB, ET LA CI S'INTERDIT `pip install`
+#    (`.github/workflows/gates.yml`). ⇒ L'IMPORT EST **GARDE**, et son absence
+#    fait DECLARER L'AVEUGLEMENT EN PROPRE dans la sortie — ⛔ jamais un vert
+#    muet, ⛔ jamais un `Traceback`. C'est l'issue que `NFR14` fournit
+#    elle-meme : *« ou il declare son aveuglement EN PROPRE »*.
+# ⚠️ LES DEUX CHEMINS SONT REELS, ET LES DEUX DOIVENT ETRE VUS : le parse REEL
+#    est le chemin du POSTE DE L'AUTEUR ; l'aveuglement declare est le chemin
+#    CI — ou cette gate est de toute facon NON-JOUABLE (`rc=4`, cockpit prive).
+try:
+    import yaml
+    _YAML = True
+    _YAML_MOTIF = ""
+except ImportError as _x:                                # pragma: no cover
+    yaml = None
+    _YAML = False
+    _YAML_MOTIF = str(_x)
+
+# ⚠️ LA DECLARATION D'AVEUGLEMENT, ⛔ PAS UN COMMENTAIRE : `NFR14` autorise un
+#    controle sans parseur A CONDITION qu'il nomme EN PROPRE ce qu'il ne sait
+#    pas voir. Un commentaire ne s'imprime pas — celle-ci est une DONNEE, elle
+#    est LUE par le code ci-dessous et ECRITE sur la console. C'est ce que
+#    `verif_harnais_dn81.py` (c3) exige : une declaration qu'un `grep` ne
+#    puisse pas fabriquer depuis de la prose.
+AVEUGLEMENT_YAML = (
+    "⛔ PyYAML ABSENT (%s) — le controle de parse du tracker n'est PAS JOUE. "
+    "Ce que cette gate ne voit alors PAS : une indentation qui rend le "
+    "tracker illisible pour tout parseur, sans changer une seule ligne au "
+    "balayage textuel. ⛔ Ce n'est ⛔ NI un OK ⛔ NI un KO : c'est un trou "
+    "DECLARE, et il se referme avec `pip install PyYAML` hors CI.")
+# <<< DN8-REGION — fin de la region ecrite par dn8 (import garde + aveuglement)
+
 DESKNODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 🔴 REVUE 2026-09-02 — `expanduser("~")` ET `${HOME}` NE DISENT PAS LA MEME
 #    CHOSE QUAND `HOME` EST ABSENT. Le shell de `run_gates.sh` retombe sur
@@ -1115,6 +1166,62 @@ def main():
         return 1
     ctrl(True, "le tracker se LIT en UTF-8",
          "%d cle(s) au tracker" % len(cles_trk))
+
+    # >>> DN8-REGION — LE CONTROLE DE PARSE DU TRACKER (dn8-1 / AC8.1.2).
+    #     ⛔ UN SEUL controle est ajoute a cette gate, et c'est l'EXCEPTION
+    #     NOMMEE a la frontiere de `epic-dn8` : `NFR14` designe le tracker
+    #     comme « le premier sujet de ce garde-fou ». ⛔ Cette gate n'est PAS
+    #     le depotoir des controles neufs de `dn8` — les trois autres vivent
+    #     dans `tools/verif_harnais_dn81.py`.
+    #
+    # 🔴 CE QU'IL TIENT, ET QUE `lit_tracker` NE PEUT PAS TENIR : `lit_tracker`
+    #    apparie `^  ([a-z0-9][a-z0-9\-]*):\s*([a-z\-]+)` LIGNE A LIGNE. Une
+    #    cle re-indentee SORT DE LA POPULATION sans un mot — mesure du
+    #    2026-09-11 : 101 cles vues avant, **100 apres**, `35 OK / 0 KO` dans
+    #    les deux cas. Le balayage ne peut pas voir ce qu'il ne balaie plus.
+    # ⇒ LE CONTROLE VISE SON ECHEC **NOMME** : il compare l'ensemble des cles
+    #   que le PARSEUR trouve dans `development_status` a celles que le
+    #   BALAYAGE a vues. Une cle que le parseur connait et que le balayage a
+    #   perdue est un KO — c'est exactement la classe de defaut que `dn4-40` a
+    #   payee (16 cles `epic-*` silencieusement ignorees).
+    # ⚠️ LA COMPARAISON EST **A SENS UNIQUE**, ET C'EST DELIBERE : le balayage
+    #    ramasse toute ligne a 2 espaces, y compris celle d'une FUTURE section
+    #    voisine. Exiger l'egalite ferait rougir le jour ou quelqu'un ajoute
+    #    une section — un faux rouge, ⛔ pas un defaut. Le sens qui compte est
+    #    `parseur ⇒ balayage`.
+    if not _YAML:
+        print("  [NON JOUE] le tracker se PARSE en YAML (%s)" % REL_TRACKER)
+        print("      %s" % (AVEUGLEMENT_YAML % _YAML_MOTIF))
+    else:
+        _ds, _err = None, ""
+        try:
+            _doc = yaml.safe_load(txt_trk)
+            _ds = (_doc or {}).get("development_status")
+        except Exception as _e:                          # noqa: BLE001
+            # ⛔ L'ERREUR DU PARSEUR EST **CITEE**, ⛔ pas avalee : c'est elle
+            #    qui dit OU le fichier casse, et c'est la seule chose qu'un
+            #    balayage textuel ne saura jamais produire.
+            _err = "%s: %s" % (type(_e).__name__,
+                               " ".join(str(_e).split())[:150])
+        if _err:
+            _detail = "⛔ LE TRACKER NE SE PARSE PAS — %s" % _err
+        elif not isinstance(_ds, dict) or not _ds:
+            _detail = ("⛔ `development_status` ABSENT ou VIDE dans %s — le "
+                       "tracker se parse mais n'arbitre plus rien"
+                       % REL_TRACKER)
+        else:
+            _perdues = sorted(set(_ds) - set(cles_trk))
+            if _perdues:
+                _detail = ("⛔ %d CLE(S) VUE(S) PAR LE PARSEUR ET PERDUE(S) "
+                           "PAR LE BALAYAGE : %s"
+                           % (len(_perdues), ", ".join(_perdues[:6])))
+            else:
+                _detail = ("development_status : %d cle(s), toutes vues aussi "
+                           "par le balayage" % len(_ds))
+        ctrl(not _err and isinstance(_ds, dict) and bool(_ds)
+             and not (set(_ds) - set(cles_trk)),
+             "le tracker se PARSE en YAML", _detail, _detail)
+    # <<< DN8-REGION — fin de la region ecrite par dn8 (controle de parse)
 
     # ── 1. LE COMPTE, PRODUIT ICI (AC1.2 / AC6.3) ───────────────────────────
     imprime_convention()

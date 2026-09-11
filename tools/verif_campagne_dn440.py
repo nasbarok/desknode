@@ -629,6 +629,44 @@ def gate_hors_depot(tmp, base=None):
 
 
 # ── LES MUTANTS ──────────────────────────────────────────────────────────────
+# ── dn8-1 / AC8.1.2 — LES DEUX TEMOINS DE L'INDENTATION ────────────────────
+# 🔴 LA FAUTE REPLANTEE : une cle de `development_status` RE-INDENTEE de 2 a 4
+#    espaces. Le fichier devient ILLISIBLE POUR TOUT PARSEUR YAML
+#    (`yaml.ParserError`) — et le balayage textuel de `lit_tracker`, lui, ⛔ ne
+#    voit RIEN : il apparie `^  cle:` ligne a ligne, la ligne re-indentee sort
+#    simplement de la population. Mesure du 2026-09-11 : **101 cles vues avant,
+#    100 apres**, et la gate rendait `BILAN : 35 OK, 0 KO` dans les deux cas.
+# ⚠️ DEUX TEMOINS, ⛔ PAS UN, ET LA DIFFERENCE EST LA MESURE :
+#    · une cle CITEE comme porteur (`epic-dn8`, 13 citations au ledger) faisait
+#      DEJA rougir — mais **POUR LE MAUVAIS MOTIF** : « 13 CLE(S) FANTOME(S) »,
+#      ⛔ jamais « le tracker ne se parse pas » ;
+#    · une cle que PERSONNE ne cite ne faisait rougir RIEN. C'est elle le vrai
+#      temoin du trou, et c'est elle qui prouve que le controle neuf porte.
+#    ⛔ Garder seulement le premier aurait donne un mutant qui rougit sans que
+#      le controle neuf serve a quoi que ce soit — « un banc qui juge sur le
+#      `rc` global reste vert des qu'un AUTRE echec donne le meme `rc` ».
+# ⚠️ **LE NOM D'UN MUTANT TIENT EN 28 CARACTERES**, et ce n'est ecrit NULLE
+#    PART AILLEURS : le banc `B9-compte-joue` relit les noms A COLONNE FIXE
+#    (`l[8:36]`). Un nom plus long ressort TRONQUE, ne s'apparie plus a la
+#    liste, et le banc rougit en accusant le COMPTE. Mesure du 2026-09-11 :
+#    `Y2-tracker-indente-cle-non-citee` (32) a fait sortir `annonce : 38 ·
+#    verdicts : 37`. ⛔ Le banc avait raison, et il visait bien SON echec.
+def mute_trk_indentation(court):
+    """RE-INDENTE une cle de `development_status` de 2 a 4 espaces.
+
+    ⛔ ELLE NE DEBRANCHE RIEN : elle replante, dans les DONNEES, la faute
+    exacte qui a casse ce tracker deux fois en une journee.
+    ⚠️ Si la cle a disparu, la mutation rend le tracker INCHANGE — la garde
+       `change=("tracker",)` de la campagne le voit et ROUGIT, ⛔ elle ne
+       laisse pas passer un mutant mort pour un gardien vivant.
+    """
+    def _f(led, trk, faux, c=court):
+        return led, re.sub(
+            r"^(  )(%s(?:-[a-z0-9\-]*)?:\s*[a-z\-]+)" % re.escape(c),
+            r"  \1\2", trk, count=1, flags=re.M)
+    return _f
+
+
 MUTANTS = [
     # ── Les trois du cadrage, rejoues ───────────────────────────────────────
     M("A-porteur-en-prose",
@@ -826,6 +864,30 @@ MUTANTS = [
       mute_ac56(CLE_AC56_MORTE, avec_solde="sur-la-ligne"),
       cible="tout porteur de la liste AC5.6 du tracker est VIVANT",
       change=("tracker",), motif=CLE_AC56_MORTE),
+    # ── dn8-1 / AC8.1.2 — LE TRACKER SE PARSE ────────────────────────────────
+    M("Y1-tracker-indente-cite",
+      "la cle `epic-dn8` RE-INDENTEE 2 ⇒ 4 espaces — le temoin PRESCRIT par"
+      " le dossier. ⚠️ Il rougit DEJA sans le controle neuf, mais pour le"
+      " MAUVAIS motif : `epic-dn8` est cite 13 fois comme porteur.",
+      mute_trk_indentation("epic-dn8"),
+      cible="le tracker se PARSE en YAML",
+      aussi=["toute cle de porteur EXISTE au tracker (⛔ tous verdicts)",
+             "tout porteur A VENIR existe au tracker",
+             "tout porteur de la liste AC5.6 du tracker est VIVANT"],
+      change=("tracker",), motif="    epic-dn8:",
+      # ⚠️ `regen=1` : un tracker que le parseur REFUSE fait sortir la gate
+      #    en 1, donc la REGENERATION du manifeste sort en 1 aussi. Attendre
+      #    0 ferait rougir le mutant pour un effet qui est precisement celui
+      #    qu'il replante. ⛔ Ce n'est pas une tolerance : c'est le rc ATTENDU.
+      regen=1),
+    M("Y2-tracker-indente-non-cite",
+      "une cle que PERSONNE ne cite, RE-INDENTEE 2 ⇒ 4. ⛔ AVANT le controle"
+      " neuf, la gate rendait `35 OK, 0 KO` sur un tracker que plus aucun"
+      " parseur ne lit. C'est LE temoin du trou.",
+      mute_trk_indentation("dn8-6-la-version-se-voit-sur-la-dalle"),
+      cible="le tracker se PARSE en YAML",
+      change=("tracker",),
+      motif="    dn8-6-la-version-se-voit-sur-la-dalle:", regen=1),
 ]
 
 # ── LE MUTANT DE TRACKER — le FAUX ROUGE ARME (AC40.1.d) ─────────────────────
