@@ -95,3 +95,41 @@ date : 2026-09-10
 
 ⛔ STATUT AU 2026-09-12 : **NON RELEVE**, comme au 2026-09-10.
    Porte au ledger par `dn8-3`, avec son porteur.
+
+──────────────────────────────────────────────────────────────────────────────
+✅ RELEVE LE 2026-09-12 — ⛔ AUCUNE LIGNE CI-DESSUS N'EST EFFACEE, ET LE STATUT
+   « NON RELEVE » DE CE FICHIER EST DESORMAIS **PERIME**.
+──────────────────────────────────────────────────────────────────────────────
+⚠️ LE MOTIF `NON RELEVE` RESTE DANS CE FICHIER ET C'EST VOULU : il DATE le tir
+   du 2026-09-10, et des ancres du ledger le rejouent. Ce n'est pas un statut
+   courant, c'est une mesure historique.
+
+🔴 LA SEANCE A EU LIEU LE 2026-09-12, APRES REDEPLOIEMENT DE LA TOUR.
+   Ordre respecte : la tour portait `e3064f0` (2026-08-28) avec ZERO occurrence
+   de `exit 12` ; elle a ete redeployee a `d33166d` AVANT la seance. Jouer ces
+   gestes sur la copie perimee aurait mesure un produit d'il y a deux semaines.
+
+  A. « Arreter l'agent » depuis l'etape 1, puis « Retirer l'agent » en section 4
+     ⇒ ✅ RELEVE. Le verdict s'ecrit SOUS LE BOUTON. La page affiche la commande
+       qu'elle lance, et elle nomme la copie REDEPLOYEE.
+     ⚠️ « aucun agent reconnu » : l'agent avait deja ete arrete au redeploiement.
+       Ce tir exerce donc LA PLACE du verdict, PAS un arret reel.
+
+  B. Selecteur de port ANNULE a l'etape 3
+     ⇒ ✅ RELEVE. La page rend le message NEUF mot pour mot : « Le selecteur a
+       ete ferme sans selectionner la ligne. » PLUS l'ancienne supposition
+       « le plus souvent, un selecteur est deja ouvert ».
+
+  C. Les DEUX selecteurs de langue, position active
+     ⇒ ✅ RELEVE. VERBATIM OWNER : « position active oik ».
+     🔴 C'EST L'INSTRUMENT QUI FERMAIT `AC7.4.3`, ET IL A RENDU SON VERDICT.
+
+⇒ LE RELEVE COMPLET, AVEC LES SORTIES COLLEES :
+     desknode:mesures/dn8-3/T9-seance-owner-2026-09-12.md
+⇒ AU LEDGER : l'entree `AC8.3.1` passe de BLOQUEE a CLOSE, la disposition
+  d'origine NOMMEE dedans (`NFR3`).
+
+⛔ CE QUE CETTE SEANCE N'A PAS FERME : `AC8.3.3` (bouton grise, agent active
+   constate PAR REQUETE, le temps du geste `pip`, la course au logon) et
+   `AC7.5.3` (le refus cote tour dans les deux sens) restent A JOUER.
+=== FIN DE L'ANNOTATION ===
