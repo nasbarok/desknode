@@ -103,3 +103,67 @@ souvent, un selecteur est deja ouvert »*. Le domaine de `langue.port-indisponib
    retrait est **verifie**. ⇒ **l'agent ⛔ ne redemarrera PAS au prochain logon** tant que la
    permanence n'est pas reposee : `dn-agent.bat permanence`, ou le bouton de la page.
 2. L'agent **ne tourne pas**. Pour le relancer : `H:\dev\projets\desknode\dn-agent.bat start`.
+
+---
+
+## ✅ SUITE DE SEANCE — « ACTIVER L'AGENT »   (releve `AC8.3.3` **(b)**, ⛔ pas le reste)
+
+**REPONSE DE L'OWNER, VERBATIM** : *« ok activé l'agent nickel ca met bien les info sur la
+dalle en 2-3 sec »*.
+
+⚠️ **CE QUE CETTE PHRASE PROUVE, ET CE QU'ELLE NE PROUVE PAS.** La dalle qui se remplit en
+2-3 s etablit que l'agent **tourne et publie de bout en bout** — c'est fort, et ⛔ ce n'est
+PAS ce que l'AC demande. `AC8.3.3` (b) exige la tache **et** un agent **CONSTATE VIVANT PAR
+REQUETE**, en `-RunLevel Limited` : *« attendu, et ⛔ pas deduit du message »*. Les trois
+requetes du protocole `dn7-6` §5 ont donc ete jouees.
+
+**(1) LA TACHE, RE-DEMANDEE AU SYSTEME**
+
+    tache     : PRESENTE
+    State     : Ready
+    RunLevel  : Limited          <= ATTENDU
+    action    : powershell.exe
+    arguments : -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden
+                -File "H:\dev\projets\desknode\dn_agent_tour.ps1" tache -Serie COM3 -Duree 0
+
+🔴 **`RunLevel = Limited` EST LE POINT** : c'est lui qui tient *« rien de `dn7` n'exige de
+droits administrateur »*, et l'outil traite un autre niveau comme un DEFAUT.
+✅ **L'ACTION NOMME LA COPIE REDEPLOYEE** (`H:\dev\projets\desknode\dn_agent_tour.ps1`).
+✅ **ET ELLE DIT CE QUI A ETE CLIQUE** : la tache EXISTE, donc c'est le verbe **de la page**
+   (« Activer l'agent », qui COMPOSE permanence + demarrage), ⛔ pas `dn-agent.bat start`,
+   qui ⛔ n'en pose aucune.
+
+**(2) L'AGENT, CONSTATE VIVANT PAR REQUETE**
+
+    agents vivants : 1   (requete OK : True)
+      PID=24956   C:\Users\naoua\AppData\Local\Programs\Python\...
+
+⚠️ **LE `(requete OK : True)` N'EST PAS DECORATIF** : cette marche a deja publie un
+« agents vivants : 0 » qui etait un **FAUX ZERO** rendu par une commande EN ERREUR. Un
+compte se relit **A COTE DU CODE DE RETOUR**, ⛔ jamais seul. Ici la requete reussit.
+
+**(3) LE PORT SERIE**
+
+    COM3 : TENU   (⇒ coherent avec un agent qui publie)
+
+⚠️ **UN CONSTAT AU PASSAGE, ⛔ PAS UN DEFAUT** : la tache est posee **SANS `-Temoin`** (et
+sans `-Lhm`). Le verbe `etat` de l'outil AVERTIT sur ce cas : l'agent lance par la tache
+⛔ n'aura PAS l'instrument de cout, donc la re-verification « gratuite au prochain logon »
+⛔ n'aura pas lieu. C'est le comportement du verbe de la page, ⛔ pas une regression.
+
+## ⛔ CE QUE CETTE SUITE NE FERME **TOUJOURS** PAS — `AC8.3.3` RESTE BLOQUEE
+
+Sur les cinq points de l'AC, **UN** est releve. Restent :
+
+- *(a)* qu'un bouton soit **REELLEMENT GRISE** sous les yeux de quelqu'un — il faut RETIRER
+  une dependance (`pip uninstall psutil`) pour le voir se griser, avec sa raison **sous le
+  bouton** ; et le bouton de **flash doit RESTER utilisable** (c'est la ligne de partage, et
+  elle ⛔ n'est pas intuitive) ;
+- *(c)* que le geste `pip` aboutisse, **ET EN COMBIEN DE TEMPS** — le plafond de **900 s** est
+  explicite dans le serveur et ⛔ **n'a jamais ete confronte a une mesure** ;
+- *(d)* que le verdict de **`pip` indisponible** sorte (⛔ ni succes annonce, ⛔ ni trace nue) ;
+- *(e)* **LA COURSE AU LOGON** : tache LHM `AtLogOn` **elevee**, tache agent `AtLogOn` **non
+  elevee**, meme evenement. Parade : **3 reprises a 1 minute**, borne **~3 min**, et ⛔ personne
+  ne l'a observee sur une **vraie ouverture de session**. ⚠️ RISQUE CONNU, ⛔ pas un fait mesure.
+  ⇒ C'est le seul point que la tache **qui vient d'etre posee** rend enfin observable : il
+    suffit d'un redemarrage, puis de rejouer ces trois requetes **sans rien lancer a la main**.

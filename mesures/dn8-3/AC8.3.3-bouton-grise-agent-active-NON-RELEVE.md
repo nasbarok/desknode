@@ -45,3 +45,56 @@ tâche planifiée. Restent donc, **à l'œil et à la requête** :
 Au ledger, section `## Deferred from: dn8-3`, entrée *« `AC8.3.3` — LE BOUTON
 GRISÉ, L'AGENT ACTIVÉ »*, disposition `BLOQUEE`, porteur
 `bloquee par : une seance owner sur la tour Windows, APRES redeploiement`.
+
+---
+
+## ✅ AMENDE LE 2026-09-12 — **UN DES CINQ POINTS EST RELEVE**, ⛔ le statut reste NON RELEVE
+
+⛔ **AUCUNE LIGNE CI-DESSUS N'EST EFFACEE (`NFR3`).** Le titre reste exact : l'AC ⛔ n'est
+**pas** fermee.
+
+### Ce qui EST releve : *(b)* la tache posee **et** l'agent constate **par requete**
+
+L'owner a clique **« Activer l'agent »** sur la page servie — verbatim : *« activé l'agent
+nickel ca met bien les info sur la dalle en 2-3 sec »*.
+
+⚠️ **ET CETTE PHRASE, SEULE, NE FERMAIT RIEN.** La dalle qui se remplit prouve que l'agent
+**publie de bout en bout** ; elle ⛔ ne dit **rien** du `RunLevel`, ⛔ rien de l'existence de la
+tache. L'AC exige *« attendu, et ⛔ **pas deduit du message** »*. Les trois requetes ont donc
+ete jouees :
+
+    tache     : PRESENTE · State = Ready · RunLevel = Limited   <= ATTENDU
+    action    : ...\dn_agent_tour.ps1 tache -Serie COM3 -Duree 0   (copie REDEPLOYEE)
+    agents    : 1 vivant, PID 24956   (requete OK : True)
+    COM3      : TENU
+
+✅ La tache **EXISTE** ⇒ c'est le verbe **de la page** (qui COMPOSE permanence + demarrage),
+⛔ pas `dn-agent.bat start`.
+🔴 `RunLevel = Limited` est **le** point : c'est lui qui tient « rien de `dn7` n'exige de
+droits administrateur ».
+⚠️ Le `(requete OK : True)` n'est pas decoratif : cette marche a deja publie un
+« agents vivants : 0 » rendu par une commande **EN ERREUR**.
+
+### ⛔ Ce qui reste — quatre points sur cinq
+
+- *(a)* le bouton **REELLEMENT GRISE**. Il faut **retirer une dependance** (`pip uninstall
+  psutil`) pour le voir se griser **avec sa raison sous le bouton** — et verifier que le
+  bouton de **flash RESTE utilisable** : c'est la ligne de partage, et elle ⛔ n'est pas
+  intuitive.
+- *(c)* le geste `pip` **et son temps**. Le plafond de **900 s** est explicite dans le serveur
+  et ⛔ **n'a jamais ete confronte a une mesure**. C'est le seul chiffre neuf que cette AC
+  peut produire.
+- *(d)* le verdict de **`pip` indisponible** : il doit DIRE que le geste n'a pas eu lieu et
+  qu'il redevient un geste a recopier — ⛔ ni succes annonce, ⛔ ni trace nue.
+- *(e)* **LA COURSE AU LOGON** — le plus interessant, et il vient de devenir observable.
+  La tache de LHM est `AtLogOn` **elevee**, celle de l'agent `AtLogOn` **non elevee** : les
+  deux tirent sur le **meme** evenement. Parade : **3 reprises a 1 minute**, borne **~3 min**,
+  au-dela l'agent est **absent toute la session, en silence**.
+  ⇒ **LE GESTE** : redemarrer la tour, **ne rien lancer a la main**, puis rejouer les trois
+    requetes ci-dessus. Si l'agent est la, la parade tient ; s'il manque, la borne est
+    atteinte — et c'est un **fait mesure** au lieu d'un risque connu.
+
+⚠️ **CONSTAT AU PASSAGE, ⛔ PAS UN DEFAUT** : la tache posee ne porte **ni `-Temoin` ni
+`-Lhm`**. L'agent qu'elle lance ⛔ n'aura donc PAS l'instrument de cout, et la
+re-verification « gratuite au prochain logon » ⛔ n'aura pas lieu. C'est le comportement du
+verbe de la page, ⛔ pas une regression de cette seance.
