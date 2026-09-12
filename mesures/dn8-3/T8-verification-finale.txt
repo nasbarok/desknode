@@ -1,0 +1,78 @@
+=== dn8-3 / T8 — VERIFICATION FINALE (apres les 19 correctifs de revue) ===
+date : 2026-09-12T14:10:10+02:00
+HEAD desknode : 0fa214d6672685894485550a580ee7baa1e4ba6b
+EMPREINTE AVANT : 8c021a6d677f67ea
+
+──── 1. LA PASSE ENTIERE — le seul controle que T7 n'avait PAS joue ────
+BILAN : 45 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 47 gates (814s)
+  ROUGES et NON-JOUABLES :
+    [ROUGE      ] tools/verif_dossier_dn415.py           rc=1      8s
+    [NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+  la gate neuve :
+    [  temoin  ] tools/verif_lhm_ps_dn83.py             /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe est present ⇒ la gate est JOUEE
+    [VERTE      ] tools/verif_lhm_ps_dn83.py             rc=0      7s
+
+  [BORNES] T0 : 44 VERTE / 1 ROUGE / 1 NON-JOUABLE sur 46 (719s)
+           T6 : 45 VERTE / 1 ROUGE / 1 NON-JOUABLE sur 47 (783s)
+
+──── 2. LE LEDGER, LE MANIFESTE ET LE TRACKER ────
+BILAN : 36 OK, 0 KO
+     §9 DEJA d'accord : 377 ligne(s), rien a ecrire.
+BILAN : 28 OK, 0 KO
+TRACKER : yaml.safe_load OK, 7 cles de tete
+
+──── 3. LES OUTILS QUI NE SONT PAS DES GATES ────
+--- banc seul               : BANC : 39 OK, 0 KO
+--- couverture              : COUVERTURE dn8-2 — LE SCRIPT DE LA PAGE, MESURE PENDANT QU'IL S'EXECUTE
+COUVERTURE : 96/100 fonctions, 131/190 blocs — les deux seuils sont tenus.
+--- stub sur 8085 (refus)   : rc=1
+
+──── 4. LES INVARIANTS DE FORME ────
+  tools/dn_lhm_tour.ps1      ASCII pur
+  tools/dn_agent_tour.ps1    ASCII pur
+  dn-agent.bat               :  DOS batch file, ASCII text
+  accent circonflexe au .bat : 0
+
+──── 5. LE BUDGET — repris de T7, arbre INCHANGE depuis ────
+  verif_campagne_dn56.py : 8 OK / 0 KO · 572,87 s · 645 mutants / 21 cibles
+  plafond 600 s ⇒ marge 27,13 s   [T0 : 483,17 s · 634/20 · marge ~117 s]
+
+EMPREINTE APRES : d242f3cdefc2340e
+=== FIN T8 2026-09-12T14:23:53+02:00 ===
+
+──────────────────────────────────────────────────────────────────────────────
+🔴 ANNOTE APRES COUP — ⛔ RIEN CI-DESSUS N'EST EFFACE, ET **L'EMPREINTE DE CETTE
+   PASSE A BOUGE. LA CAUSE EST DE MOI.**
+──────────────────────────────────────────────────────────────────────────────
+AVANT `8c021a6d677f67ea` ⇒ APRES `d242f3cdefc2340e`.
+
+🔬 DIAGNOSTIC, ⛔ PAS PROCLAMATION. Balayage des `mtime` sur la fenetre exacte
+   (14:10:10 → 14:23:53), sur LES DEUX depots : **TROIS** fichiers seulement.
+     · mesures/dn8-3/T8-run-gates.txt          14:23:45  ⇐ sortie de CETTE passe
+     · mesures/dn8-3/T8-verification-finale.txt 14:23:53  ⇐ sortie de CETTE passe
+     · mesures/dn8-3/releve-comptes.md          14:12:08  ⇐ 🔴 **LE COUPABLE**
+
+🔴 CE QUE C'EST : j'ai lance cette passe a **14:10:10** alors que les travaux de
+   QUEUE de l'implementeur n'avaient pas fini de se poser — sa derniere ecriture
+   est tombee **deux minutes plus tard**. ⇒ **MA PASSE A CHEVAUCHE UNE MUTATION**,
+   c'est-a-dire exactement le defaut que cette marche passe son temps a
+   documenter. ⛔ Ce n'est pas l'implementeur qui a fauté : c'est moi qui n'ai
+   pas verifie la quiescence AVANT de mesurer.
+
+✅ CE QUE CA N'INVALIDE PAS, ET C'EST MESURE, ⛔ pas suppose :
+   · `grep -rln 'releve-comptes' tools/*.py` ⇒ **AUCUNE gate ne juge ce
+     fichier**. Il n'entre dans le verdict d'aucun controle de la passe ;
+   · les fichiers **SUIVIS** sont restes a **451 insertions / 13 deletions**
+     (desknode) et **161 / 1** (cockpit) — ⛔ aucun code, aucun outil, aucun
+     produit n'a bouge pendant la fenetre ;
+   · l'arbre est **QUIESCENT** depuis : empreinte `73d35e963df8c561`, identique
+     sur deux calculs a 2 s d'intervalle.
+   ⇒ LES VERDICTS DE LA SECTION 1 TIENNENT : `45 VERTE / 1 ROUGE / 1
+     NON-JOUABLE sur 47`, meme unique rouge preexistante, **0 KO de plus**.
+
+⚠️ CE QUI RESTE VRAI MALGRE TOUT : une empreinte qui bouge est un SIGNAL, et il
+   a fallu le **diagnostiquer** pour savoir s'il condamnait la mesure. Sans le
+   balayage des `mtime`, la seule reponse honnete aurait ete « cette passe ne
+   prouve rien ». ⇒ LA LECON EST LA PROCEDURE : verifier la QUIESCENCE avant de
+   lancer, ⛔ pas seulement l'empreinte apres.
+=== FIN DE L'ANNOTATION ===

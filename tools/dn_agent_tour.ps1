@@ -22,6 +22,13 @@
       dn-agent.bat permanence                pose la tache au logon
       dn-agent.bat retirer                   retire la tache
 
+  LE PORT DE LHM (dn8-3)
+      dn-agent.bat run COM3 0 "" 127.0.0.1:8086
+      .\dn_agent_tour.ps1 prevol -Lhm 127.0.0.1:8086
+      => l'adresse traverse dn-agent.bat -> ce script -> DN_ARGS -> l'agent
+         (--lhm HOTE:PORT). Sans -Lhm, elle reste LUE dans dn_agent.py.
+      /!\ La 4e place (le temoin) doit etre OCCUPEE : `""` si pas de temoin.
+
 =============================================================================
   L'INSTRUMENT EST LE COMPTE **ET** L'ETAT DU PORT.        (dn4-17 / AC3.4)
 =============================================================================
@@ -55,7 +62,20 @@ param(
     [string]$Serie = 'COM3',
     [int]$Duree = 0,
     [switch]$Temoin,
-    [string]$Python = ''
+    [string]$Python = '',
+
+    # !!! dn8-3 - LE PORT DE LHM EST UNE CONFIGURATION **SUPPORTEE**, ET
+    #     NI CE SCRIPT NI dn-agent.bat NE SAVAIENT LA PASSER A L'AGENT.
+    #     Le trou etait MESURE : `--lhm` existe dans agent/dn_agent.py
+    #     (l.3506, durci sur quatre refus) et comptait **ZERO**
+    #     occurrence dans les deux outils. Le produit l'ecrivait
+    #     lui-meme, dans le message du refus dur : " une configuration
+    #     SUPPORTEE que NI ce script NI dn-agent.bat ne savent encore
+    #     passer a l'agent ".
+    #     /!\ [string] NU, SANS [ValidateSet] : ce fichier n'en porte
+    #     qu'UN (celui du verbe), et une gate REFUSE le second - un
+    #     ensemble ambigu n'est pas un ensemble.
+    [string]$Lhm = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -93,6 +113,57 @@ function Dire   ([string]$m) { Write-Host "  $m" }
 function Titre  ([string]$m) { Write-Host ""; Write-Host "=== $m ===" }
 function Alerte ([string]$m) { Write-Host "  /!\ $m" -ForegroundColor Yellow }
 function Stop2  ([string]$m) { Write-Host "  /!\ $m" -ForegroundColor Red }
+
+# --------------------------------------------------------------------------
+# -Lhm : UNE VALEUR MALFORMEE EST **REFUSEE**, !!! JAMAIS REPLIEE EN SILENCE.
+# --------------------------------------------------------------------------
+# !!! LE REPLI SILENCIEUX EST LE DEFAUT QUE agent/dn_agent.py A DEJA PAYE
+#     QUATRE FOIS (revues des 2026-08-21 et 2026-08-24) : `--lhm "hote:"`,
+#     `--lhm "[::1]xyz:9000"`, un port non entier et un hote vide rendaient
+#     tous LE PORT PAR DEFAUT, en silence - l'operateur croyait avoir pose
+#     une adresse, et le diagnostic accusait ensuite LHM.
+#     => ICI AUSSI on REFUSE, et on dit la forme attendue.
+# !!! ON NE RECOPIE AUCUNE VALEUR PAR DEFAUT : quand -Lhm est absent,
+#     l'adresse reste celle que le bloc LHM **LIT DANS L'AGENT**. Figer un
+#     defaut ici ferait DEUX sources de verite, et la seconde pourrirait en
+#     silence - c'est le patron ecrit dans tools\dn_lhm_tour.ps1.
+# !!! L'IPv6 NU EST REFUSE, COMME DANS L'AGENT : `::1` se decouperait en
+#     hote `:` et port `1`, une adresse acceptee EN SILENCE sous une autre.
+$LhmHoteForce = $null
+$LhmPortForce = $null
+# !!! $LhmSonde : la sonde a-t-elle REELLEMENT vise cette adresse ? Sans lui,
+#     l'outil passerait --lhm a l'agent APRES avoir saute la sonde.
+$LhmSonde = $false
+if ($Lhm) {
+    # !!! DEUX FORMES, COMME agent/dn_agent.py : [HOTE]:PORT (RFC 3986, la
+    #     seule forme NON AMBIGUE pour IPv6) et HOTE:PORT. Le wrapper ne doit
+    #     pas etre PLUS ETROIT que la grammaire qu'il alimente : l'agent a une
+    #     branche dediee aux crochets, et la refuser ici rendait injouable une
+    #     adresse que l'agent ACCEPTE.
+    # !!! L'IPv6 NU RESTE REFUSE : `::1` se decouperait en hote `:` port `1`.
+    $m = [regex]::Match($Lhm, '^(?:\[([^\]\s]+)\]|([^:\s\[\]]+)):([0-9]+)$')
+    if (-not $m.Success) {
+        Stop2 ("-Lhm invalide : '" + $Lhm + "'. Attendu : HOTE:PORT (ex. 127.0.0.1:8086).")
+        Stop2 "  !!! Une adresse malformee n'est PAS repliee sur le defaut : ce"
+        Stop2 "      repli silencieux ferait sonder une AUTRE adresse que celle"
+        Stop2 "      demandee, et le diagnostic accuserait LHM. Rien n'est lance."
+        Stop2 "  (!) IPv6 nu refuse : ':' sans port et hote vide le sont aussi."
+        exit 3
+    }
+    $portTxt = $m.Groups[3].Value
+    # !!! BORNER **AVANT** DE CASTER. MESURE : `-Lhm 127.0.0.1:99999999999`
+    #     faisait lever [int] par .NET (Impossible de convertir la valeur)
+    #     PUIS imprimait " port  hors de 1..65535 " avec un port VIDE : le
+    #     diagnostic ne nommait plus la valeur fautive. On teste la LONGUEUR
+    #     d'abord (-or court-circuite), donc aucun cast ne deborde.
+    if ($portTxt.Length -gt 5 -or [int64]$portTxt -lt 1 -or [int64]$portTxt -gt 65535) {
+        Stop2 ("-Lhm : port " + $portTxt + " hors de 1..65535.")
+        exit 3
+    }
+    $LhmHoteForce = $(if ($m.Groups[1].Success) { $m.Groups[1].Value }
+                      else { $m.Groups[2].Value })
+    $LhmPortForce = [int]$portTxt
+}
 
 # --------------------------------------------------------------------------
 # Python : celui de la TOUR, jamais un stub, jamais le relais du Store.
@@ -325,6 +396,18 @@ switch ($Action) {
         Alerte "Adresse de LHM introuvable dans dn_agent.py : sonde IMPOSSIBLE."
         Alerte "  => ce n'est PAS ' LHM absent ', et cela ne bloque rien ici."
     } else {
+        # !!! dn8-3 - -Lhm SURCHARGE CE QUI VIENT D'ETRE **LU DANS L'AGENT**,
+        #     et il ne le remplace QUE s'il a ete donne. L'ordre compte : on
+        #     LIT d'abord (donc la lecture reste la source), on surcharge
+        #     ensuite. C'est ce qui garde " une seule source de verite "
+        #     quand personne ne passe -Lhm, c'est-a-dire dans le regime livre.
+        if ($null -ne $LhmPortForce) {
+            Dire ("-Lhm : la sonde vise " + $LhmHoteForce + ":" + $LhmPortForce +
+                  " (l'agent recevra --lhm " + $Lhm + ")")
+            $lhmHote = $LhmHoteForce
+            $lhmPort = $LhmPortForce
+            $LhmSonde = $true
+        }
         $lhmUrl = "http://" + $lhmHote + ":" + $lhmPort + $lhmChemin
         $lhmVu = $false
         # !!! UN 200 NE SUFFIT PAS, ET C'EST MESURE : /metrics sur ce port
@@ -354,9 +437,12 @@ switch ($Action) {
             Stop2 "      QUAND MEME LE BON, et sa parade est ailleurs : cette"
             Stop2 "      sonde vise LHM_PORT de agent/dn_agent.py, et rien"
             Stop2 "      d'autre. Un port different est une configuration"
-            Stop2 "      SUPPORTEE (dn_lhm_tour.ps1 -Port <n>) que NI ce"
-            Stop2 "      script NI dn-agent.bat ne savent encore passer a"
-            Stop2 "      l'agent. => soit aligner LHM_PORT sur le port"
+            Stop2 "      SUPPORTEE (dn_lhm_tour.ps1 -Port <n>), ET DEPUIS"
+            Stop2 "      dn8-3 LES DEUX OUTILS SAVENT LA PASSER :"
+            Stop2 "        dn-agent.bat run COM3 0 \"\" 127.0.0.1:<port>"
+            Stop2 "        .\\dn_agent_tour.ps1 prevol -Lhm 127.0.0.1:<port>"
+            Stop2 "      (la 4e place, le temoin, doit etre OCCUPEE.)"
+            Stop2 "      => soit -Lhm, soit aligner LHM_PORT sur le port"
             Stop2 "      REELLEMENT ecoute, soit rejouer dn_lhm_tour.ps1"
             Stop2 "      SANS -Port pour revenir au defaut."
             Stop2 "  L'AGENT N'EST PAS LANCE : la dalle sans ces valeurs n'est"
@@ -420,6 +506,22 @@ switch ($Action) {
     #     un `stop` interrompu en laisserait un derriere lui.
     if (Test-Path $DRAPEAU) { Remove-Item -Force $DRAPEAU }
     $argl = @('--serie', $Serie, '--stop-si', $DRAPEAU)
+    # !!! ELEMENT PARENTHESE : en PowerShell LA VIRGULE LIE PLUS FORT QUE
+    #     `+` (le motif mesure le 2026-08-26, vingt lignes plus bas).
+    # !!! ON NE PASSE QUE CE QU'ON A SONDE. Si l'adresse de LHM n'a pas pu
+    #     etre lue dans dn_agent.py, la sonde est SAUTEE (simple Alerte) :
+    #     passer quand meme --lhm annoncerait un prerequis VERIFIE qui ne
+    #     l'est pas. Les deux moities sont donc COHERENTES, ou on refuse.
+    if ($Lhm) {
+        if (-not $LhmSonde) {
+            Stop2 "-Lhm a ete demande, mais l'adresse de LHM n'a PAS pu etre"
+            Stop2 "  lue dans dn_agent.py : la sonde n'a donc PAS eu lieu."
+            Stop2 "  Passer --lhm sans avoir sonde annoncerait un prerequis"
+            Stop2 "  VERIFIE qui ne l'est pas. Rien n'est lance."
+            exit 3
+        }
+        $argl += @('--lhm', $Lhm)
+    }
     if ($Temoin)      { $argl += '--temoin' }
     if ($Duree -gt 0) { $argl += @('--duree', "$Duree") }
     $regime = $(if ($env:DN_REGIME) { $env:DN_REGIME } else { 'inconnu' })
@@ -471,6 +573,9 @@ switch ($Action) {
 'lancer' {
     $ps1  = $MyInvocation.MyCommand.Path
     $tem  = $(if ($Temoin) { '-Temoin' } else { '' })
+    # !!! TRANSMIS, sinon le pre-vol FILS sonderait l'adresse de l'agent
+    #     pendant que l'agent, lui, recevrait --lhm : deux adresses.
+    $lhmArg = $(if ($Lhm) { @('-Lhm', $Lhm) } else { @() })
     # =====================================================================
     # !!! REVUE DU 2026-08-26 - LA GARDE ANTI-DOUBLON EST UN SCAN **TOCTOU**.
     #     `prevol` tourne dans un powershell SEPARE ; entre son
@@ -504,7 +609,7 @@ switch ($Action) {
     }
     try {
         $code = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ps1 prevol `
-                    -Serie $Serie -Duree $Duree $tem
+                    -Serie $Serie -Duree $Duree @lhmArg $tem
         $code | ForEach-Object { Write-Host $_ }
         if ($LASTEXITCODE -eq 4) { exit 0 }   # deja lance : AUCUN doublon, et ce
                                               # n'est pas une erreur.
@@ -559,8 +664,12 @@ switch ($Action) {
 # -- La chaine de PID reste lisible - elle gagne juste un maillon :
 #     engine -> powershell.exe -> cmd.exe (le .bat) -> python.exe
 'tache' {
-    $tem = $(if ($Temoin) { '-Temoin' } else { '' })
-    & $env:ComSpec /c ('"' + $BAT + '" run ' + $Serie + ' ' + $Duree + ' ' + $tem)
+    # !!! LA PLACE DU TEMOIN EST **TOUJOURS OCCUPEE**, ET C'EST OBLIGATOIRE
+    #     DEPUIS QU'UN 5e ARGUMENT EXISTE : `run COM3 0  8086` ferait lire
+    #     8086 en %4 (le temoin) et RIEN en %5. On pose `""`, que le .bat
+    #     deshabille par `%~4`.
+    $tem = $(if ($Temoin) { '-Temoin' } else { '""' })
+    & $env:ComSpec /c ('"' + $BAT + '" run ' + $Serie + ' ' + $Duree + ' ' + $tem + ' ' + $Lhm)
     exit $LASTEXITCODE
 }
 
@@ -747,8 +856,13 @@ switch ($Action) {
     #     Bonus : tout le quoting delicat vit dans le .ps1, l'action ne porte
     #     qu'UN chemin entre guillemets.
     $ps1 = Join-Path $RACINE 'dn_agent_tour.ps1'
+    # !!! SANS CA, UNE TOUR DONT LHM ECOUTE AILLEURS REDEVIENDRAIT MUETTE A
+    #     CHAQUE LOGON : la tache rejouerait le pre-vol sur l'adresse LUE
+    #     dans l'agent, et le refus dur (exit 12) tomberait sur une machine
+    #     SAINE. C'est le cas que le message du refus NOMME depuis dn7-5.
+    $lhmCible = $(if ($Lhm) { ' -Lhm ' + $Lhm } else { '' })
     $cible = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
-             $ps1 + '" tache -Serie ' + $Serie + ' -Duree ' + $Duree + ' ' + $tem
+             $ps1 + '" tache -Serie ' + $Serie + ' -Duree ' + $Duree + ' ' + $tem + $lhmCible
     # !!! PAS `$action` : ce script a un PARAMETRE `$Action` avec un
     #     ValidateSet, et les variables PowerShell sont INSENSIBLES A LA
     #     CASSE. `$action = New-ScheduledTaskAction ...` declenchait donc le
@@ -830,6 +944,13 @@ switch ($Action) {
         Stop2 "-Temoin a ete demande mais la tache posee ne le porte PAS."
         exit 9
     }
+    # !!! ON COMPARE, on ne se contente pas d'IMPRIMER - meme regle que
+    #     -Serie et -Temoin ci-dessus. Une tache posee sur une AUTRE adresse
+    #     que celle demandee echouerait a CHAQUE logon, en silence.
+    if ($Lhm -and ($argsPoses -notmatch ('-Lhm\s+' + [regex]::Escape($Lhm)))) {
+        Stop2 ("-Lhm " + $Lhm + " a ete demande mais la tache posee ne le porte PAS.")
+        exit 9
+    }
     if ("$($t.Principal.RunLevel)" -ne 'Limited') {
         Stop2 "RunLevel n'est PAS Limited : c'est un DEFAUT ici (voir le bloc AC5.2 ci-dessus)."
         exit 9
@@ -874,10 +995,13 @@ switch ($Action) {
     #     posee sur un AUTRE Python que celui qu'il a nomme - et il n'aurait
     #     aucun moyen de le savoir.
     $py = $(if ($Python) { @('-Python', $Python) } else { @() })
+    # !!! MEME MOTIF QUE -Python : non transmis, il serait SILENCIEUSEMENT
+    #     PERDU, et la tache posee viserait une AUTRE adresse que demandee.
+    $lhmArg = $(if ($Lhm) { @('-Lhm', $Lhm) } else { @() })
 
     Titre 'POSER LA PERMANENCE'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $moiPs1 permanence `
-        -Serie $Serie -Duree $Duree @py $tem | ForEach-Object { Write-Host $_ }
+        -Serie $Serie -Duree $Duree @py @lhmArg $tem | ForEach-Object { Write-Host $_ }
     # !!! `$null` N'EST PAS `0`, ET `exit $null` REND **0**.
     #     Si powershell.exe n'a pas pu etre lance du tout, $LASTEXITCODE reste
     #     $null : le test `-ne 0` est VRAI, on tombe dans la branche d'echec,
@@ -898,7 +1022,7 @@ switch ($Action) {
 
     Titre 'DEMARRER MAINTENANT'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $moiPs1 lancer `
-        -Serie $Serie -Duree $Duree @py $tem | ForEach-Object { Write-Host $_ }
+        -Serie $Serie -Duree $Duree @py @lhmArg $tem | ForEach-Object { Write-Host $_ }
     # !!! MEME GARDE : $null vaudrait 0, donc " demarre " sur rien.
     $codeLancer = $(if ($null -eq $LASTEXITCODE) { 3 } else { $LASTEXITCODE })
 

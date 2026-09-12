@@ -1,0 +1,149 @@
+═══ dn8-3 / T4 — LE REFUS EST **PROVOQUE**, ET CE QUI RESTE EST **NOMME** ═══
+date : 2026-09-12        HEAD depot : 0fa214d
+
+──────────────────────────────────────────────────────────────────────────────
+1. LE REFUS EST **PROVOQUE**, ⛔ PLUS SEULEMENT LU        (`AC8.3.2`)
+──────────────────────────────────────────────────────────────────────────────
+Jusqu'au 2026-09-12, `AC7.5.3` etait gardee **STRUCTURELLEMENT** :
+`verif_prerequis_dn75.py` `(c11)`/`(c12)` mesurent que le mecanisme est
+BRANCHE (code unique, pose avant toute destruction d'etat, et c'est la reponse
+du chemin de mesures qui tranche). ⛔ AUCUNE gate ne le JOUAIT.
+
+🔬 IL EST DESORMAIS JOUE — `tools/verif_lhm_ps_dn83.py`, dans un **vrai**
+   `powershell.exe`, contre `tools/stub_lhm_dn48.py` :
+
+     sens REFUS   (stub `--mode vide` : 200, corps SANS une seule ligne `lhm_`)
+        ⇒ rc = 12
+        ⇒ sortie : « LibreHardwareMonitor est INJOIGNABLE sur
+                     http://127.0.0.1:8086/metrics »
+
+     sens PASSANT (stub `--mode normal` : la capture reelle)
+        ⇒ rc = 5      ⛔ PAS 12
+        ⇒ sortie : « LHM : http://127.0.0.1:8086/metrics repond 200. »
+
+🔴 LE DISCRIMINANT EST `12` vs ⛔ PAS `12`, ⛔ JAMAIS `12` vs `0`.
+   MESURE : au sens passant le pre-vol **CONTINUE** apres le bloc LHM et sort
+   sur l'etat du port serie — `5` ici. Un banc qui attendrait `0` rougirait sur
+   une machine **SAINE**, et un banc qui jugerait le `rc` GLOBAL resterait vert
+   des qu'un autre echec rendrait le meme code. ⇒ on ancre sur ce que la
+   commande **imprime EN PROPRE**.
+
+⚠️ LE MUTANT QUI GARDE CE CONSTAT, VU ROUGIR : `--mutant 1` remplace
+   `exit 12` par `exit 4` dans le produit stagge ⇒ `(c2)` ROUGIT.
+   ⛔ Ce n'est PAS une garde debranchee : la faute est REPLANTEE la ou elle
+   serait introduite un jour.
+
+──────────────────────────────────────────────────────────────────────────────
+2. 🔴 CE QUI N'AVAIT JAMAIS ETE ECRIT : **LE DEPLOIEMENT DE LA TOUR EST
+   PERIME, ET IL NE PORTE PAS LE REFUS**            (motif : DEPLOIEMENT PERIME)
+──────────────────────────────────────────────────────────────────────────────
+  $ cat /mnt/h/dev/projets/desknode/PROVENANCE.txt
+      HEAD    : e3064f0
+      depose  : 2026-08-28T19:35:10+02:00
+      par     : tools/deployer_tour.sh
+
+  $ grep -c "exit 12\|PREREQUIS DUR" /mnt/h/dev/projets/desknode/dn_agent_tour.ps1
+      0
+
+  $ git log --oneline e3064f0..0fa214d -- agent/ tools/     ⇒ 5 commits NON DEPOSES
+      0fa214d  dn8-2
+      8a2a8c7  dn8-1 (correctif CI)
+      1bf11a8  dn8-1
+      01ed2e7  dn7-6
+      a6cf9b1  dn7-5   ← **LE PREREQUIS DUR LUI-MEME**
+
+🔴 CE QUE CA COUTE : jouer `mesures/dn7-5/T2-b` sur la tour **TELLE QUELLE**
+   mesurerait un produit **d'il y a deux semaines**. Le refus ⛔ **n'y serait
+   pas**, et l'observateur conclurait « pas de refus » sur un produit qui
+   REFUSE — un ⛔ **FAUX NEGATIF que ⛔ RIEN ne signalerait**.
+   ⇒ LE GESTE, **AVANT** TOUTE SEANCE :
+         ~/projects/desknode/tools/deployer_tour.sh
+     puis RELIRE `PROVENANCE.txt` et verifier qu'il annonce le HEAD du jour.
+   ⛔ CE GESTE N'EST PAS FAIT ICI, ET C'EST DELIBERE : il ecrit sur `H:`, sous
+     un `cmd.exe`/`python.exe` qui peuvent tenir les fichiers, et le dossier
+     interdit de « rien redeployer sur la tour sans l'ecrire ».
+
+──────────────────────────────────────────────────────────────────────────────
+3. ⛔ CE QUI RESTE, ET QU'⛔ AUCUNE GATE DE CE DEPOT NE PEUT MESURER
+──────────────────────────────────────────────────────────────────────────────
+  · LA TOUR REELLE. Le banc ⛔ n'installe PAS LibreHardwareMonitor, ⛔ ne pose
+    AUCUNE tache planifiee, ⛔ n'ouvre AUCUN navigateur. Il gagne un **hote
+    PowerShell** et un **stub**, ⛔ pas une machine provisionnee.
+  · `dn-agent.bat etat` apres le refus ⇒ **AUCUN agent vivant**. 🔴 C'est CETTE
+    ligne qui ferme l'AC cote tour, ⛔ pas le message : un message de refus ⛔ ne
+    prouve PAS qu'aucun process n'a ete cree (« un process qu'on croit mort
+    peut tenir COM3 », en tete de `dn_agent_tour.ps1`).
+  · LA TACHE PLANIFIEE, et **LA COURSE AU LOGON**. La tache de LHM est
+    `AtLogOn` **ELEVEE** ; celle de l'agent `AtLogOn` **NON elevee** ; les deux
+    tirent sur le MEME evenement. La parade est **3 reprises a 1 minute**, sa
+    borne est **~3 min**, et ⛔ **personne ne l'a observee** sur une vraie
+    ouverture de session. ⚠️ C'est un **RISQUE CONNU**, ⛔ pas un fait mesure.
+
+⚠️ UN FAIT DE MACHINE RELEVE AU PASSAGE, ET IL COMPTE POUR LA SEANCE :
+   · le **VRAI LHM ECOUTE** sur cette tour (mesure : le mutant 6, qui ⛔ ne pose
+     PAS le port du banc, voit le sens REFUS **cesser de refuser** — donc une
+     reponse valide arrive sur le port par defaut) ;
+   · **COM3 EXISTE** cote Windows et il est **TENU** — et l'identite du tenant
+     a ete relevee : c'est **L'AGENT REEL DE L'OWNER**, `PID 28460`,
+     `H:\dev\projets\desknode\dn_agent.py --serie COM3`. ⛔ IL N'A PAS ETE
+     TOUCHE.
+     ⚠️ LE PRE-VOL STAGGE LE CLASSE « agent d'un AUTRE deploiement » (etranger),
+        ⛔ pas « reconnu » — d'ou son message « TENU par un process, et AUCUN
+        agent n'a ete reconnu » et son `exit 6`. C'est **JUSTE** : le banc
+        tourne depuis un staging, ⛔ pas depuis `H:`.
+     🔴 **ET CE FAIT REJOINT LE PRECEDENT** : l'agent qui tourne EN CE MOMENT
+        sur la tour vient du deploiement **PERIME** (`e3064f0`) — donc d'un
+        produit qui ⛔ **ne porte PAS** le prerequis dur. ⇒ un `T2-b` joue
+        maintenant s'arreterait AVANT le lancement, pour une raison ⛔ SANS
+        RAPPORT avec LHM.
+
+   🔴 ⚠️ **ET UNE MESURE DE CETTE SERIE ETAIT FAUSSE — ECRITE PLUTOT QUE LISSEE.**
+      Un premier tir avait rendu « agents vivants : 0 ». C'etait un **FAUX
+      ZERO** : la commande PowerShell avait echoue (`Demande non valide`,
+      guillemets mal echappes) et le `Measure-Object` d'une collection VIDE
+      imprimait `0` **par-dessus l'erreur**. L'agent de l'owner tournait
+      depuis le debut.
+      ⇒ C'EST ENCORE LA MEME REGLE (le compte : `FAUX-VERDICTS-LE-COMPTE.md`) :
+        un verdict d'absence est une propriete de **LA METHODE**, ⛔ pas du
+        monde. `which("powershell")`, le `403` d'un `User-Agent`, et ce
+        `0`-ci. ⇒ un compte qui vaut `0` se relit **A COTE DU CODE DE
+        RETOUR**, ⛔ jamais seul.
+
+⛔ STATUT : `AC8.3.2` est FERMEE pour sa moitie **POLARITE** (provoquee, relevee
+   ci-dessus). Sa moitie **TOUR REELLE** est portee au ledger, avec son porteur.
+
+──────────────────────────────────────────────────────────────────────────────
+4. 🔴 UN FAUX VERDICT DE PLUS, TROUVE EN FAISANT LE MENAGE — ET C'EST **LA
+   MEME REGLE** (le compte : `FAUX-VERDICTS-LE-COMPTE.md`)
+──────────────────────────────────────────────────────────────────────────────
+Pendant quatre tentatives, le controle de menage a annonce
+« ⛔ stub WSL RESIDUEL », et `pkill -f stub_lhm_dn48` mourait sans rien dire.
+
+🔬 MESURE, en lisant `/proc` au lieu d'un motif :
+     process qui MENTIONNENT la chaine : 1
+       · VRAIS stubs (`python3 …/stub_lhm_dn48.py`) : **AUCUN**
+       · shells qui la CITENT                       : **1**  ← LE MIEN
+
+⇒ **IL N'Y A JAMAIS EU DE STUB RESIDUEL.** `pgrep -f` / `pkill -f` matchent la
+  LIGNE DE COMMANDE ENTIERE : ma propre commande CONTENAIT la chaine, donc
+  `pgrep` se comptait lui-meme et `pkill -9` **TUAIT LE SHELL QUI L'APPELAIT**.
+  C'est pour ca que chaque tentative de menage sortait en `1` sans finir.
+⚠️ ET LE TRUC DU CROCHET (`[s]tub_…`) ⛔ N'Y CHANGE RIEN ICI : la meme ligne de
+   commande portait AUSSI la chaine NUE (`python3 tools/stub_lhm_dn48.py`), que
+   le motif entre crochets matche parfaitement.
+⇒ LE DISCRIMINANT QUI MARCHE : un VRAI stub est un process dont `argv[0]` est
+  un `python*` ET dont un argument SE TERMINE par `stub_lhm_dn48.py`.
+
+⇒ LE COMPTE DE CES FAUX VERDICTS EST TENU EN **UN SEUL ENDROIT** :
+   `mesures/dn8-3/FAUX-VERDICTS-LE-COMPTE.md`. ⛔ Aucun ordinal n'est ecrit ici :
+   cinq relevés en portaient un, et ils se CONTREDISAIENT.
+
+   🔴 ET LES DEUX DERNIERS SONT LE **MEME** DEFAUT SUR LES DEUX SYSTEMES : une
+     sonde qui cherche un MOTIF dans une LIGNE DE COMMANDE se trouve
+     elle-meme, sous WSL (`pgrep -f`) comme sous Windows (`Win32_Process`).
+     ⚠️ C'est exactement le defaut que ce depot a deja nomme ailleurs — « un
+     motif qui CLASSE une reponse s'ancre sur ce que la commande imprime EN
+     PROPRE » — et il s'est rejoue ici **sur l'outil de menage**, ⛔ pas sur
+     une gate.
+
+

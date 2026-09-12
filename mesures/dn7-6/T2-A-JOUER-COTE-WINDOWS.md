@@ -137,3 +137,52 @@ owner à l'œil ; et `dn7-4` a déjà tranché **sur cette page** que l'aplat es
 ⛔ De jouer quoi que ce soit **depuis WSL**. Le NAT rend `localhost` inatteignable, le
 navigateur refuse l'accès série **sans le dire**, et un relevé pris là serait faux **sans que
 rien ne rougisse**.
+
+──────────────────────────────────────────────────────────────────────────────
+🔴 ANNOTE LE 2026-09-12 PAR `dn8-3` — ⛔ AUCUNE LIGNE CI-DESSUS N'EST EFFACEE,
+   ET CE PROTOCOLE N'A **TOUJOURS PAS** ETE JOUE.
+──────────────────────────────────────────────────────────────────────────────
+⛔ CE QUI N'A PAS CHANGE : l'instrument reste **L'ŒIL DE L'OWNER**, sur la page
+   SERVIE, cote Windows. ⛔ Aucune gate de ce depot ne rend ce verdict-la, et
+   une gate qui pretendrait le faire serait pire qu'aucune gate.
+
+🔴 CE QUI A CHANGE, ET QUI RACCOURCIT LA SEANCE — TROIS FAITS MESURES :
+
+  (1) ⚠️ **LA PREMISSE DE NAT EST REFUTEE** (M6, 2026-09-12). *« le WSL de la
+      tour est en NAT ⇒ localhost ne traverse pas »* est **FAUX comme enonce
+      de JOIGNABILITE** : un serveur lie DANS WSL repond **200** a un
+      `Invoke-WebRequest` venu de Windows, sur `127.0.0.1` ET sur `0.0.0.0`.
+      ⛔ **ET CA NE FERME RIEN ICI** : ce qui est mesure est un CLIENT HTTP,
+      ⛔ pas un NAVIGATEUR, et ⛔ surtout pas un ŒIL. Le contexte securise, Web
+      Serial et la LISIBILITE restent **entiers et non mesures**.
+
+  (2) 🔴 **LE DEPLOIEMENT DE LA TOUR EST PERIME — A CORRIGER *AVANT* LA SEANCE.**
+      `/mnt/h/dev/projets/desknode/PROVENANCE.txt` ⇒ `HEAD = e3064f0`, depose le
+      **2026-08-28** ; le depot est a `0fa214d`. `exit 12` et `PREREQUIS DUR`
+      comptent **ZERO occurrence** dans le `dn_agent_tour.ps1` DEPLOYE.
+      ⇒ jouer ce protocole sur la tour TELLE QUELLE mesurerait un produit
+        **d'il y a deux semaines**, et le refus ⛔ **n'y serait pas** : un
+        ⛔ **FAUX NEGATIF que ⛔ RIEN ne signalerait**.
+      ⇒ **LE GESTE, EN PREMIER** :  ~/projects/desknode/tools/deployer_tour.sh
+         puis RELIRE `PROVENANCE.txt` et verifier qu'il annonce le HEAD du jour.
+
+  (3) ✅ **CE QUI EST DESORMAIS MECANISE, ET QU'IL EST INUTILE DE REJOUER A LA
+      MAIN** : la **POLARITE** de la sonde LHM est rejouee dans un **vrai
+      `powershell.exe`**, dans les DEUX sens, par
+      `tools/verif_lhm_ps_dn83.py` — mesure du 2026-09-12 : LHM qui repond
+      **sans une seule ligne `lhm_`** ⇒ **exit 12** ; LHM debout ⇒ ⛔ **pas 12**.
+      ⛔ CE QUE CA ⛔ NE REMPLACE PAS : la TOUR REELLE, sa TACHE PLANIFIEE et la
+      COURSE AU LOGON. Le banc ⛔ n'installe pas LHM, ⛔ ne pose aucune tache,
+      ⛔ n'ouvre aucun navigateur.
+
+⚠️ **CE QUI RESTE ENTIER DANS CE PROTOCOLE** — ⛔ rien n'en est retire :
+   `(a)` le bouton **reellement grise** sous les yeux de quelqu'un · `(b)`
+   *« Activer l'agent »* **constate vivant par requete** en `-RunLevel Limited`
+   · `(c)` le geste `pip` **et son temps** — le plafond de **900 s** est
+   explicite et ⛔ **n'a toujours jamais ete confronte a une mesure** · `(d)` le
+   verdict de `pip` indisponible · `6.` la question **a l'ŒIL**.
+
+🔴 **ET L'ORDRE COMPTE** : ce protocole se joue **APRES** le redeploiement
+   nomme en (2). Joue avant, sa section **4** (LibreHardwareMonitor arrete)
+   mesurerait un outil qui ⛔ **ne porte pas encore le refus** — elle
+   conclurait « pas de refus » sur un produit qui refuse.

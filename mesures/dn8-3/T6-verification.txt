@@ -1,0 +1,132 @@
+=== dn8-3 / T6 — VERIFICATION, arbre FIGE ===
+date : 2026-09-12T12:42:53+02:00
+HEAD desknode : 0fa214d6672685894485550a580ee7baa1e4ba6b
+EMPREINTE AVANT : 9b623ccc2fa31fb4
+
+──── 1. LA GATE NEUVE, CHEMIN NORMAL ────
+BILAN : 15 OK, 0 KO
+rc=0  duree 4.73 s
+
+──── 2. CHAQUE MUTANT : rc=1, UN BILAN, ET LE KO SUR SA CIBLE DECLAREE ────
+mutant  rc   cibles DECLAREES       controles VUS KO       verdict
+1       1    c2                     aucun                  ⛔ ECART
+2       1    c2                     aucun                  ⛔ ECART
+3       1    c3                     aucun                  ⛔ ECART
+4       1    c2,c3,c4               aucun                  ⛔ ECART
+5       1    c2                     aucun                  ⛔ ECART
+6       1    c2,c4                  aucun                  ⛔ ECART
+7       1    c5                     aucun                  ⛔ ECART
+8       1    c6                     aucun                  ⛔ ECART
+9       1    c1,c2,c3,c4            aucun                  ⛔ ECART
+
+──── 3. PREREQUIS ABSENT : rc=4 ET ⛔ AUCUN BILAN ────
+rc=4   lignes BILAN = 0  (attendu : rc=4, 0 bilan)
+⛔ PREREQUIS ABSENT : ⛔ AUCUN hote PowerShell joignable.
+   which('powershell.exe')⇒None · which('pwsh.exe')⇒None · which('powershell')⇒None · which('pwsh')⇒None
+
+──── 4. LES GATES VOISINES, AU COMPTE ────
+--- verif_banc_langue_dn73.py    BILAN : 81 OK, 0 KO
+--- verif_entree_dn82.py         BILAN : 45 OK, 0 KO
+--- verif_installeur_dn71.py     BILAN : 28 OK, 0 KO
+--- verif_page_dn722.py          BILAN : 56 OK, 0 KO
+--- verif_langue_dalle_dn73.py   BILAN : 61 OK, 0 KO
+--- verif_preconditions_dn76.py  BILAN : 52 OK, 0 KO
+--- verif_prerequis_dn75.py      BILAN : 47 OK, 0 KO
+--- verif_placement_dn74.py      BILAN : 42 OK, 0 KO
+--- verif_flash_dn72.py          BILAN : 30 OK, 0 KO
+--- verif_harnais_dn81.py        BILAN : 28 OK, 0 KO
+--- verif_ledger_dn416.py        BILAN : 36 OK, 0 KO
+--- verif_dossier_dn415.py       BILAN : 23 OK, 10 KO
+--- verif_campagne_dn440.py      BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien
+BILAN : 62 OK, 0 KO
+
+──── 5. LE BUDGET verif_campagne_dn56.py — PLAFOND 600 s ────
+  [OK ] des gates declarent une campagne de mutants                21 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_lhm_ps_dn83.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_temoin_filtre_dn447.py
+  [OK ] toute cible repond, et aucun mutant ne meurt               643 mutant(s) confronte(s) sur 21 cible(s)
+BILAN : 8 OK, 0 KO
+DUREE : 539.77 s
+-- le meme, SANS cockpit (le chemin CI) --
+BILAN : 8 OK, 0 KO
+DUREE : 474.48 s
+
+──── 6. LE LEDGER ET LE TRACKER ────
+
+     §9 DEJA d'accord : 376 ligne(s), rien a ecrire.
+TRACKER : yaml.safe_load OK, 7 cles de tete
+
+──── 7. LES INVARIANTS DE FORME ────
+dn_lhm_tour.ps1 : ASCII pur
+dn-agent.bat    :  DOS batch file, ASCII text
+dn_agent_tour.ps1 CRLF :  ASCII text
+
+──── 8. LA PASSE ENTIERE ────
+BILAN : 45 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 47 gates (783s)
+[ROUGE      ] tools/verif_dossier_dn415.py           rc=1      9s
+[NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+[  temoin  ] tools/verif_lhm_ps_dn83.py             /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_lhm_ps_dn83.py             rc=0      5s
+
+EMPREINTE APRES : 853ae3399daf017b
+=== FIN T6 2026-09-12T13:16:34+02:00 ===
+
+──────────────────────────────────────────────────────────────────────────────
+🔴 ANNOTE LE 2026-09-12, APRES COUP — ⛔ RIEN CI-DESSUS N'EST EFFACE (NFR3), ET
+   **TROIS CHOSES QUE CETTE PASSE A IMPRIMEES SONT FAUSSES. LES TROIS SONT DES
+   DEFAUTS DE MA METHODE DE MESURE, ⛔ PAS DU LIVRABLE.**
+──────────────────────────────────────────────────────────────────────────────
+
+(A) 🔴 LA SECTION 2 REND « ⛔ ECART » SUR LES **NEUF** MUTANTS. C'EST FAUX.
+    CAUSE : j'extrayais les KO avec `grep '^\[KO '` — ancre sur le DEBUT DE
+    LIGNE. Or `dn_gates.ctrl` imprime ses controles **INDENTES DE DEUX
+    ESPACES** (`  [KO ] (c2) ...`). ⇒ ⛔ aucune ligne ne matchait, et la colonne
+    « controles VUS KO » disait « aucun » pour tout le monde.
+    🔬 RE-MESURE, ANCRE SUR CE QUE LA COMMANDE IMPRIME EN PROPRE :
+
+      mutant  rc  bilans  cibles DECLAREES   controles VUS KO   verdict
+        1     1     1     c2                 c2                 OK
+        2     1     1     c2                 c2                 OK
+        3     1     1     c3                 c3                 OK
+        4     1     1     c2,c3,c4           c2,c3,c4           OK
+        5     1     1     c2                 c2                 OK
+        6     1     1     c2,c4              c2,c4              OK
+        7     1     1     c5                 c5                 OK
+        8     1     1     c6                 c6                 OK
+        9     1     1     c1,c2,c3,c4        c1,c2,c3,c4        OK
+
+    ⇒ **9 MUTANTS SUR 9 CONFORMES** : `rc=1`, **UN SEUL** `BILAN`, et le KO
+      **EXACTEMENT** sur la cible declaree. ⛔ Aucun ecart reel.
+
+(B) 🔴 « EMPREINTE AVANT 9b623ccc... ≠ APRES 853ae339... » EST UN ARTEFACT.
+    CAUSE : ma fonction `emp()` hashait `mesures/dn8-3/*.txt` — or **LA PASSE
+    ECRIT SES PROPRES SORTIES DANS CE DOSSIER**. Elle s'invalidait donc
+    elle-meme, par construction.
+    🔬 DIAGNOSTIC, ⛔ pas proclamation :
+      · empreinte recalculee **hors sorties de T6** : `0befa3a3b2814bce`,
+        IDENTIQUE sur deux calculs successifs ;
+      · les SEULS fichiers ecrits pendant la fenetre sont `T6-run-gates.txt`
+        (13:16:33) et `T6-verification.txt` (13:16:34) — **les siennes** ;
+      · les fichiers **SUIVIS** sont a `381 insertions, 10 deletions`,
+        c'est-a-dire **inchanges** depuis avant la passe.
+    ⇒ **L'ARBRE ⛔ N'A PAS BOUGE PENDANT LA MESURE.** L'instrument etait faux,
+      ⛔ pas le fait qu'il pretendait mesurer.
+
+(C) ⚠️ « process de mesure encore vivants : 1 » EST UN FAUX POSITIF.
+    C'est un **guetteur mort d'une AUTRE session**, PID 1887786, **age de plus
+    de 12 h**, dont la seule faute est de porter `verif_campagne_dn56` et
+    `run_gates.sh` **DANS SA PROPRE LIGNE DE COMMANDE**. ⛔ Aucune gate ne
+    tournait.
+
+🔴 CE QUI RESTE **VRAI ET INTACT** DANS CETTE PASSE : la gate neuve a
+   `15 OK / 0 KO` en 4,73 s · le prerequis absent rend `rc=4` avec **0 BILAN**
+   et nomme ses **quatre** noms · les **13** gates voisines sont au compte de
+   `T0`, `verif_dossier_dn415.py` compris (`23 OK / 10 KO`, ⛔ pas un de plus) ·
+   `dn56` rend `8 OK / 0 KO` en **539,77 s** (**474,48 s** sans cockpit) sous le
+   plafond de 600 · le tracker parse · `dn_lhm_tour.ps1` est ASCII pur · et la
+   passe entiere rend **45 VERTE / 1 ROUGE / 1 NON-JOUABLE sur 47**, avec la
+   MEME unique rouge preexistante.
+
+⇒ LE COMPTE DE CES FAUX VERDICTS EST TENU EN **UN SEUL ENDROIT** :
+   `mesures/dn8-3/FAUX-VERDICTS-LE-COMPTE.md`. ⛔ Aucun ordinal n'est ecrit ici :
+   cinq relevés en portaient un, et ils se CONTREDISAIENT.
+
+=== FIN DE L'ANNOTATION ===

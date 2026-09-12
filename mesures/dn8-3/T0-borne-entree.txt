@@ -1,0 +1,67 @@
+=== T0 — BORNE D'ENTREE, mesuree le 2026-09-12T11:13:50+02:00 ===
+HEAD desknode : 0fa214d6672685894485550a580ee7baa1e4ba6b  arbre : 1 fichier(s) modifie(s)
+HEAD cockpit  : fb543b27308a9678652a81b8615351a8451dd5f3
+EMPREINTE AVANT LA PASSE : a2d37bafe33074a5
+
+--- verif_banc_langue_dn73.py
+BILAN : 81 OK, 0 KO
+rc=0  duree 2.44 s
+--- verif_entree_dn82.py
+BILAN : 45 OK, 0 KO
+rc=0  duree 0.49 s
+--- verif_installeur_dn71.py
+BILAN : 28 OK, 0 KO
+rc=0  duree 0.30 s
+--- verif_page_dn722.py
+BILAN : 56 OK, 0 KO
+rc=0  duree 0.14 s
+--- verif_langue_dalle_dn73.py
+BILAN : 61 OK, 0 KO
+rc=0  duree 0.11 s
+--- verif_preconditions_dn76.py
+BILAN : 52 OK, 0 KO
+rc=0  duree 0.18 s
+--- verif_prerequis_dn75.py
+BILAN : 47 OK, 0 KO
+rc=0  duree 0.20 s
+--- verif_placement_dn74.py
+BILAN : 42 OK, 0 KO
+rc=0  duree 0.08 s
+--- verif_harnais_dn81.py --cockpit /home/nasbarok/projects/compagnon_project
+BILAN : 28 OK, 0 KO
+rc=0  duree 4.22 s
+--- verif_ledger_dn416.py --cockpit /home/nasbarok/projects/compagnon_project
+BILAN : 36 OK, 0 KO
+rc=0  duree 0.79 s
+--- verif_dossier_dn415.py --cockpit /home/nasbarok/projects/compagnon_project
+BILAN : 23 OK, 10 KO
+rc=1  duree 8.27 s
+--- verif_campagne_dn440.py --cockpit /home/nasbarok/projects/compagnon_project
+BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien
+BILAN : 62 OK, 0 KO
+rc=0  duree 136.30 s
+--- verif_campagne_dn56.py (LE PLAFOND : 600 s)
+usage: verif_campagne_dn56.py [-h] [--mutant MUTANT] [--liste-mutants]
+rc=2  duree 0.06 s
+
+=== LES OUTILS QUI NE SONT PAS DES GATES ===
+--- node tools/banc_langue_dalle_dn73.mjs
+rc=0
+BANC dn7-3 — LE SCRIPT DE LA PAGE, **EXECUTE** CONTRE UN PORT BIDON
+BANC : 39 OK, 0 KO
+--- node tools/banc_couverture_dn82.mjs
+rc=0
+   dans ce compte. Mesure : 21 ⇒ 5 fonctions mortes ET onze
+   inversions reelles restees VERTES, le meme jour.
+------------------------------------------------------------------------------
+COUVERTURE : 96/100 fonctions, 131/190 blocs — les deux seuils sont tenus.
+--- python3 tools/stub_lhm_dn48.py --port 8085 (le REFUS par construction)
+⛔ REFUS : 8085 est le port du VRAI LHM. Un stub qui ecoute a sa place ferait mesurer le stub en croyant mesurer la tour.
+rc=1
+--- tools/dn_lhm_tour.ps1 : ASCII PUR ?
+ASCII pur
+--- file tools/dn-agent.bat
+tools/dn-agent.bat: DOS batch file, ASCII text
+
+EMPREINTE APRES LA PASSE : a2d37bafe33074a5
+=== FIN T0 2026-09-12T11:16:26+02:00 ===

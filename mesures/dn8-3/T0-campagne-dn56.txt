@@ -1,0 +1,8 @@
+=== T0 (suite) — verif_campagne_dn56.py SANS --cockpit, 2026-09-12T11:30:04+02:00 ===
+⚠️ LE TIR T0 D'ORIGINE AVAIT PASSE --cockpit : la gate ⛔ NE L'ACCEPTE PAS
+   (usage, rc=2, 0,06 s). ⛔ Le chiffre n'est PAS efface : il est ci-dessus
+   dans T0-borne-entree.txt, et il mesurait une ERREUR D'APPEL, ⛔ pas le budget.
+  [OK ] des gates declarent une campagne de mutants                20 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_temoin_filtre_dn447.py
+  [OK ] toute cible repond, et aucun mutant ne meurt               634 mutant(s) confronte(s) sur 20 cible(s)
+BILAN : 8 OK, 0 KO
+DUREE : 483.17 s

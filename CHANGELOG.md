@@ -10,6 +10,51 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Added
 
+- 🆕 **The LHM probe's polarity is now replayed inside a real PowerShell, and the LHM port
+  travels end to end** (`dn8-3`, 2026-09-12). 🔬 **The blocker was refuted by measurement, ⛔ not
+  argued away.** Five ledger entries carried the same cause, word for word — *"there is ⛔ no
+  PowerShell host, which the tower's WSL does not have"* — and it is **false**: `powershell.exe`
+  **5.1.19041.6456** answers `rc=0` from that very WSL, execution policy is `Undefined`
+  everywhere, and an **unsigned** `.ps1` runs there with its exit code honoured. 🔴 **The exact
+  mechanism of the false negative**: `shutil.which("powershell")` returns **`None`** while
+  `shutil.which("powershell.exe")` returns **the path**. **It was a NAME, ⛔ not an absence** —
+  the same rule this repository has already paid for twice (*"NOT REACHED" is a property of the
+  **method** of retrieval, ⛔ not of the address*). ⇒ the fix is **mechanised, ⛔ not a
+  reminder**: the new check and its witness in `tools/run_gates.sh` try **four** names, and the
+  trap is written **inside the file**.
+  What changed. (1) A new check, `tools/verif_lhm_ps_dn83.py`, stages a throwaway directory
+  **visible to Windows**, puts the **real** `tools/dn_agent_tour.ps1` in it next to a bench
+  `dn_agent.py` whose **only** difference is the port, starts the repository's own
+  `tools/stub_lhm_dn48.py`, and runs the pre-flight **in a real `powershell.exe`, both ways**:
+  a monitor answering **200 with not a single `lhm_` line** ⇒ the pre-flight **refuses**; the
+  real capture ⇒ it does ⛔ **not**. ⚠️ **The discriminant is *refuses* vs ⛔ *does not refuse*,
+  ⛔ never *refuses* vs *succeeds*** — measured: past the LHM block the pre-flight **carries on**
+  and exits on the serial port, so a bench expecting success would go red on a **healthy**
+  machine. Each control is seen red under a mutant that **replants** the fault, the stub and the
+  staging are closed in a `finally`, and a missing PowerShell host yields a **declared** `4`,
+  ⛔ never a green. (2) The LHM port is now **passable end to end**: `-Lhm HOTE:PORT` on
+  `tools/dn-agent.bat` (5th argument) and on `tools/dn_agent_tour.ps1`, reaching the agent as
+  `--lhm`, carried by the logon task and **verified after it is registered**. Both tools
+  previously had **zero** occurrences of the flag, while `tools/dn_lhm_tour.ps1` called a
+  different port a *supported configuration* — so on a **healthy** tower whose monitor listened
+  elsewhere, the pre-flight refused. A malformed value is **refused explicitly**, ⛔ never folded
+  back onto the default.
+  🔴 **What is still ⛔ NOT measured, written rather than left quiet.** The **real tower** is
+  ⛔ untouched: ⛔ no check here installs LibreHardwareMonitor, opens a browser, or registers a
+  scheduled task. A greyed-out button actually **seen**, an agent **observed alive by query**,
+  the `pip` gesture's **900 s** ceiling (still ⛔ never confronted with a measurement) and the
+  logon race all remain **owner-session** work, carried in the ledger with their owner.
+  ⚠️ **And one measured fact shortens that session**: the tower's deployed copy sits at
+  `e3064f0` (**2026-08-28**) and contains **zero** occurrences of the refusal — running the
+  written protocol there as-is would measure a two-week-old product and yield a **false
+  negative that nothing would flag**. The three protocols are annotated with that, ⛔ none of
+  them rewritten, and their `NOT RECORDED` marker **stays**.
+  ⚠️ **A premise was also refuted, and it closes nothing**: *"the tower's WSL is NATed ⇒
+  localhost does not traverse"* is **false as a statement of reachability** (a server bound
+  inside WSL answers **200** to a request from Windows). ⛔ That measures an **HTTP client**,
+  ⛔ not a **browser**, and ⛔ above all not an **eye** — secure context, Web Serial and
+  legibility remain **untouched and unmeasured**.
+
 - 🆕 **The page's JavaScript is now executed against a real server, and five of the entry
   point's six exit codes are provoked** (`dn8-2`, 2026-09-12). 🔬 **Measured first, under
   `NODE_V8_COVERAGE`:** of the **93 functions** in the `<script>` of `installeur/index.html`,

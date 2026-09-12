@@ -24,6 +24,18 @@ REM                                 "exec COM7" partait donc sur COM3, en
 REM                                 silence. Le port se choisit au pre-vol :
 REM                                 "dn-agent.bat start COM7" ou "run COM7".
 REM    dn-agent.bat permanence      pose la tache au logon (NON ELEVEE)
+REM
+REM  LE PORT DE LHM - 5e ARGUMENT                              (dn8-3)
+REM    dn-agent.bat run COM3 0 "" 127.0.0.1:8086
+REM    dn-agent.bat start COM3 0 -Temoin 127.0.0.1:8086
+REM                                 HOTE:PORT ou joindre LHM. Il traverse
+REM                                 jusqu'a l'agent (--lhm), via DN_ARGS.
+REM                                 Sans lui, l'adresse reste LUE dans
+REM                                 dn_agent.py - une seule source de verite.
+REM    !!! LA 4e PLACE (le temoin) DOIT ETRE OCCUPEE : "" si pas de temoin.
+REM        Sinon cmd.exe lit l'adresse en %4, et le port part en silence.
+REM    !!! Une valeur malformee est REFUSEE par dn_agent_tour.ps1 (exit 3),
+REM        JAMAIS repliee en silence sur le defaut.
 REM    dn-agent.bat retirer         retire la tache
 REM
 REM  !!! AUCUNE CONTINUATION DE LIGNE (accent circonflexe) ICI.
@@ -47,6 +59,12 @@ if not defined SERIE set "SERIE=COM3"
 set "DUREE=%~3"
 if not defined DUREE set "DUREE=0"
 set "TEMOIN=%~4"
+REM  dn8-3 - LE PORT DE LHM. %~5 deshabille les guillemets s'il y en a.
+REM  LHMARG reste VIDE quand rien n'est demande : on ne passe alors AUCUN
+REM  -Lhm, et le .ps1 garde l'adresse qu'il LIT dans dn_agent.py.
+set "LHM=%~5"
+set "LHMARG="
+if defined LHM set "LHMARG=-Lhm %LHM%"
 
 if not exist "%DN_PS1%" goto :SANSPS1
 
@@ -71,7 +89,7 @@ goto :FIN
 REM Les arguments 3 et 4 (duree, temoin) sont TRANSMIS : c'est la tache qui
 REM porte le regime, et le temoin en fait partie. Sans ca, la cible posee
 REM aurait dit autre chose que ce que l'appel demandait.
-%PS% "%DN_PS1%" permanence -Serie %SERIE% -Duree %DUREE% %TEMOIN%
+%PS% "%DN_PS1%" permanence -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG%
 goto :FIN
 
 :RETIRER
@@ -82,7 +100,7 @@ goto :FIN
 REM Le pre-vol s'affiche ICI, dans la fenetre du double-clic : si COM3 est
 REM absent, l'owner LE VOIT. C'est ensuite seulement qu'on detache.
 set "DN_REGIME=double-clic (detache)"
-%PS% "%DN_PS1%" lancer -Serie %SERIE% -Duree %DUREE% %TEMOIN%
+%PS% "%DN_PS1%" lancer -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG%
 goto :FIN
 
 :RUN
@@ -90,7 +108,7 @@ REM Avant-plan : c'est ce que la tache au logon appelle. Le pere de
 REM python.exe est donc CE cmd.exe, vivant tout le temps du run - c'est ce
 REM qui rend la chaine de PID lisible (AC6.6).
 set "DN_REGIME=tache au logon (avant-plan)"
-%PS% "%DN_PS1%" prevol -Serie %SERIE% -Duree %DUREE% %TEMOIN%
+%PS% "%DN_PS1%" prevol -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG%
 if errorlevel 1 goto :FIN
 goto :EXEC
 

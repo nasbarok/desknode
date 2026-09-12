@@ -1,0 +1,139 @@
+═══ dn8-3 / T3 — LE PORT DE LHM **ARRIVE** A L'AGENT, DE BOUT EN BOUT ═══
+date : 2026-09-12        HEAD : 0fa214d
+
+🔴 CE QUI ETAIT MESURE AVANT CETTE MARCHE : `--lhm HOTE:PORT` existe dans
+   `agent/dn_agent.py` (l.3506) et il est **durci** (IPv6 nu, `:` sans port,
+   port non entier, hote vide — quatre refus explicites). Et il comptait
+   **ZERO occurrence** dans `tools/dn_agent_tour.ps1` **et** dans
+   `tools/dn-agent.bat`. Le produit l'ecrivait lui-meme, dans le refus dur :
+   « une configuration SUPPORTEE que NI ce script NI dn-agent.bat ne savent
+   encore passer a l'agent ».
+⇒ CE QUI SUIT N'EST PAS « le drapeau existe » : c'est **il ARRIVE**.
+
+──────────────────────────────────────────────────────────────────────────────
+1. LA VALEUR MALFORMEE EST **REFUSEE EXPLICITEMENT**, ⛔ PAS REPLIEE
+──────────────────────────────────────────────────────────────────────────────
+  -Lhm pasdeport         ⇒ rc=3  « -Lhm invalide : 'pasdeport'. Attendu : HOTE:PORT »
+  -Lhm 127.0.0.1:        ⇒ rc=3  « -Lhm invalide : '127.0.0.1:' »
+  -Lhm ::1               ⇒ rc=3  « -Lhm invalide : '::1' »          (IPv6 NU refuse)
+  -Lhm 127.0.0.1:abc     ⇒ rc=3  « -Lhm invalide : '127.0.0.1:abc' »
+  -Lhm 127.0.0.1:99999   ⇒ rc=3  « -Lhm : port 99999 hors de 1..65535 »
+
+🔴 ⛔ AUCUN REPLI SILENCIEUX SUR LE DEFAUT, et c'est le point : l'agent a paye
+   ce defaut **QUATRE FOIS** en revue (`--lhm "hote:"`, `--lhm "[::1]xyz:9000"`,
+   port non entier, hote vide) — chacun rendait LE PORT PAR DEFAUT sans un mot,
+   et le diagnostic accusait ensuite LHM.
+
+──────────────────────────────────────────────────────────────────────────────
+2. LA CHAINE COMPLETE — `.bat` ⇒ `.ps1` ⇒ `$argl` ⇒ `DN_ARGS` ⇒ l'agent
+──────────────────────────────────────────────────────────────────────────────
+(a) LE `.ps1`, avec le stub sur 8086 :
+
+  $ powershell.exe -File <stage>\dn_agent_tour.ps1 prevol -Serie COM3 -Lhm 127.0.0.1:8086
+    -Lhm : la sonde vise 127.0.0.1:8086 (l'agent recevra --lhm 127.0.0.1:8086)
+    LHM : http://127.0.0.1:8086/metrics repond 200.
+    args : --serie COM3 --stop-si <stage>\dn-agent.stop --lhm 127.0.0.1:8086
+    pre-vol OK
+    rc=0
+
+(b) 🎯 **LA LIGNE `DN_ARGS`, RELUE DANS `dn-agent.env.cmd`** — c'est ELLE que
+    `:EXEC` rejoue, et c'est donc elle qui prouve que l'agent le recevra :
+
+    set "DN_PY=C:\...\Python313\python.exe"
+    set "DN_ARGS=--serie COM3 --stop-si <stage>\dn-agent.stop --lhm 127.0.0.1:8086"
+
+(c) SANS `-Lhm` — ⛔ AUCUNE REGRESSION, l'adresse reste **LUE DANS L'AGENT** :
+
+    LHM : http://127.0.0.1:8085/metrics repond 200.
+    args : --serie COM3 --stop-si <stage>\dn-agent.stop
+    set "DN_ARGS=--serie COM3 --stop-si <stage>\dn-agent.stop"
+
+  ⇒ `-Lhm` **SURCHARGE** une valeur deja lue, il ⛔ n'en **FIGE** aucune. Une
+    seconde source de verite pourrirait en silence le jour ou l'une des deux
+    change — c'est le patron que `dn_lhm_tour.ps1` ecrit depuis `dn4-8`, et que
+    `(c2)`/`(c3)` de `verif_prerequis_dn75.py` gardent.
+  ⚠️ ET CE TIR MESURE AUSSI UN FAIT DE MACHINE : **le VRAI LHM ecoute sur cette
+     tour** (8085 repond 200). C'est precisement pourquoi le banc pose 8086.
+
+(d) LE `.bat`, 5e ARGUMENT — double de papier du `.ps1`, `exit 3`, donc
+    `:RUN` fait `if errorlevel 1 goto :FIN` et ⛔ n'atteint JAMAIS `:EXEC` :
+
+    run COM3 0 "" 127.0.0.1:8086        ⇒ Temoin=False Lhm=[127.0.0.1:8086]
+    run COM3 0 -Temoin 127.0.0.1:8086   ⇒ Temoin=True  Lhm=[127.0.0.1:8086]
+    run COM3 0 -Temoin                  ⇒ Temoin=True  Lhm=[]
+    permanence COM3 0 -Temoin 127.0.0.1:8086 ⇒ Action=permanence Lhm=[127.0.0.1:8086]
+
+🔴 **LE PIEGE DE POSITION, MESURE ET FERME** : la 4e place (le temoin) doit etre
+   **OCCUPEE**. `run COM3 0  127.0.0.1:8086` ferait lire l'adresse en `%4` — le
+   temoin — et le port partirait **EN SILENCE**. ⇒ le verbe `tache` pose `""`,
+   que le `.bat` deshabille par `%~4`, et l'emploi le DIT sur les deux fichiers.
+
+──────────────────────────────────────────────────────────────────────────────
+⚠️ CE QUE CE RELEVE A DU NEUTRALISER, ET C'EST **DECLARE**
+──────────────────────────────────────────────────────────────────────────────
+🔴 `dn-agent.env.cmd` ⛔ N'EST ECRIT QU'APRES LA SONDE DE PORT SERIE, et sur
+   cette machine **COM3 est TENU par un process** (⛔ aucun agent reconnu) : le
+   pre-vol REEL sort en **6** AVANT d'y arriver. ⇒ pour exercer la chaine
+   AVAL, la sonde de port — **et ELLE SEULE** — a ete remplacee par un double
+   de papier (`Get-EtatPort` ⇒ `'libre'`) **DANS LA COPIE JETABLE**.
+   ⛔ ⛔ RIEN N'A ETE ECRIT DANS L'ARBRE, et ⛔ AUCUN port reel n'a ete libere.
+   ⛔ CE QUE CE RELEVE NE PROUVE DONC PAS : que la sonde de port soit franchie
+     sur cette machine. Elle ⛔ ne l'est PAS, et c'est ecrit plutot que tu.
+
+🔴 ⚠️ **UN TIR DE CETTE SERIE A LANCE UN VRAI AGENT, ET C'EST ECRIT PLUTOT QUE
+   LISSE.** Avec la sonde de port doublee, le pre-vol a rendu `0` ⇒ `:RUN` est
+   tombe dans `:EXEC`, qui lance `python.exe dn_agent.py`. DEUX process ont
+   vecu jusqu'a leur arret explicite. ⇒ LA LECON, ET ELLE EST MECANISEE
+   CI-DESSUS : pour mesurer ce que le `.bat` TRANSMET, le `.ps1` doit etre un
+   **double de papier qui sort en 3** — ⛔ jamais le vrai, dont le succes
+   DEMARRE quelque chose. Un banc qui « mesure » en lancant le produit ⛔ n'est
+   plus un banc.
+
+──────────────────────────────────────────────────────────────────────────────
+🔴 REJOUE LE 2026-09-12 A LA VERIFICATION — LA LIGNE 4 DE LA MATRICE D'E/S EST
+   **COUVERTE ET PASSEE**, ET UN TEMOIN QUE J'AI ECRIT EST **FAUX**.
+──────────────────────────────────────────────────────────────────────────────
+
+(a) UNE VALEUR MALFORMEE EST **REFUSEE**, ⛔ JAMAIS REPLIEE — 5 formes sur 5 :
+      -Lhm pasdeport        ⇒ rc=3  « -Lhm invalide : 'pasdeport' »
+      -Lhm 127.0.0.1:       ⇒ rc=3  « -Lhm invalide : '127.0.0.1:' »
+      -Lhm ::1              ⇒ rc=3  « -Lhm invalide : '::1' »   (IPv6 NU)
+      -Lhm 127.0.0.1:abc    ⇒ rc=3  « -Lhm invalide : '127.0.0.1:abc' »
+      -Lhm 127.0.0.1:99999  ⇒ rc=3  « port 99999 hors de 1..65535 »
+    ⚠️ LE BLOC VALIDE **AVANT** LE `switch` : il sort en 3 sans rien toucher.
+
+(b) SANS `-Lhm`, DEPUIS LE DEPOT ⇒ rc=3, « dn_agent.py ABSENT a cote du .bat ».
+    ⇒ ⛔ aucune regression : l'outil cherche toujours l'agent A COTE DE LUI.
+    ⚠️ ET CE TIR RE-CONFIRME QUE **M3 EST REFUTEE** : PowerShell a LU le script
+      a son chemin `\\wsl.localhost`, et le message le cite en toutes lettres.
+
+(c) 🎯 `-Lhm` **SURCHARGE** L'ADRESSE, ET LA SONDE Y VA — staging dont l'agent
+    garde `LHM_PORT = 8085` (⛔ NON modifie), stub sur 8086 :
+      « -Lhm : la sonde vise 127.0.0.1:8086 (l'agent recevra --lhm 127.0.0.1:8086) »
+      « LHM : http://127.0.0.1:8086/metrics repond 200. »
+      rc=5  ⇒ sortie sur le PORT SERIE de banc : ⛔ JAMAIS `:EXEC`, ⛔ aucun agent
+             lance. (C'est la parade a l'accident consigne plus haut.)
+
+(d) 🔴 **ET LE TEMOIN NEGATIF QUE J'AVAIS ECRIT N'EN EST PAS UN.** Sans `-Lhm`,
+    j'attendais que la sonde vise 8085 et **ECHOUE**. MESURE :
+      « LHM : http://127.0.0.1:8085/metrics repond 200. »   rc=5
+    ⇒ elle REUSSIT — **parce que le VRAI LHM ecoute sur cette tour**. Mon cas
+      « negatif » passait donc pour une raison SANS RAPPORT avec `-Lhm` : les
+      deux sens rendaient un succes, et ⛔ rien n'aurait discrimine.
+    ✅ **CE QUI DISCRIMINE REELLEMENT EST L'ADRESSE IMPRIMEE** — `8086` avec le
+      drapeau, `8085` sans —, ⛔ pas le succes de la sonde. C'est cette
+      difference-la qui est relevee en (c), et elle tient.
+    ⚠️ **C'EST EXACTEMENT LE PIEGE DEJA CONSIGNE SUR LE MUTANT 6** (« le VRAI
+      LHM ecoute ici ⇒ le sens REFUS cesse de refuser »). Je l'ai re-commis **en
+      le verifiant**. ⇒ un temoin dont l'echec attendu peut etre MASQUE par un
+      fait de machine ⛔ n'est pas un temoin.
+
+⛔ CE QUI RESTE NON AUTOMATISE, ET C'EST DECLARE : la ligne 4 est couverte par
+   ce **RELEVE REJOUE**, ⛔ pas par un controle de gate. Deux motifs, tous deux
+   mesures : *(i)* le budget de `verif_campagne_dn56.py` n'a que ~60 s de marge
+   sous 600 s, et tout controle neuf exige un mutant qui s'y paie ; *(ii)* la
+   moitie `DN_ARGS` exige que le pre-vol ATTEIGNE l'ecriture de
+   `dn-agent.env.cmd`, ce qui suppose de doubler la sonde de port — et ce
+   chemin a DEJA lance un vrai agent une fois (consigne plus haut).
+   ⇒ PORTEUR : `epic-dn8`.
+=== FIN DU REJEU ===

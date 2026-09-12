@@ -594,6 +594,63 @@ try:
 except OSError:
     print("/nonexistent/bind-refuse")' || echo /nonexistent/python3-absent)"
 
+# 🔴 dn8-3 — LE TEMOIN DE LA GATE DE POLARITE LHM EST **DERIVE**, ET IL
+#    ESSAIE **PLUSIEURS NOMS**. C'est LA lecon de cette marche, et elle est
+#    MESUREE le 2026-09-12 :
+#        shutil.which("powershell")     ⇒ None
+#        shutil.which("powershell.exe") ⇒ le chemin REEL
+#    ⇒ le ledger a publie CINQ FOIS « il faudrait un hote PowerShell, que
+#      le WSL de la tour n'a pas ». C'etait un **NOM**, ⛔ pas une absence,
+#      et `powershell.exe` 5.1.19041.6456 repond rc=0 depuis ce WSL.
+#    ⚠️ UN TEMOIN EST UN **FICHIER** : on rend le chemin du premier hote
+#       trouve, et un chemin qui n'existe pas sinon — pour que [ -e ] soit
+#       FAUX et ⛔ pas vide (un temoin vide sauterait la gate en silence).
+#    ⛔ ET ⛔ SANS REDIRECTION VERS LE PUITS : la regle (4) l'interdit, et sa
+#       garde relit CE FICHIER.
+#    🔴 CORRIGE LE 2026-09-12 (revue) — LE TEMOIN NE COUVRAIT QU'UN PREREQUIS
+#       SUR TROIS. La gate rend 4 depuis TROIS : l'hote PowerShell, un `bind`
+#       accepte, et un dossier temporaire VISIBLE DE WINDOWS. La ou
+#       `powershell.exe` resout mais qu'un des deux autres manque, le temoin
+#       existait, la gate etait JOUEE, et son 4 s'imprimait `[ROUGE] rc=4` — la
+#       valeur qui, partout ailleurs ici, veut dire « ⛔ pas un rouge ». C'est
+#       EXACTEMENT le defaut que `TEMOIN_BANC_HTTP` a ferme vingt lignes plus
+#       haut le meme jour. ⇒ le temoin derive de la CONJONCTION.
+#    ⚠️ `wslpath` EST EXIGE : sans lui ⛔ aucun chemin ne se traduit pour
+#       PowerShell, et un `pwsh` **Linux** sur un runner rendrait le temoin
+#       PRESENT sur une machine qui ⛔ ne peut pas jouer ce banc.
+TEMOIN_POWERSHELL="$(python3 -c 'import os, shutil, socket, subprocess, sys
+def absent(m):
+    print("/nonexistent/" + m)
+    sys.exit(0)
+ps = None
+for n in ("powershell.exe", "pwsh.exe", "powershell", "pwsh"):
+    ps = shutil.which(n)
+    if ps:
+        break
+if not ps:
+    absent("powershell-absent")
+if not shutil.which("wslpath"):
+    absent("wslpath-absent")
+try:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("127.0.0.1", 0))
+    s.close()
+except OSError:
+    absent("bind-refuse")
+d = ""
+try:
+    r = subprocess.run([ps, "-NoProfile", "-Command", "$env:TEMP"], timeout=25,
+                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    w = subprocess.run(["wslpath", "-u",
+                        r.stdout.decode("utf-8", "replace").strip()], timeout=25,
+                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    d = w.stdout.decode("utf-8", "replace").strip()
+except Exception:
+    d = ""
+if not d or not os.path.isdir(d):
+    absent("temp-windows-absent")
+print(ps)' || echo /nonexistent/python3-absent)"
+
 NON_JOUABLES=(
   "verif_sr03.py|le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.|tools/fixtures/AN4545.pdf|tools/fixtures/AN4545.pdf firmware/desknode/main/dn_console.c|2"
   "verif_dossier_dn415.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.|${TEMOIN_COCKPIT}|AUCUN|4"
@@ -605,6 +662,7 @@ NON_JOUABLES=(
   "verif_campagne_dn440.py|CAUSE A — elle MUTE le ledger et le tracker du cockpit dans une COPIE jetable : sans ce depot PRIVE elle n'a rien a muter, et son compte « controles gardes par rien » ne veut plus rien dire puisque aucune gate ne tourne. ⚠️ dn4-44 : elle est entree au glob (decision owner du 2026-09-03) precisement parce que RIEN ne l'invoquait — une regle que rien n'applique est une regle qui pourrira.|${TEMOIN_COCKPIT}|AUCUN|4"
   "verif_banc_langue_dn73.py|CAUSE D — le moteur JavaScript node est un PREREQUIS DE BANC, ⛔ pas une dependance du depot : cette gate lance tools/banc_langue_dalle_dn73.mjs, qui EXECUTE le script de la page installeur/index.html contre un port de banc d'essai et rejoue les lignes de la matrice d'entrees-sorties de dn7-3 (⚠️ ce texte disait NEUF lignes : le banc en joue 39 sans base et 42 avec, releve du 2026-09-12 — le compte qui fait foi est CAS_ATTENDUS dans la gate, ⛔ jamais une phrase d'ici), plus les chemins que trois revues ont nommes. Sans moteur il n'y a rien a jouer, et une gate VERTE sur un banc qui n'a pas tourne serait PIRE que pas de gate. ⇒ elle rend 4 avec son motif, et la regle (3) la joue QUAND MEME pour verifier qu elle rend bien ce 4. 🔴 DEPUIS dn8-2 CETTE GATE A DEUX PREREQUIS, ET LE TEMOIN LES COUVRE DESORMAIS TOUS LES DEUX : elle lie le VRAI serveur du produit sur 127.0.0.1:0 pour que le banc lui parle par HTTP, et une boucle locale filtree lui fait rendre 4 AUSSI. ⚠️ LA LIGNE D'ORIGINE DISAIT ICI QUE LE TEMOIN NE COUVRAIT PAS CE SECOND PREREQUIS, et que ce cas sortirait en ROUGE rc=4 au lieu de NON-JOUABLE : c'etait VRAI le 2026-09-11 et c'est CORRIGE le 2026-09-12 — le temoin est DERIVE des deux (voir TEMOIN_BANC_HTTP plus haut), et un temoin reste un FICHIER.|${TEMOIN_BANC_HTTP}|AUCUN|4"
   "verif_harnais_dn81.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Les 94 CIBLES d'ancre 📍 que (c2) rejoue, portees par 86 lignes, vivent dans son ledger (⚠️ 87 lignes portent le glyphe ; la 87e est de la PROSE qui le cite entre accents graves, et ancres_du l'ecarte — le « 87 » ecrit ici d'abord comptait des LIGNES pour des CIBLES) : sans lui, (c2) n'a AUCUNE population. ⚠️ (c1) et (c3), eux, sont JOUABLES dans un clone nu — mais la gate ⛔ ne se coupe PAS en deux : un verdict partiel publie sous la meme ligne de BILAN serait indiscernable d'un verdict complet, et c'est le defaut que dn8-1 existe pour fermer. ⇒ elle rend 4 EN AMONT, et le dit. ⛔ CE N'EST PAS UN SKIP : la regle (3) la joue QUAND MEME pour verifier qu'elle rend bien ce 4.|${TEMOIN_COCKPIT}|AUCUN|4"
+  "verif_lhm_ps_dn83.py|CAUSE E — il n'existe AUCUN hote PowerShell sur un runner Linux, et cette gate EXECUTE le pre-vol de tools/dn_agent_tour.ps1 dans un vrai powershell.exe pour eprouver la polarite de la sonde LHM dans les DEUX sens (refus ⇒ exit 12, passant ⇒ pas 12). Sans hote, il n'y a rien a jouer, et une gate VERTE sur un banc qui n'a pas tourne serait PIRE que pas de gate. ⇒ elle rend 4 avec son motif, et la regle (3) la joue QUAND MEME pour verifier qu'elle rend bien ce 4. 🔴 LE TEMOIN ESSAIE PLUSIEURS NOMS, et c'est le fond de cette marche : which(powershell) rend None la ou which(powershell.exe) rend le chemin — le ledger a publie CINQ FOIS une IMPOSSIBILITE qui etait une propriete de sa METHODE de recherche. ⚠️ ELLE A TROIS PREREQUIS — l'hote, un bind accepte pour le stub, et un dossier temporaire VISIBLE DE WINDOWS — et TOUS LES TROIS rendent 4. Depuis la revue du 2026-09-12 le temoin derive de leur CONJONCTION, wslpath compris : la ligne d'origine disait qu'il ne couvrait que le premier, et ce cas sortait alors en ROUGE rc=4 au lieu de NON-JOUABLE.|${TEMOIN_POWERSHELL}|AUCUN|4"
   "verif_hist_dn413.py|CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.|${TEMOIN_LVGL_HIST}|AUCUN|4"
 )
 

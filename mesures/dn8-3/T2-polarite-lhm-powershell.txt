@@ -1,0 +1,88 @@
+═══ dn8-3 / T2 — LA POLARITE, JOUEE DANS LE **VRAI** POWERSHELL, DEUX SENS ═══
+date : 2026-09-12     gate : tools/verif_lhm_ps_dn83.py     HEAD : 0fa214d
+
+──────────────────────────────────────────────────────────────────────────────
+LE TIR NORMAL
+──────────────────────────────────────────────────────────────────────────────
+  $ python3 tools/verif_lhm_ps_dn83.py
+  hote PowerShell : /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+                    (trouve par le nom 'powershell.exe')
+  staging         : /mnt/c/Users/<owner>/AppData/Local/Temp   (visible de Windows)
+  port du banc    : 8086   (⛔ JAMAIS 8085 — le stub le refuse)
+
+  [OK ] (c1) les DEUX sens ont ete JOUES        sens REFUS ⇒ rc=12 · sens PASSANT ⇒ rc=5
+  [OK ] (c2) sens REFUS : `exit 12` ET la ligne qui NOMME LHM
+             rc=12, et la sortie porte `LibreHardwareMonitor est INJOIGNABLE`
+  [OK ] (c3) sens PASSANT : ⛔ PAS `12`, ET la ligne passante
+             rc=5 (⛔ pas 12), et la sortie porte `repond 200.`
+  [OK ] (c4) le pre-vol SONDE le port pose dans l'agent stagge   URL ⇒ 8086
+  [OK ] (c5) le stub REFUSE 8085, et il le DIT                   rc=1
+  [OK ] (c6) chaque controle est vise par >= 1 mutant            6 lus / 6 vises
+
+  BILAN : 15 OK, 0 KO        rc=0        DUREE : 5,05 s
+
+🔴 LE DISCRIMINANT EST `12` vs ⛔ PAS `12`, ⛔ JAMAIS `12` vs `0` — ET C'EST
+   MESURE : le sens PASSANT rend **5**, parce que le pre-vol CONTINUE apres le
+   bloc LHM et sort sur l'etat du port serie. Un banc qui attendrait `0`
+   rougirait sur une machine **SAINE**.
+
+──────────────────────────────────────────────────────────────────────────────
+CHAQUE MUTANT, VU ROUGIR — ET **SUR SA CIBLE DECLAREE**
+──────────────────────────────────────────────────────────────────────────────
+⚠️ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`, ⛔ PAS `controle ⇒
+   couvert`. ⇒ on compare les cibles **VUES** aux cibles **DECLAREES**, une par
+   une. `verif_campagne_dn56.py` ⛔ ne fait PAS cette comparaison.
+
+  mutant  rc  BILAN  cibles VUES        cibles DECLAREES     verdict
+  ------  --  -----  -----------------  -------------------  -------
+     1     1    1    c2                 c2                   ✅
+     2     1    1    c2                 c2                   ✅
+     3     1    1    c3                 c3                   ✅
+     4     1    1    c2,c3,c4           c2,c3,c4             ✅
+     5     1    1    c2                 c2                   ✅
+     6     1    1    c2,c4              c2,c4                ✅
+     7     1    1    c5                 c5                   ✅
+     8     1    1    c6                 c6                   ✅
+     9     1    1    c1,c2,c3,c4        c1,c2,c3,c4          ✅
+
+🔴 **QUATRE DECLARATIONS ETAIENT INEXACTES A LA PREMIERE REDACTION**, et c'est
+   le balayage qui l'a montre — ⛔ pas une relecture :
+     · 4 declarait (c2,c3)   ⇒ sans agent, ⛔ aucune URL : **(c4) aussi** ;
+     · 5 declarait (c2,c3)   ⇒ les deux modes sains : **(c3) reste VERT** ;
+     · 6 declarait (c3,c4)   ⇒ 🔴 **LE VRAI LHM ECOUTE SUR CETTE TOUR** : sans
+       le port du banc, la sonde trouve une VRAIE reponse et le sens REFUS
+       **cesse de refuser** ⇒ **(c2)**, ⛔ pas (c3). C'est exactement la faute
+       que ce mutant existe pour replanter : ⛔ ne pas poser le port du banc,
+       c'est mesurer LA MACHINE au lieu du banc ;
+     · 9 declarait (c1,c2,c3) ⇒ ⛔ aucun code ⇒ ⛔ aucune URL : **(c4) aussi**.
+   ⇒ LES QUATRE SONT CORRIGEES **APRES MESURE**, et les valeurs d'origine sont
+     nommees ci-dessus plutot qu'effacees.
+
+──────────────────────────────────────────────────────────────────────────────
+LES CHEMINS QUI NE SONT **NI** VERTS **NI** ROUGES
+──────────────────────────────────────────────────────────────────────────────
+  · PREREQUIS ABSENT (`PATH=/usr/bin:/bin`) ⇒ **rc=4**, ⛔ AUCUNE ligne `BILAN`.
+    La sortie nomme les **QUATRE** noms essayes :
+       which('powershell.exe')⇒None · which('pwsh.exe')⇒None
+       which('powershell')⇒None     · which('pwsh')⇒None
+    🔴 C'EST LE FOND DE CETTE MARCHE : un SEUL nom essaye rendrait une
+       propriete de la METHODE, ⛔ pas de la machine.
+  · LE MEME, **SOUS MUTANT** ⇒ **rc=1 NOMME** (⛔ pas 4) avec un `[KO ]` sur
+    `(c1)` : `verif_campagne_dn56.py` exige `rc=1` de chaque mutant et ⛔ elle
+    n'est PAS `NON_JOUABLE`. C'est le defaut le plus cher de `dn8-1`.
+  · MUTANT INCONNU (`--mutant 99`) ⇒ **rc=2**.
+  · 🔴 **LA GARDE DU NO-OP** : l'ancre du mutant 1 RETIREE du produit ⇒
+    **rc=3**, `(c0) le mutant 1 a bien un EFFET` en `[KO ]`, sortie ANTICIPEE.
+    ⛔ Un mutant perime ⛔ ne passe PAS pour un gardien vivant.
+    ⚠️ LE PREMIER TEMOIN DE CE NO-OP ETAIT **FAUX**, ET C'EST ECRIT : sa copie
+       jetable n'emportait que `tools/`, si bien que la lecture de
+       `agent/dn_agent.py` LEVAIT — rc=1, un traceback indiscernable d'un
+       mutant sain. ⛔ Ce n'etait PAS la garde : c'etait le temoin.
+
+──────────────────────────────────────────────────────────────────────────────
+⛔ CE QUE CE RELEVE NE DIT PAS
+──────────────────────────────────────────────────────────────────────────────
+⛔ Que la TOUR REELLE refuse. Le banc ⛔ n'installe pas LHM, ⛔ ne pose aucune
+   tache, ⛔ n'ouvre aucun navigateur. Voir `T4-refus-cote-tour.txt`.
+⛔ Rien de ce qui se juge A L'ŒIL : `AC8.3.1` et `AC8.3.3` ⛔ ne se ferment PAS
+   ici, et le motif `NON RELEVE` de `mesures/dn7-4/` **reste**.

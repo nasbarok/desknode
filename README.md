@@ -927,6 +927,39 @@ les dépendances publiées ici sont **re-dérivées** des `import` réels de l'a
 **deux sens**, de sorte qu'une dépendance qui apparaît, disparaît ou perd sa garde fasse
 **rougir** une vérification au lieu de se taire.
 
+🆕 **ET DEPUIS LE 2026-09-12 (`dn8-3`), CETTE ADRESSE SE **PASSE** JUSQU'À L'AGENT.**
+Jusque-là, `tools/dn_lhm_tour.ps1` écrivait en toutes lettres qu'un `-Port` différent du
+défaut est une **configuration SUPPORTÉE** — et ⛔ **ni** `tools/dn_agent_tour.ps1` ⛔ **ni**
+`tools/dn-agent.bat` ne savaient la transmettre : **zéro** occurrence de `--lhm` dans les
+deux. ⇒ sur une tour **saine** dont LHM écoute ailleurs, le pré-vol sondait le port lu dans
+`agent/dn_agent.py`, ne trouvait rien, et **refusait de lancer l'agent**.
+
+```
+tools\dn-agent.bat run COM3 0 "" 127.0.0.1:8086
+tools\dn-agent.bat start COM3 0 -Temoin 127.0.0.1:8086
+```
+
+- l'adresse **traverse** `dn-agent.bat` → `dn_agent_tour.ps1` → `DN_ARGS` → l'agent
+  (`--lhm HOTE:PORT`), et la **tâche au logon la porte** — vérifiée après la pose, comme
+  `-Serie` et `-Temoin` ;
+- **sans** cet argument, ⛔ **rien ne change** : l'adresse reste **LUE** dans
+  `agent/dn_agent.py`. `-Lhm` **surcharge** une valeur déjà lue, il ⛔ n'en **fige** aucune —
+  une seconde source de vérité pourrirait en silence, et c'est précisément ce que le
+  paragraphe ci-dessus interdit ;
+- une valeur **malformée** est **refusée explicitement** (code `3`), ⛔ **jamais** repliée en
+  silence sur le défaut — c'est le défaut que l'agent a payé **quatre fois** en revue ;
+- ⚠️ **la 4ᵉ place (le témoin) doit être OCCUPÉE** : `""` si vous n'en voulez pas. Sinon
+  `cmd.exe` lit l'adresse en `%4`, et le port part **en silence**.
+
+⚠️ **CE QUI EST MESURÉ, ET CE QUI NE L'EST PAS** (2026-09-12). La **polarité** du refus est
+désormais **rejouée dans un vrai `powershell.exe`**, dans les deux sens, par
+`tools/verif_lhm_ps_dn83.py` : LHM qui répond **sans une seule ligne `lhm_`** ⇒ **refus** ;
+LHM debout ⇒ ⛔ **pas** de refus. 🔴 **En revanche, la TOUR RÉELLE ⛔ n'est PAS mesurée** :
+⛔ aucune vérification de ce dépôt n'installe LibreHardwareMonitor, ⛔ n'ouvre un navigateur,
+⛔ ne pose de tâche planifiée. Ce qui reste — le bouton grisé **vu**, l'agent activé
+**constaté par requête**, la course au logon — est **porté au ledger avec son porteur**, et
+se ferme **à l'œil de l'owner**, ⛔ pas ici.
+
 ### ⚠️ Si vous avez **téléchargé** ce fichier plutôt que cloné le dépôt
 
 Windows pose une **Marque du Web** sur ce qui vient d'Internet, et peut afficher

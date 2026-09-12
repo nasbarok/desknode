@@ -1,0 +1,105 @@
+=== T5 — BORNE D'ARRIVEE, mesuree le 2026-09-12T12:02:15+02:00 ===
+HEAD desknode : 0fa214d6672685894485550a580ee7baa1e4ba6b
+EMPREINTE AVANT LA PASSE : 8a1518460254c4ef
+
+──── 0. LE MENAGE : ⛔ RIEN DE MOI NE SURVIT, ET L'AGENT DE L'OWNER EST INTACT ────
+  process dn83 residuels : 1
+  ⛔ stub WSL RESIDUEL
+/mnt/c/Users/<owner>/AppData/Local/Temp/dn83-sonde
+/mnt/c/Users/<owner>/AppData/Local/Temp/dn83-t3b
+  agent OWNER (? INTACT) PID=28460 depuis H:\dev\projets\desknode\dn_agent.py
+
+──── 1. LA GATE NEUVE ────
+BILAN : 15 OK, 0 KO
+rc=0  duree 4.99 s
+
+──── 2. CHAQUE GATE, AU COMPTE ────
+--- verif_banc_langue_dn73.py    BILAN : 81 OK, 0 KO
+--- verif_entree_dn82.py         BILAN : 45 OK, 0 KO
+--- verif_installeur_dn71.py     BILAN : 28 OK, 0 KO
+--- verif_page_dn722.py          BILAN : 56 OK, 0 KO
+--- verif_langue_dalle_dn73.py   BILAN : 61 OK, 0 KO
+--- verif_preconditions_dn76.py  BILAN : 52 OK, 0 KO
+--- verif_prerequis_dn75.py      BILAN : 47 OK, 0 KO
+--- verif_placement_dn74.py      BILAN : 42 OK, 0 KO
+--- verif_flash_dn72.py          BILAN : 30 OK, 0 KO
+--- verif_source_lhm_dn48.py     (pas de BILAN)
+--- verif_harnais_dn81.py        BILAN : 28 OK, 0 KO
+--- verif_ledger_dn416.py        BILAN : 36 OK, 0 KO
+--- verif_dossier_dn415.py       BILAN : 23 OK, 10 KO
+--- verif_campagne_dn440.py      BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien
+BILAN : 62 OK, 0 KO
+
+/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/798905ae-aa59-4746-bbe2-a3d0b4762aa3/scratchpad/arrivee.sh: line 30: verif_campagne_dn56.py: command not found
+──── 3. LE BUDGET  — PLAFOND 600 s ────
+  [OK ] des gates declarent une campagne de mutants                21 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_lhm_ps_dn83.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_temoin_filtre_dn447.py
+  [OK ] toute cible repond, et aucun mutant ne meurt               643 mutant(s) confronte(s) sur 21 cible(s)
+BILAN : 8 OK, 0 KO
+DUREE : 547.35 s
+
+──── 4. LE MEME, **SANS COCKPIT** (le chemin CI) ────
+BILAN : 8 OK, 0 KO
+DUREE : 472.38 s
+
+──── 5. LA PASSE ENTIERE ────
+[VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+
+BILAN : 45 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 47 gates (779s)
+appariement --cockpit : 0 divergence(s) entre la detection LARGE (quotes simples/doubles, declaration coupee) et la detection ETROITE d'origine
+⛔ ROUGES :
+   · tools/verif_dossier_dn415.py (rc=1)
+[ROUGE      ] tools/verif_dossier_dn415.py           rc=1      8s
+[NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+
+──── 6. LA GATE NEUVE DANS LA PASSE ────
+[  temoin  ] tools/verif_lhm_ps_dn83.py             /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_lhm_ps_dn83.py             rc=0      4s
+
+EMPREINTE APRES LA PASSE : 8a1518460254c4ef
+=== FIN T5 2026-09-12T12:35:02+02:00 ===
+
+──────────────────────────────────────────────────────────────────────────────
+🔴 ANNOTE LE 2026-09-12 A LA VERIFICATION — ⛔ RIEN CI-DESSUS N'EST EFFACE,
+   ET **DEUX CHOSES QUE CETTE PASSE A IMPRIMEES SONT FAUSSES**.
+──────────────────────────────────────────────────────────────────────────────
+
+(1) 🔴 LA SECTION 3 S'EST AUTO-MUTILEE, ET SON TITRE PORTE UN TROU.
+    La passe a imprime :
+        arrivee.sh: line 30: verif_campagne_dn56.py: command not found
+        ──── 3. LE BUDGET  — PLAFOND 600 s ────
+    CAUSE : le nom de la gate etait entoure d'ACCENTS GRAVES, et ils ont ete
+    interpretes en SUBSTITUTION DE COMMANDE au lieu d'etre du texte.
+    ⚠️ C'EST LA REGLE QUE CE DEPOT ECRIT DEJA, dans tools/run_gates.sh l.396 :
+       « ce depot n'utilise JAMAIS l'accent grave comme substitution ».
+    ⇒ CE QUI RESTE VRAI : la duree **547.35 s** vient de `/usr/bin/time`, et
+      elle est INTACTE — le shell n'a mange que le LIBELLE.
+    ⇒ CE QUI EST FAUX : le titre de la section, qui ne nomme plus sa gate.
+
+(2) 🔴 LE « MENAGE » DE LA SECTION 0 EST UN **FAUX POSITIF**, DEUX FOIS.
+    La passe a imprime « process dn83 residuels : 1 » et « ⛔ stub WSL
+    RESIDUEL ». LES DEUX SONT FAUX, et pour la MEME raison : **la requete se
+    comptait elle-meme**.
+      · `pgrep -f stub_lhm_dn48` matchait `arrivee.sh` LUI-MEME, dont le texte
+        contient ce nom ;
+      · `Get-CimInstance ... -like '*dn83*'` matchait le `powershell.exe` qui
+        portait ce motif DANS SA PROPRE LIGNE DE COMMANDE.
+    🔬 RE-MESURE, EN EXCLUANT L'OBSERVATEUR (2026-09-12, apres la passe) :
+        motif CONSTRUIT A L'EXECUTION ('*dn'+'83-*')   ⇒ residuels = **0**
+        pgrep -af 'stub_lhm_dn4[8]'                    ⇒ **aucun stub**
+        agent de l'owner                               ⇒ PID=28460 **INTACT**
+    ⇒ CE QUI ETAIT VRAI, EN REVANCHE : les DEUX dossiers de staging
+      (`dn83-sonde`, `dn83-t3b`) EXISTAIENT bien sous le Temp de Windows.
+      Ils sont SUPPRIMES, et leur absence est RE-VERIFIEE.
+
+⇒ LE COMPTE DE CES FAUX VERDICTS EST TENU EN **UN SEUL ENDROIT** :
+   `mesures/dn8-3/FAUX-VERDICTS-LE-COMPTE.md`. ⛔ Aucun ordinal n'est ecrit ici :
+   cinq relevés en portaient un, et ils se CONTREDISAIENT.
+ Un motif qui CLASSE une reponse doit s'ancrer
+     sur ce que la commande imprime EN PROPRE, et ⛔ ne jamais pouvoir se
+     matcher lui-meme.
+
+⛔ CE QUE CETTE ANNOTATION NE CHANGE PAS : les COMPTES de la section 2, le
+   budget de la section 3 et le BILAN de la section 5 sont INTACTS et
+   inchanges. L'empreinte AVANT = APRES = 8a1518460254c4ef prouve que l'arbre
+   n'a pas bouge PENDANT la passe.
+=== FIN DE L'ANNOTATION ===

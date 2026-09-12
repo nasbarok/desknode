@@ -52,6 +52,19 @@ elle-meme, avec les objets du navigateur, qu'elle a bien ce qu'elle croit.
 ⚠️ COROLLAIRE DE BANC : servir cette page depuis WSL ne prouve RIEN. Le WSL de
    la tour est en NAT ⇒ `localhost` ne traverse pas, la page serait vue par IP,
    donc hors contexte securise. **Toute mesure se joue cote Windows.**
+⚠️ **ANNOTE LE 2026-09-12 (`dn8-3`) — ⛔ LE COROLLAIRE CI-DESSUS N'EST PAS
+   EFFACE (`NFR3`), ET SA PREMIERE MOITIE EST REFUTEE PAR LA MESURE.**
+   MESURE (M6, 2026-09-12) : un serveur lie DANS WSL repond **200** a un
+   `Invoke-WebRequest` venu de Windows, sur `127.0.0.1` **et** sur `0.0.0.0`.
+   ⇒ *« localhost ne traverse pas »* est **FAUX comme enonce de
+   JOIGNABILITE**.
+   🔴 **ET LA CONCLUSION, ELLE, TIENT — POUR L'AUTRE MOITIE, QUI EST INTACTE.**
+   Ce que M6 mesure est un **CLIENT HTTP**, ⛔ pas un **NAVIGATEUR** : elle ⛔ ne
+   dit RIEN de `isSecureContext` tel que le navigateur le calcule pour l'URL
+   reellement tapee, ⛔ rien de Web Serial, et ⛔ rien de ce qui se juge A L'ŒIL.
+   ⇒ **« Toute mesure se joue cote Windows » RESTE VRAI**, et la phrase qui
+   change est **le motif**, ⛔ pas la consigne.
+   ⛔ **AUCUN COMPORTEMENT N'EST MODIFIE PAR CETTE ANNOTATION.**
 
 ── L'ECART DECLARE DE `FR7.1`, ET L'INSTRUMENT QUI LE REPRODUIT ────────────
 

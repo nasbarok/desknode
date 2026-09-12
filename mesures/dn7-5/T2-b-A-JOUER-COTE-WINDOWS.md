@@ -113,3 +113,53 @@ mesuré.
 Le remplacer par le **relevé brut** (sorties collées, codes de retour, captures), en gardant
 **ce qui a été joué** et **ce qui ne l'a pas été** — ⛔ pas seulement ce qui a réussi. Puis
 solder le report du ledger et porter `dn7-5` à son état.
+
+──────────────────────────────────────────────────────────────────────────────
+🔴 ANNOTE LE 2026-09-12 PAR `dn8-3` — ⛔ AUCUNE LIGNE CI-DESSUS N'EST EFFACEE,
+   ET CE PROTOCOLE N'A **TOUJOURS PAS** ETE JOUE.
+──────────────────────────────────────────────────────────────────────────────
+⛔ CE QUI N'A PAS CHANGE : l'instrument reste **L'ŒIL DE L'OWNER**, sur la page
+   SERVIE, cote Windows. ⛔ Aucune gate de ce depot ne rend ce verdict-la, et
+   une gate qui pretendrait le faire serait pire qu'aucune gate.
+
+🔴 CE QUI A CHANGE, ET QUI RACCOURCIT LA SEANCE — TROIS FAITS MESURES :
+
+  (1) ⚠️ **LA PREMISSE DE NAT EST REFUTEE** (M6, 2026-09-12). *« le WSL de la
+      tour est en NAT ⇒ localhost ne traverse pas »* est **FAUX comme enonce
+      de JOIGNABILITE** : un serveur lie DANS WSL repond **200** a un
+      `Invoke-WebRequest` venu de Windows, sur `127.0.0.1` ET sur `0.0.0.0`.
+      ⛔ **ET CA NE FERME RIEN ICI** : ce qui est mesure est un CLIENT HTTP,
+      ⛔ pas un NAVIGATEUR, et ⛔ surtout pas un ŒIL. Le contexte securise, Web
+      Serial et la LISIBILITE restent **entiers et non mesures**.
+
+  (2) 🔴 **LE DEPLOIEMENT DE LA TOUR EST PERIME — A CORRIGER *AVANT* LA SEANCE.**
+      `/mnt/h/dev/projets/desknode/PROVENANCE.txt` ⇒ `HEAD = e3064f0`, depose le
+      **2026-08-28** ; le depot est a `0fa214d`. `exit 12` et `PREREQUIS DUR`
+      comptent **ZERO occurrence** dans le `dn_agent_tour.ps1` DEPLOYE.
+      ⇒ jouer ce protocole sur la tour TELLE QUELLE mesurerait un produit
+        **d'il y a deux semaines**, et le refus ⛔ **n'y serait pas** : un
+        ⛔ **FAUX NEGATIF que ⛔ RIEN ne signalerait**.
+      ⇒ **LE GESTE, EN PREMIER** :  ~/projects/desknode/tools/deployer_tour.sh
+         puis RELIRE `PROVENANCE.txt` et verifier qu'il annonce le HEAD du jour.
+
+  (3) ✅ **CE QUI EST DESORMAIS MECANISE, ET QU'IL EST INUTILE DE REJOUER A LA
+      MAIN** : la **POLARITE** de la sonde LHM est rejouee dans un **vrai
+      `powershell.exe`**, dans les DEUX sens, par
+      `tools/verif_lhm_ps_dn83.py` — mesure du 2026-09-12 : LHM qui repond
+      **sans une seule ligne `lhm_`** ⇒ **exit 12** ; LHM debout ⇒ ⛔ **pas 12**.
+      ⛔ CE QUE CA ⛔ NE REMPLACE PAS : la TOUR REELLE, sa TACHE PLANIFIEE et la
+      COURSE AU LOGON. Le banc ⛔ n'installe pas LHM, ⛔ ne pose aucune tache,
+      ⛔ n'ouvre aucun navigateur.
+
+⚠️ **CE QUI EST ALLEGE DANS CE PROTOCOLE** : `T2-b-3`, *« le refus, dans les
+   deux sens »*, est **MECANISE** pour sa moitie POLARITE. Ce qu'il reste a
+   constater sur la tour est ce qu'⛔ aucun banc ne peut produire :
+     · que `dn-agent.bat etat` ne trouve **AUCUN agent vivant** apres le refus
+       — ⛔ c'est cette ligne-la qui ferme l'AC, ⛔ pas le message ;
+     · la **reprise au logon** (`(c)`), sa borne de ~3 minutes, jamais observee.
+
+🆕 **ET LE PORT DE LHM SE PASSE MAINTENANT** (`dn8-3`) : si LHM ecoute ailleurs,
+   ⛔ **ne plus aligner la constante du produit** —
+       tools\dn-agent.bat run COM3 0 "" 127.0.0.1:<port>
+   L'adresse traverse jusqu'a l'agent. ⚠️ La 4e place (le temoin) doit etre
+   OCCUPEE : `""` si pas de temoin, sinon `cmd.exe` lit l'adresse en `%4`.

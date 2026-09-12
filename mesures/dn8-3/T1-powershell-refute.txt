@@ -1,0 +1,113 @@
+=== dn8-3 / T1 — LA CAUSE PUBLIEE CINQ FOIS EST **REFUTEE**, ET LA MESURE EST ICI ===
+date : 2026-09-12T12:38:13+02:00     HEAD : 0fa214d
+
+🔴 CE QUE LE LEDGER PUBLIAIT, MOT POUR MOT, SUR **CINQ** ENTREES :
+   « ⛔ AUCUN banc PowerShell n existe dans le depot [...] Il faudrait un
+     hote PowerShell, que le WSL de la tour n a pas. »
+⇒ LA SECONDE MOITIE EST FAUSSE. Les commandes ci-dessous sont REJOUABLES.
+
+──── M1 — UN HOTE POWERSHELL REPOND, DEPUIS CE WSL ────
+  $ /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command "$PSVersionTable.PSVersion.ToString()"
+  ⇒ 5.1.19041.6456
+  rc=0
+
+──── M1b — 🔴 LE MECANISME EXACT DU FAUX NEGATIF : UN **NOM**, ⛔ PAS UNE ABSENCE ────
+  $ python3 -c "import shutil; [print(n, shutil.which(n)) for n in (...)]"
+  which('powershell'    ) ⇒ None
+  which('powershell.exe') ⇒ /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+  which('pwsh'          ) ⇒ None
+  which('pwsh.exe'      ) ⇒ None
+  ⇒ `powershell` rend None LA OU `powershell.exe` rend le chemin.
+    Publier « absent » sur UN SEUL nom, c est publier une propriete de
+    SA PROPRE METHODE. ⚠️ Meme regle deja payee deux fois ici : le
+    403 ⇒ 200 d un User-Agent, et le HOME laisse en place de dn8-2.
+
+──── M2 — UN .ps1 **NON SIGNE** S EXECUTE, ET SON CODE DE SORTIE EST HONORE ────
+  $ powershell.exe -NoProfile -ExecutionPolicy Bypass -File <tmp>\t.ps1 -N 42
+  ⇒ TEMOIN-OK-42
+  rc du .ps1 (il fait `exit 7`) = 0
+  $ powershell.exe -NoProfile -Command "Get-ExecutionPolicy -List"
+          Scope ExecutionPolicy
+          ----- ---------------
+  MachinePolicy       Undefined
+     UserPolicy       Undefined
+        Process       Undefined
+    CurrentUser       Undefined
+   LocalMachine       Undefined
+
+──── M3 — ⚠️ POWERSHELL ⛔ NE LIT **PAS** LE DEPOT A SON CHEMIN WSL ────
+  🔴 ⛔ **CE TITRE EST FAUX, ET IL EST LAISSE EN PLACE (`NFR3`) PARCE QU'IL
+     EST CE QUE LE DOSSIER DE CADRAGE AFFIRMAIT.** La mesure juste en
+     dessous le REFUTE : `Test-Path` rend **True**, et un `.ps1` pose a ce
+     chemin **S'EXECUTE** (code de sortie honore). PowerShell LIT le depot a
+     son chemin WSL.
+  ⇒ CE QUI SURVIT DU TITRE : **RIEN**. Ce qui survit de sa CONCLUSION (le
+    staging), c'est un AUTRE motif, ecrit plus bas et dans la gate : un
+    staging porte des copies **MUTEES**, et les ecrire dans l'arbre serait
+    une MUTATION PENDANT UNE PASSE DE MESURE.
+  wslpath -w  ⇒ \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\tools\dn_lhm_tour.ps1
+  $ powershell.exe -Command "Test-Path <ce chemin>"  ⇒ True
+  ⇒ LE STAGING EST DONC **OBLIGATOIRE** : un banc qui passerait le chemin
+    WSL echouerait pour une raison SANS RAPPORT avec la polarite, et son
+    rouge serait un FAUX. `temp_de_windows()` resout $env:TEMP puis
+    `wslpath -u` — ⛔ il ne devine aucun chemin.
+
+──── M5 — LE PYTHON **DE WINDOWS** PORTE psutil ET pyserial ────
+  ⇒ le pre-vol franchit donc ses `exit 3` amont et ATTEINT le bloc LHM.
+  version : Python 3.13.4
+  psutil+serial : PRESENTS
+  rc=0
+
+──── M6 — ⚠️ LA PREMISSE DE NAT EST REFUTEE **COMME ENONCE DE JOIGNABILITE** ────
+  serveur lie DANS WSL sur 127.0.0.1:18218  ⇒ Invoke-WebRequest depuis Windows = 200
+  serveur lie DANS WSL sur 0.0.0.0  :18135  ⇒ Invoke-WebRequest depuis Windows = 200
+
+  🔴 ⛔ ET CA NE FERME **RIEN** DU COTE DE L ŒIL. Ce qui est mesure ici est
+     un CLIENT HTTP, ⛔ pas un NAVIGATEUR, et ⛔ surtout pas un ŒIL. Le
+     contexte securise, Web Serial et la LISIBILITE restent ENTIERS et
+     NON MESURES. ⇒ `AC8.3.1` et `AC8.3.3` ⛔ ne se ferment PAS avec ca,
+     et le motif `NON RELEVE` de mesures/dn7-4/ ⛔ n est PAS contourne.
+
+=== FIN T1 2026-09-12T12:38:29+02:00 ===
+
+──────────────────────────────────────────────────────────────────────────────
+🔴 CORRIGE LE 2026-09-12, APRES COUP — ⛔ RIEN CI-DESSUS N'EST EFFACE (NFR3),
+   ET **DEUX CHIFFRES DE CE FICHIER SONT FAUX. LES DEUX SONT DE MOI.**
+──────────────────────────────────────────────────────────────────────────────
+
+(A) 🔴 M2 : « rc du .ps1 (il fait `exit 7`) = **0** » EST FAUX.
+    CAUSE : j'ai capture le `$?` d'un **PIPELINE** (`powershell.exe ... | tr`),
+    donc le code de `tr`, ⛔ PAS celui de PowerShell. J'ai mesure MON PROPRE
+    TUYAU au lieu du sujet — dans le fichier meme qui documente cette faute.
+    🔬 RE-MESURE, SANS PIPELINE (3 tirs sur 3) :
+        sortie = TEMOIN-OK-42        rc = **7**
+        le meme, derriere un pipe    rc = 0        ⇐ le rc de `tr`
+        le meme, via PIPESTATUS[0]   rc = **7**
+    ⇒ LE FOND DE M2 EST **CONFIRME, ET MEME RENFORCE** : un `.ps1` non signe
+      s'execute ET son code de sortie EST honore — il vaut **7**, ⛔ pas 0.
+      Seul le CHIFFRE PUBLIE etait faux.
+    ⚠️ CE QUE CA COUTERAIT AILLEURS : la gate `verif_lhm_ps_dn83.py` fait
+      reposer (c2)/(c3) sur le code de sortie du pre-vol. Elle, elle utilise
+      `subprocess.run(...).returncode` — ⛔ AUCUN pipeline — donc elle ⛔ n'est
+      PAS touchee. C'est verifie, ⛔ pas suppose.
+
+(B) 🔴 M3 EST **REFUTEE** : `Test-Path` rend **True**, ⛔ pas False.
+    🔬 RE-MESURE (4 tirs sur 4) : `Test-Path '\\wsl.localhost\Ubuntu\...'`
+       ⇒ **True**, et `Get-Content` rend REELLEMENT la premiere ligne du
+       fichier (`<#`) — donc ⛔ pas seulement une existence, une LECTURE.
+    ⇒ LA PHRASE « PowerShell ⛔ NE LIT PAS LE DEPOT A SON CHEMIN WSL » EST
+      **FAUSSE**, et le `False` que j'avais releve au cadrage l'etait aussi
+      (ou n'a pas survecu : `\\wsl.localhost` depend d'un service qui doit
+      etre debout, et l'interop l'avait peut-etre reveille entre-temps).
+    🔴 **MAIS LE STAGING RESTE OBLIGATOIRE — POUR LA VRAIE RAISON, ET ELLE
+      EST DEJA ECRITE DANS LA GATE** : `stagger()` pose des copies **MUTEES**
+      (un `dn_agent.py` dont le `LHM_PORT` est change, un outil dont une faute
+      est REPLANTEE). Ecrire ca dans l'arbre du depot serait inacceptable, et
+      c'est vrai **quel que soit** ce que PowerShell sait lire.
+      ⇒ LE MECANISME NE CHANGE PAS ; c'est son MOTIF PUBLIE qui etait faux.
+
+⇒ LE COMPTE DE CES FAUX VERDICTS EST TENU EN **UN SEUL ENDROIT** :
+   `mesures/dn8-3/FAUX-VERDICTS-LE-COMPTE.md`. ⛔ Aucun ordinal n'est ecrit ici :
+   cinq relevés en portaient un, et ils se CONTREDISAIENT.
+
+=== FIN DE LA CORRECTION ===
