@@ -1,0 +1,57 @@
+=== T0 — BORNE D'ENTREE, mesuree le 2026-09-11T20:03:56+02:00 ===
+HEAD desknode : 8a2a8c7eafc140315f3455b4d8b8c556a2de41f7  arbre : 1 fichier(s) modifie(s)
+
+--- verif_banc_langue_dn73.py
+BILAN : 45 OK, 0 KO
+rc=0  duree 3.48 s
+--- verif_installeur_dn71.py
+BILAN : 28 OK, 0 KO
+rc=0  duree 0.24 s
+--- verif_page_dn722.py
+BILAN : 56 OK, 0 KO
+rc=0  duree 0.15 s
+--- verif_langue_dalle_dn73.py
+BILAN : 61 OK, 0 KO
+rc=0  duree 0.23 s
+--- verif_preconditions_dn76.py
+BILAN : 52 OK, 0 KO
+rc=0  duree 0.41 s
+--- verif_campagne_dn56.py (T0, 2026-09-11T20:04:11+02:00)
+BILAN : 8 OK, 0 KO
+rc=0  duree 430.43 s
+
+--- verif_harnais_dn81.py --cockpit ~/projects/compagnon_project
+rc=0
+BILAN : 28 OK, 0 KO
+--- verif_harnais_dn81.py SANS cockpit (chemin CI)
+rc=0
+BILAN : 28 OK, 0 KO
+--- banc seul : node tools/banc_langue_dalle_dn73.mjs
+rc=0
+BANC : 27 OK, 0 KO
+--- banc --temoin-chaine
+rc=3
+0
+--- verif_dossier_dn415.py (la seule ROUGE du depot)
+rc=1
+BILAN : 23 OK, 10 KO
+--- COUVERTURE DU BANC (V8), instrument reproductible
+fonctions 72/93 · blocs 87/141  (mesure du 2026-09-11, cf. T1)
+
+──────────────────────────────────────────────────────────────────────────────
+⚠️ ANNOTE LE 2026-09-12, A LA LIVRAISON — ⛔ RIEN CI-DESSUS N'EST EFFACE, ET UNE
+   LIGNE EST RE-MESUREE AUTREMENT.
+──────────────────────────────────────────────────────────────────────────────
+La ligne « verif_harnais_dn81.py SANS cockpit (chemin CI) ⇒ rc=0, BILAN 28 OK »
+⛔ NE SE REPRODUIT PAS AVEC LA METHODE DU 2026-09-12. Re-mesure, en vidant `HOME`
+(`HOME=/tmp/vide-sans-cockpit python3 tools/verif_harnais_dn81.py`) : **rc=4**,
+⛔ aucun bilan — c'est-a-dire le PREREQUIS ABSENT que `tools/run_gates.sh`
+declare pour elle, et le comportement voulu.
+⇒ LES DEUX CHIFFRES SONT ECRITS. L'ecart n'est ⛔ pas dans la gate : il est dans
+  la METHODE de « sans cockpit ». Le tir d'entree avait laisse `HOME` en place,
+  donc `COCKPIT_DEFAUT` resolvait encore — c'est-a-dire qu'il mesurait un cockpit
+  PRESENT. ⚠️ « NON ATTEINT » est une propriete de la METHODE de recuperation,
+  ⛔ pas de l'adresse : la meme regle que ce depot a deja payee ailleurs.
+⇒ CE QUI TRANCHE POUR LA CI, et il est mesure a l'arrivee : le tir de
+  `verif_campagne_dn56.py` **SANS cockpit** — le chemin qui avait rendu la suite
+  ROUGE sur `dn8-1` — rend **8 OK / 0 KO en 347,86 s** (voir T5).

@@ -1,0 +1,68 @@
+=== T3 — LES CODES DU POINT D'ENTREE : CINQ PROVOQUES, UN LU  (2026-09-12)
+
+AVANT dn8-2 : AUCUN des six n'etait provoque. La seule chose jouee etait
+prevol() PAR IMPORT, sur QUATRE de ses issues (verif_installeur_dn71.py,
+ATTENDU_PREVOL : module_manquant 6 · tout_est_la 0 · page_absente 3 ·
+pilote_absent 3). ⇒ 2, 4 et 5 n'etaient joues par RIEN.
+
+🔴 ET LA PREMIERE REDACTION DE CETTE GATE APPELAIT `prevol()` **A COTE** DE SON
+   CHEMIN. Quatre mutations l'ont laissee a 36 OK / 0 KO :
+     · main() avec `if a.verifier: return 0`  (le precedent dn7-1, un cran plus
+       loin : prevol rendait toujours ses codes, et personne ne regardait ce que
+       le point d'entree en FAISAIT)
+     · `exit /b 0` a la sortie du .bat        (le relais final EFFACE)
+     · le relais `set "RC=%ERRORLEVEL%"` ⇒ `set "RC=0"`
+     · une etiquette HORS TABLE qui pose RC=7
+   ⇒ les codes sont desormais provoques PAR `main()` DU PRODUIT, et le .bat est
+     lu comme un FLOT. ⚠️ `main()` ⛔ NE PREND AUCUN PARAMETRE : `sys.argv` est
+     POSE — `--verifier` pour 0, 3, 5 et 6, et `--sans-navigateur` pour le 4,
+     parce que sous `--verifier` `main()` REND AVANT le `bind`.
+
+--- LE TIR (2026-09-12) — duree 0,16 s (0,21 s au premier tir), BILAN :
+    45 OK, 0 KO, rc=0
+  [OK ] (c1) le code 0 est PROVOQUE, et il vaut 0                `tout_est_la` ⇒ 0
+  [OK ] (c2) le code 3 — la PAGE absente                         `page_absente` ⇒ 3
+  [OK ] (c3) le code 3 — le PILOTE introuvable                   `pilote_absent` ⇒ 3
+  [OK ] (c5) le code 4 — le `bind` EMPECHE au niveau socket      `bind_refuse` ⇒ 4
+  [OK ] (c6) le code 5 — la CHARGE amputee                       `charge_absente` ⇒ 5
+  [OK ] (c7) le code 5 passe AVANT le code 6                     `charge_absente_et_module` ⇒ 5
+  [OK ] (c8) le code 6 — l'ecart declare                         `module_manquant` ⇒ 6
+  [OK ] (c4) le code 4 est PHRASE, ⛔ pas une trace nue          la panne est nommee (`OSError`) et expliquee
+  [OK ] (c9) toute etiquette a code est ATTEIGNABLE              5 etiquette(s), chacune ATTEINTE depuis la tete du fichier
+  [OK ] (c10) chaque etiquette pose LE code declare              5 appariement(s) etiquette ⇒ code
+  [OK ] (c11) l'en-tete PUBLIE exactement les codes rendus       les 6 codes publies sont ceux qui sont rendus : 0 2 3 4 5 6
+  [OK ] (c17) ⛔ aucune etiquette HORS table ne pose un code      5 etiquette(s) posent un code, toutes declarees
+  [OK ] (c18) les deux appels `%PY%` RELAIENT `%ERRORLEVEL%`     2 appels, chacun suivi du relais
+  [OK ] (c19) `:FIN` sort par `exit /b %RC%`, et par lui seul    1 sortie(s) atteignable(s) depuis `:FIN`
+  [OK ] (c12) les TROIS listes de noms de charge coincident      5 noms, identiques des trois cotes
+  [OK ] (c13) la page que le `3` garde est un DOCUMENT           867 balises · 1 `<script>` en ligne · 1 externe(s)
+  [OK ] (c20) les quatre boutons de choix partent en ANGLAIS     b-dalle-en=true b-dalle-fr=false b-langue-en=true b-langue-fr=false
+
+--- COMMENT CHAQUE CODE EST OBTENU
+ 0  `main()` avec sys.argv = ["--verifier"], copie SAINE, doubles en place
+ 3  la PAGE est REELLEMENT retiree de la copie (os.rename)
+ 3  localiser_pilote double rend (None, "introuvable")
+ 4  le `bind` est EMPECHE **AU NIVEAU `socket`** : socket.socket.bind leve
+    OSError(EADDRNOTAVAIL) le temps de l'appel, puis il est RENDU.
+    ⛔ Pas en substituant le NOM ThreadingHTTPServer : un produit qui lierait
+      son port par un autre chemin doit rendre 4 QUAND MEME.
+ 5  l'asset living_pcb_v0.bin est REELLEMENT ote de la copie
+ 5  avant 6 : les DEUX causes a la fois ⇒ le code le plus grave gagne
+ 6  dependance_presente double rend False pour psutil SEULEMENT
+
+--- 🔴 HORS CI : CE QUE CETTE GATE NE PROUVE PAS, ET QUI LE PORTE
+Le `2` (argument inconnu) est pose par `cmd.exe`, et `cmd.exe` ⛔ N'EXISTE PAS
+sur la CI Linux de ce depot : il n'est donc ⛔ PAS provoque — il est **LU** dans
+le flot du .bat. Plus generalement, ⛔ AUCUN `%ERRORLEVEL%` n'est jamais observe
+par cette gate. Ce qu'elle prouve du point d'entree est une propriete de
+STRUCTURE, et elle le DECLARE dans sa propre sortie :
+  · toute etiquette a code est ATTEINTE depuis la tete du fichier (⛔ pas
+    « citee par un goto quelque part » : la 1re redaction s'en contentait) ;
+  · chaque etiquette pose LE code que la table declare ;
+  · ⛔ AUCUNE etiquette hors table ne pose de code ;
+  · les DEUX appels %PY% relaient %ERRORLEVEL% IMMEDIATEMENT ;
+  · `:FIN` sort par `exit /b %RC%`, et par lui seul.
+⇒ LE TIR REEL SOUS `cmd.exe` EST **NON JOUE**. Porteur : **AU LEDGER**,
+  `epic-dn8`. ⛔ Ce n'est PAS porte par `dn8-3` : ses AC8.3.1→AC8.3.6 ⛔ ne
+  nomment ni ce tir ni ce fichier. CE QUI LE FERMERAIT : lancer le .bat depuis
+  Windows sur les six scenarios et relever %ERRORLEVEL% a chaque fois.

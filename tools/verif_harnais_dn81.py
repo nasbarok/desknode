@@ -868,6 +868,22 @@ def muter(etat):
                     + src[m1.start():m2.end()].replace(
                         "REL_TRACKER", "\"(le tracker)\"")
                     + src[m2.end():])
+        # 🔴 CORRECTIF DU 2026-09-11 (`dn8-2`) — **CE MUTANT ETAIT DEVENU UN
+        #    GARDIEN MORT, ET SEULE `verif_campagne_dn56.py` POUVAIT LE VOIR.**
+        #    Mesure : des que `dn8-2` a ecrit `tools/verif_entree_dn82.py`, le
+        #    perimetre a porte un SECOND sujet (la gate nomme
+        #    `installeur/index.html`, qu'elle PARSE). Vider la seule region YAML
+        #    du ledger ⛔ ne vidait donc plus la population de `(c3c)`, et le
+        #    mutant sortait **rc=0** — `dn56` a rendu `7 OK / 1 KO` la-dessus.
+        #    ⇒ la population se vide **PARTOUT OU ELLE VIT** : dans la region du
+        #    ledger ET dans les fichiers du perimetre, dont les sujets sont des
+        #    chemins litteraux. ⛔ Ce n'est pas un debranchement : l'etat
+        #    replante est exactement celui que `(c3c)` existe pour refuser —
+        #    « ⛔ aucun bloc de `dn8` ne nomme une structure ».
+        perim = set(perimetre_dn8())
+        for rel in list(s):
+            if rel in perim and rel != cible:
+                s[rel] = RE_SUJET.sub("(sujet)", s[rel])
     return e
 
 

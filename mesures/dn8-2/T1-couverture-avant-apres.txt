@@ -1,0 +1,94 @@
+=== T1 — COUVERTURE DU <script> DE LA PAGE, AVANT / APRES  (2026-09-11 → 12)
+
+L'instrument : tools/banc_couverture_dn82.mjs — il rejoue le banc sous
+NODE_V8_COVERAGE et lit les `functions` de l'entree d'URL
+`installeur/index.html<script>`. La couverture V8 TRAVERSE vm.runInContext et
+elle ADDITIONNE les comptes des contextes : verifie le 2026-09-11 sur un temoin
+a deux contextes (une entree, comptes sommes).
+
+⚠️ LES DECALAGES V8 SONT EN UNITES UTF-16, ⛔ PAS EN POINTS DE CODE. Une
+   conversion naive attribuait la fonction morte de la l.1515 a la l.1518 —
+   c'est-a-dire au gestionnaire de b-dalle-FR au lieu de celui de b-dalle-EN,
+   l'exact contraire du fait. Le Code Map du dossier porte les lignes de la
+   conversion naive (decalage de 0 a +3) ; la POPULATION, elle, est la meme.
+   ⇒ le relevé est ecrit en JavaScript, dont les chaines SONT en UTF-16.
+
+──────────────────────────────────────────────────────────────────────────────
+ 1. LA BORNE D'ENTREE — mesuree le 2026-09-11, AVANT dn8-2
+──────────────────────────────────────────────────────────────────────────────
+   fonctions : 72/93 exercees      ⇒ 21 JAMAIS ENTREES
+   blocs     : 87/141 atteints     ⇒ 54 JAMAIS ATTEINTS
+   le banc rendait alors : BANC : 27 OK, 0 KO
+
+──────────────────────────────────────────────────────────────────────────────
+ 2. APRES dn8-2, **SANS BASE** — 2026-09-12 — LE CHIFFRE QUE LA CI REJOUE
+──────────────────────────────────────────────────────────────────────────────
+   commande  : node tools/banc_couverture_dn82.mjs
+   banc      : BANC : 39 OK, 0 KO (rc=0)   ·   duree du relevé : 0,92 s
+               (1,25 s au premier tir du 2026-09-12 ; les comptes de
+                couverture, eux, ⛔ n'ont PAS bouge)
+   fonctions : 96/100 exercees     ⇒ 4 encore mortes   (borne : 72/93)
+   blocs     : 131/190 atteints    ⇒ 59 morts          (borne : 87/141)
+   seuils declares dans le fichier : fonctions 92 · blocs 120
+
+   🔴 C'EST **CE** CHIFFRE QUI EST PUBLIE PARTOUT AILLEURS, et c'est delibere :
+      l'etape `.github/workflows/gates.yml` joue le relevé SANS base, donc un
+      chiffre pris avec serveur serait un chiffre que ⛔ PERSONNE ne rejoue.
+      (La revue du 2026-09-11 a epingle exactement ce defaut : « 5 fonctions
+      mortes » etait le chiffre d'un lanceur JETABLE.)
+
+──────────────────────────────────────────────────────────────────────────────
+ 3. APRES dn8-2, **AVEC LE VRAI SERVEUR** — 2026-09-12 — informatif
+──────────────────────────────────────────────────────────────────────────────
+   lanceur   : JETABLE, hors gate (il lie le ThreadingHTTPServer du produit sur
+               127.0.0.1:0 avec les MEMES doubles que la gate, puis le ferme)
+   banc      : BANC : 42 OK, 0 KO (rc=0)
+   fonctions : 96/100 exercees     ⇒ 4 encore mortes
+   blocs     : 139/194 atteints    ⇒ 55 morts
+   ⚠️ Ce chiffre n'est PAS celui de la CI, et ⛔ SON PRODUCTEUR N'EST PAS
+      COMMITTE : ⛔ aucun appelant du depot ne passe --base a ce relevé. Il est
+      ecrit ICI, dans un relevé date, PARCE QUE les trois cas HTTP ne se jouent
+      que derriere --base et qu'il faut pouvoir dire ce qu'ils ajoutent (+8 blocs
+      atteints, +4 blocs declares). ⛔ IL N'EST DONC PUBLIE NI DANS LE RELEVE DE
+      COUVERTURE, NI AU README, NI AU CHANGELOG : un chiffre que ⛔ personne ne
+      rejoue est un chiffre a croire sur parole.
+
+──────────────────────────────────────────────────────────────────────────────
+ 4. LES QUATRE FONCTIONS ENCORE MORTES — NOMMEES, AVEC LEUR MOTIF
+──────────────────────────────────────────────────────────────────────────────
+ l.915  `function () {`  — l'ecouteur `error` du module de flash distant.
+ l.919  `function () {`  — la sonde `window.setTimeout(…, 10000)` qui declare le
+        module absent au bout de DIX SECONDES.
+   ⇒ MOTIF, ET IL EST CHIFFRE : les exercer coute **10 s par tir**, une fois PAR
+     MUTANT dans la campagne (63 mutants pour la seule gate du banc). Le meme
+     etat est atteint par `ctx.moduleAbsent("cdn.delai")`, que DEUX cas jouent
+     (`module-absent-desarme-le-geste`, `blocs-contexte-refuse`) : ce qui reste
+     hors couverture est le DECLENCHEUR, ⛔ pas l'effet.
+ l.1387 `function () { return null; })` — le `.catch` d'un `l.cancel()` QUI
+        REJETTE, dans `consoleFermer()`.
+   ⇒ MOTIF : le port bidon annule TOUJOURS avec succes. Une annulation qui
+     rejette serait un 5e cas de console ; ⛔ ecrit ici plutot que tu.
+ l.1861 `function () { return sansPort(); }` — la branche « le port n'a pas pu
+        etre obtenu » du geste de langue.
+   ⇒ MOTIF : REFUTATION DATEE DU 2026-09-11. Le dossier rangeait cette fonction
+     sous « le filet d'ecriture · le rejet de `consoleEcrire` » et demandait un
+     cas pour elle. Or le FILET est deja traverse par le cas existant
+     `ecriture-qui-rejette-en-vol` ; la fonction morte, elle, est `sansPort()`.
+     ⇒ la marche ⛔ ne lui ecrit PAS de cas, et le dit.
+
+──────────────────────────────────────────────────────────────────────────────
+ 5. ⛔ CE QUE CES DEUX FRACTIONS NE SONT PAS
+──────────────────────────────────────────────────────────────────────────────
+ · ⛔ PAS DES POPULATIONS. V8 n'emet ni les fonctions imbriquees dans une
+   fonction JAMAIS COMPILEE, ni les blocs qui comptent comme leur parent : le
+   DENOMINATEUR MONTE avec la couverture. Mesure a source de page INCHANGEE :
+   93 ⇒ 99 ⇒ 100 fonctions declarees, et 141 ⇒ 170 ⇒ 190 ⇒ 194 « blocs ».
+   ⇒ 54 blocs morts a l'entree et 59 apres ⛔ NE SE SOUSTRAIENT PAS : le second
+     compte porte sur 190 blocs declares, le premier sur 141. C'est pourquoi les
+     deux seuils portent sur le NUMERATEUR, ⛔ jamais sur un ratio.
+ · ⛔ ET UNE COUVERTURE QUI MONTE NE PROUVE PAS QU'UNE FAUTE SERAIT VUE. C'EST
+   MESURE, ⛔ pas craint : l'essai du 2026-09-11 passait de 21 a 5 fonctions
+   mortes **et restait VERT sur onze inversions REELLES de la page**, dont
+   l'avertissement hors Windows que le ledger demontrait le 2026-09-09. Ce qui
+   JUGE vit dans les cas de tools/verif_banc_langue_dn73.py et dans ses 60
+   mutants — ⛔ pas dans ce compte, qui garde une POPULATION.

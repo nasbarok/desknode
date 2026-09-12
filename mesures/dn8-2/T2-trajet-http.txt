@@ -1,0 +1,78 @@
+=== T2 — LE TRAJET HTTP REEL, JOUE DE BOUT EN BOUT  (2026-09-12)
+
+Le serveur est le VRAI ThreadingHTTPServer du produit, lie par la GATE sur
+127.0.0.1:0 — UNE FOIS PAR TIR, ⛔ jamais une fois par cas — et ferme dans son
+`finally`. Le banc lui parle par --base.
+
+⛔ AUCUN GESTE REEL N'ATTEINT LA MACHINE. Les doubles, et le motif de chacun :
+   _powershell          — l'UNIQUE porte par laquelle ce serveur lancerait quoi
+                          que ce soit (stop, retirer, poser, enumeration)
+   localiser_pilote      / _PILOTE / _lire — un double de papier, ⛔ pas le vrai
+                          tools/dn_agent_tour.ps1
+   lhm_present          — sans quoi la gate ouvrirait de VRAIES connexions TCP
+                          vers un service qu'elle n'a pas lie
+   _jouer_dependances   — ⛔ IL LANCE UN `pip install` POUR DE VRAI
+   dependance_presente  — AJOUTE LE 2026-09-12 : deux interpreteurs par appel,
+                          et il rendait l'etat de CETTE machine
+
+--- CE QUE LE PONT FAIT, ET POURQUOI (correctif de revue du 2026-09-12)
+ 1. IL IMITE LE NAVIGATEUR : un POST porte `Origin` = l'origine de la base.
+    🔬 MESURE DU 2026-09-11 : le `fetch` de node n'envoie **AUCUN** `Origin` sur
+    un POST (valeur recue cote serveur : `null`). Un navigateur en envoie
+    TOUJOURS un ⇒ le refus `Origin` du produit n'etait JAMAIS joue comme la page
+    le declenche, et `_origines_permises` faussee laissait la gate VERTE alors
+    qu'un navigateur aurait ete refuse sur TOUS les verbes. Le mutant 55
+    replante exactement cela.
+ 2. LE VRAI `fetch` N'EST DONNE QU'AUX CAS `http`. Avant, tout cas le recevait
+    des que --base etait passee : les cas anciens couraient contre le vrai
+    serveur, et une reponse d'etat arrivant EN PLEIN CAS etait une fenetre de
+    course. 🔬 MESURE : `GET /api/etat` a 175,2 ms median (146-289, n=8) quand
+    `dependance_presente` n'etait pas doublee, 3,72 ms (1,79-4,60, n=8) une fois
+    les doubles en place. La fenetre est ETEINTE, ⛔ pas surveillee.
+ 3. `Host` PASSE PAR `node:http`, ⛔ pas par `fetch` : node IGNORE EN SILENCE un
+    `Host` pose sur `fetch` (mesure du 2026-09-11). C'est DECLARE dans le banc :
+    ce seul refus mesure LE SERVEUR, ⛔ pas la page.
+ 4. LA VERSION ATTENDUE EST **LUE** dans installeur/charge/manifest.json, passee
+    au banc par la gate (--manifeste). ⛔ Plus de `40be2c8` grave dans un cas :
+    `dn8-7` reconstruira cette charge.
+
+--- LE TIR DE LA GATE (2026-09-12)
+serveur    : http://127.0.0.1:35881/ (lie par CETTE gate, ferme dans son `finally`)
+  [OK ] (c1) le banc TOURNE, et il rend son bilan          BANC : 42 OK, 0 KO (rc=0)
+  [OK ] (c2) tout cas DECLARE est joue, par son NOM        42 cas joues, dont les 9 de la matrice et les 3 de `--base`
+  [OK ] (c3) le banc joue TOUS les cas qu'il declare       42 cas emis pour 42 attendus
+  [OK ] (c14) le banc parle au VRAI serveur de cette gate  base annoncee sur le port 35881, celui que cette gate a lie
+BILAN : 81 OK, 0 KO   (rc=0, duree 2,41 s)
+  ⚠️ 76 OK / 1,95 s au premier tir du 2026-09-12 ; la seconde boucle de revue
+     ajoute `(c16)` (le prerequis `bind` JOUE) et `(c17)` (l'etape de CI), et
+     trois temoins de plus a lancer par tir — d'ou les 2,41 s.
+
+--- LES TROIS CAS HTTP, ET CE QU'ILS EXIGENT
+ http-page-chargee-et-verbe-abouti
+   routes : charge/manifest.json · api/etat · api/agent/stop · api/etat
+   champs : v-version = la version LUE dans le manifeste
+   sortie : « dn_agent_tour.ps1 stop », « sortie de papier », « exit code: 0 »
+   ⇒ afficherManifeste() ET rafraichirEtat() ABOUTISSENT — leurs branches de
+     succes etaient MORTES parce que le `fetch` du banc rejetait TOUJOURS.
+ http-routes-du-serveur   (la ROUTE ATTEINTE, ⛔ pas le chemin demande)
+   api/agent/stop    ⇒ 200 rc=0 atteint=verbe stop (l'outil)
+   api/agent/inconnu ⇒ 200 rc=2 atteint=aucune commande (la page)
+   api/dependances   ⇒ 200 rc=0 atteint=dependances (l'outil)
+   ⇒ l'etiquette est LUE dans ce que la reponse porte (`commande`,
+     `rc_pose_par`) : sous une inversion de routage, la ligne « stop ⇒ 200
+     rc=0 » ⛔ NE BOUGE PAS d'un caractere.
+ http-refus-host-et-origine
+   Host menteur      ⇒ 403 motif Host
+   Origin etrangere  ⇒ 403 motif Origin
+
+--- LES TROIS MUTANTS QUI GARDENT CE TRAJET
+ 35  PRODUIT : ECHANGE /api/dependances et le prefixe /api/agent/ dans do_POST
+ 36  PRODUIT : do_POST ne passe plus par _garde() ⇒ Host et Origin sont SERVIS
+ 55  PRODUIT : _origines_permises FAUSSEE ⇒ tout Origin de navigateur refuse
+ 37  BANC    : ignore --base ⇒ le pont ne se branche pas, et les cas HTTP
+              disparaissent SANS UN MOT (il rougit (c3) ET (c14))
+
+⛔ CE QUE CE TRAJET NE PROUVE PAS : que le navigateur d'un inconnu obtienne ces
+   memes reponses. Il prouve que la PAGE, executee, traverse do_POST, la garde
+   Host/Origin et le routage du PRODUIT — et que chaque cas nomme la route
+   ATTEINTE. La page SERVIE, elle, se regarde a l'oeil cote Windows.

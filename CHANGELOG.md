@@ -10,6 +10,68 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Added
 
+- 🆕 **The page's JavaScript is now executed against a real server, and five of the entry
+  point's six exit codes are provoked** (`dn8-2`, 2026-09-12). 🔬 **Measured first, under
+  `NODE_V8_COVERAGE`:** of the **93 functions** in the `<script>` of `installeur/index.html`,
+  **21 had never been entered**, and **54 of the 141 internal blocks** of the living ones were
+  never reached — while the bench reported `27 OK, 0 KO`. **The existence of a bench ⛔ is not
+  coverage.** What changed. (1) `tools/banc_langue_dalle_dn73.mjs` now **asserts its DOM is not
+  degenerate**, judging **values** — a mounted element's parent **is** its container, its next
+  sibling **is** the container's — and it does so **before** `runInContext`, because a page reads
+  those at load; the witness `--temoin-dom` replants the exact fault measured on 2026-09-10,
+  when two branches of `montrerSortie()` were dead and the bench stayed green over them. (2) The
+  check `tools/verif_banc_langue_dn73.py` binds the product's **real** `ThreadingHTTPServer` on
+  `127.0.0.1:0`, hands the bench its address, and closes it in a `finally`; the bridge
+  **imitates the browser** by sending an `Origin` on POSTs — without which the product's
+  `Origin` refusal was **never** played the way the page triggers it, since node's `fetch` sends
+  **none** — and each case **names the route it reached**, read from what the response carries
+  rather than from the path it asked for. ⛔ No real gesture reaches the machine:
+  `_powershell`, `lhm_present`, `dependance_presente` (two interpreters per call) and
+  `_jouer_dependances` (which runs a real `pip install`) are replaced by paper doubles. (3) A new
+  check, `tools/verif_entree_dn82.py`, **provokes** `0`, `3`, `4`, `5` and `6` by calling the
+  product's own **`main()`** in a throwaway copy of `installeur/`, and reads each **by name**,
+  `5` **before** `6`. ⚠️ `main()` takes ⛔ **no argument**: `sys.argv` is **set** —
+  `--verifier` for `0`, `3`, `5` and `6`, and **`--sans-navigateur`** for the `4`, because
+  under `--verifier` `main()` returns **before** the bind and ⛔ cannot produce it. Before this work only **four** issues of `prevol()` were played, by
+  import: **`2`, `4` and `5` were played by nothing.**
+  🔬 **Coverage after, measured without a server — the figure CI replays: 96/100 functions
+  exercised** (4 still dead) and **131/190 blocks**. ⚠️ A figure taken *with* the real server
+  is ⛔ **not published**: no **committed** caller in this repository passes `--base` to the
+  relevé, so ⛔ nobody replays it.
+  ⚠️ Dead blocks go from **54 of 141** to **59 of 190**, and those two counts ⛔ **do not
+  subtract**: V8 only emits a function's inner blocks once it has been compiled, so the
+  denominator **rises with coverage**. That is why the declared threshold (**92 functions ·
+  120 blocks**) is on the **numerator**, never a ratio.
+  🔴 **And the point that matters: rising coverage ⛔ does not prove a fault would be seen.** It
+  is **measured**, not feared: a first attempt went from 21 dead functions to 5 **and stayed
+  green over eleven real inversions** of this page. ⇒ what **judges** is elsewhere — every
+  conditional display block is now observed in **both** states by a vector compared whole, and
+  each of those inversions is replanted by a mutant **seen red**.
+  ⚠️ **Three limits are declared rather than left quiet.** The check ⛔ does **not** run
+  `cmd.exe` — the CI is Linux — so the `2` is **read in the modelled flow** of the `.bat`, not
+  provoked: every label carrying a code is reached **from the head of the file**, posts **the**
+  code the table declares, ⛔ no out-of-table label posts one, both `%PY%` calls relay
+  `%ERRORLEVEL%`, and `:FIN` exits by `exit /b %RC%`. The real `cmd.exe` shot is **not played**,
+  and its owner is **the ledger** (`epic-dn8`). And whether the language choice is **legible** on
+  the served page ⛔ is not settled here: that verdict is taken by eye, on Windows, owner
+  `dn8-3` (its `AC8.3.1` re-hosts `AC7.4.3`).
+- 📏 **The cost of one state query is measured, and declared rather than reduced** (`dn8-2`,
+  2026-09-12, WSL). `etat_machine()` costs **387,73 ms** (median, n=5); `GET /api/etat` under
+  the check's doubles, **3,72 ms**. The half the planning notes expected to be expensive —
+  re-reading and CRC32-ing the **614 416-byte** asset — is **refuted by the measurement:
+  0,74 ms, that is 0,2 %** (CRC32 alone: 0,20 ms), and removing it would cost the integrity
+  guard that catches a blank asset. 🔴 **And the attribution of what does cost was wrong in this
+  very file:** these are ⛔ **not** "PowerShell round-trips". On this bench `powershell` and
+  `pwsh` are **not found** (35 `/mnt` entries on `PATH`), `_powershell()` returns `rc=None` with
+  `echec='lancement'`, and the **99 / 103 / 107 ms** of `decouvrir_port`, `tache_presente` and
+  `localiser_pilote` are the cost of a **failed launch**. The genuinely expensive probe
+  **measured here** is `dependance_presente`: **158,15 ms**, two Python interpreters per module,
+  two modules per request. ⚠️ The figure **on Windows** — where PowerShell exists and
+  `decouvrir_port` carries a **45 s** ceiling — is ⛔ **not measured**, and cannot be from here:
+  this tower's WSL is behind **NAT**. ⇒ 387,73 ms is a **lower bound whose cause is wrong**, it
+  is written as such, and the Windows reading is **carried in the ledger** (`epic-dn8`). ⛔ No
+  cache is dropped in passing: one surviving an unplug would be **worse** than the cost it saves.
+
 - 🆕 **The checks now parse what they judge, and their shared helpers live in one place**
   (`dn8-1`, 2026-09-11). A new module, `tools/dn_gates.py`, holds the eight helper names the
   checks had been copying — measured that day across the 44 checks: **101 copies for 8 names,

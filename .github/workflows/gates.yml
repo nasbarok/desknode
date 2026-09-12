@@ -227,3 +227,44 @@ jobs:
         # ⛔ AUCUN `continue-on-error`, ⛔ aucun `|| true` : le `rc` du runner
         #    EST le verdict du job.
         run: bash tools/run_gates.sh
+
+      # 🔴 AJOUTÉ LE 2026-09-11 (`dn8-2`) — LE RELEVÉ DE COUVERTURE EST **REJOUÉ**,
+      #    ⛔ pas joué une fois puis versé dans une capture. Mesure du
+      #    2026-09-11 : le banc rendait `27 OK, 0 KO` pendant que **21 des 93
+      #    fonctions** du `<script>` de la page n'étaient JAMAIS entrées.
+      #    L'existence d'un banc ⛔ ne vaut pas couverture, et le seul moyen de
+      #    le savoir est de MESURER pendant que ça tourne.
+      # ⚠️ ⛔ IL N'EST PAS DANS `run_gates.sh`, ET LE MOTIF EST **DE NATURE**, ⛔
+      #    pas de coût : `run_gates.sh` découvre `tools/verif_*.py`, et ce relevé
+      #    n'en est pas un. ⚠️ **LA LIGNE D'ORIGINE AVANÇAIT UN MOTIF DE COÛT
+      #    FAUX, ET ELLE EST CORRIGÉE ICI PLUTÔT QU'EFFACÉE** : elle disait
+      #    « ~4 s × 39 tirs ≈ 156 s » sur une marge de « 78,89 s ». Or
+      #    `verif_campagne_dn56.py` ne rejoue **que** les `verif_*.py` qui
+      #    déclarent `--liste-mutants` — ⛔ jamais `run_gates.sh`, ⛔ donc jamais
+      #    ce relevé : le surcoût annoncé n'existait pas. ⇒ il est joué **UNE
+      #    FOIS**, ici, à chaque passe.
+      # ⛔ AUCUN `continue-on-error`, ⛔ aucun `|| true` : sous son seuil déclaré,
+      #    le relevé sort en non-zéro et le job ROUGIT. ⚠️ Et il sort en **3** si
+      #    le banc qu'il lance est lui-même rouge — ⛔ aucun chiffre relevé sur
+      #    une liste de cas tronquée n'est publié comme une mesure.
+      # 🔴 `if: always()` — AJOUTÉ LE 2026-09-12 : sans lui, une gate rouge en
+      #    amont sautait cette étape, et la couverture du seul instrument qui
+      #    EXÉCUTE la page n'était plus relevée **précisément le jour où quelque
+      #    chose casse**. ⇒ elle tourne, et son verdict est le sien.
+      - name: "Relever la couverture du <script> exécuté par le banc"
+        if: always()
+        run: |
+          DN_NODE="$(command -v node || true)"
+          if [ -n "${DN_NODE}" ]; then
+            node tools/banc_couverture_dn82.mjs
+          else
+            # ⛔ UNE PHRASE **VRAIE**, ET UN AVERTISSEMENT QUE L'INTERFACE MONTRE.
+            #    La rédaction d'avant disait « il n'est PAS vert pour autant »
+            #    alors que sa dernière commande était un `echo` : l'étape sortait
+            #    VERTE en imprimant le contraire. ⇒ `::warning::`, et le fait
+            #    exact : ⛔ personne ne relève la couverture sur ce runner.
+            echo "::warning::node ABSENT — la couverture du <script> de la page"\
+                 "n'est PAS relevée sur ce runner, et verif_banc_langue_dn73.py y"\
+                 "est portée NON-JOUABLE par tools/run_gates.sh. ⛔ Aucun seuil de"\
+                 "couverture n'est donc gardé par cette passe."
+          fi

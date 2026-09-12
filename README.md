@@ -720,6 +720,101 @@ rien dérouler, et un **geste explicite** qui l'écrit dans la carte **après** 
   ⛔ **Ce que ce banc ne prouve pas** : il joue une carte **de banc d'essai**. Que la langue
   soit vraiment posée, et qu'elle **survive à une coupure**, se lit **au bandeau de la
   dalle**, à l'œil.
+- 🆕 **ANNOTÉ LE 2026-09-12 (`dn8-2`) — ⛔ RIEN CI-DESSUS N'EST EFFACÉ, MAIS DEUX DE SES
+  CHIFFRES ÉTAIENT PÉRIMÉS ET UNE DE SES PROMESSES ÉTAIT CREUSE.** Le banc jouait **27**
+  cas et non dix-huit (`dn7-4` en avait ajouté deux, `dn7-6` six), et **l'existence d'un
+  banc ⛔ ne vaut pas couverture** : mesuré sous `NODE_V8_COVERAGE`, **21 des 93 fonctions**
+  du `<script>` de la page n'étaient **jamais entrées**, et **54 des 141 blocs** internes des
+  fonctions vivantes jamais atteints — pendant que le banc rendait `27 OK, 0 KO`.
+  Ce qui change :
+  · le banc **ASSERTE que son DOM n'est pas dégénéré** — et il juge des **VALEURS** : le
+  parent d'un élément monté **EST** son conteneur, son frère suivant **EST** celui du
+  conteneur. Il le fait **AVANT** d'évaluer la moindre ligne, parce que la page les lit **au
+  chargement** ; le témoin `--temoin-dom` **replante** la faute mesurée le 2026-09-10, où deux
+  branches de `montrerSortie()` étaient MORTES et le banc restait vert dessus ;
+  · il **parle au VRAI serveur** — le `ThreadingHTTPServer` du produit, **lié par la gate**
+  sur `127.0.0.1:0` et **fermé dans son `finally`** — au lieu d'un `fetch` qui rejetait
+  toujours, et **le pont imite le navigateur** : un POST porte son `Origin`. ⚠️ Sans cela le
+  refus `Origin` du produit n'était **jamais** joué comme la page le déclenche — le `fetch` de
+  node n'envoie **aucun** `Origin` (valeur reçue : `null`) ;
+  · chaque cas **nomme la route ATTEINTE**, lue dans ce que la réponse porte (la commande, et
+  **qui** a posé le code) — ⛔ pas le chemin demandé : sous une inversion de routage, la ligne
+  « stop ⇒ 200 rc=0 » ⛔ ne bouge pas d'un caractère ;
+  · il entre dans les surfaces mortes — **console série** (ouverture, lecture, fin de lien,
+  perte de lien, fermeture, `pagehide`, et une **fermeture qui ÉCHOUE**), **langue de la
+  PAGE**, `b-dalle-en`, les trois verbes qu'aucun clic n'atteignait.
+  🔬 **CE QUE ÇA DONNE, MESURÉ LE 2026-09-12 SANS SERVEUR — le tir que la CI rejoue** :
+  **96/100 fonctions exercées** (4 encore mortes) et **131/190 blocs atteints**.
+  ⚠️ **Un chiffre « avec le vrai serveur » ⛔ n'est PAS publié ici**, et le motif est
+  mécanique : ⛔ aucun appelant **committé** de ce dépôt ne passe `--base` au relevé, donc
+  ⛔ personne ne le rejoue — et un chiffre que personne ne rejoue est un chiffre à croire sur
+  parole. ⚠️ Les blocs morts passent de **54 sur 141** à **59 sur
+  190**, et ces deux comptes ⛔ **ne se soustraient pas** : V8 ⛔ n'émet les blocs internes
+  d'une fonction **que** lorsqu'elle a été compilée, donc le **dénominateur MONTE avec la
+  couverture**. C'est pourquoi le seuil déclaré dans `tools/banc_couverture_dn82.mjs`
+  (**92 fonctions · 120 blocs**) porte sur le **numérateur**, ⛔ jamais sur un ratio.
+  🔴 **ET C'EST LÀ LE POINT QUI COMPTE : UNE COUVERTURE QUI MONTE ⛔ NE PROUVE PAS QU'UNE FAUTE
+  SERAIT VUE.** C'est **mesuré**, ⛔ pas craint : un premier essai passait de 21 à 5 fonctions
+  mortes **et restait VERT sur onze inversions RÉELLES** de cette page — dont l'avertissement
+  hors Windows. ⇒ ce qui **juge** est ailleurs : **chaque bloc d'affichage conditionnel** est
+  désormais observé dans ses **DEUX** états par un vecteur comparé en entier
+  (`etat-hors-windows`, `etat-orphelin`, `etat-port-tenu`, `etat-cdn`, `etat-inactif`,
+  `etat-not-allowed`, `etat-unsupported`, le bloc d'installation, `etat-charge`, `etat-deps`,
+  `etat-lhm`), et **chacune de ces inversions est replantée par un mutant vu ROUGE**.
+  ⛔ **Et ce banc ne devient PAS un navigateur** : il n'a pas de moteur de rendu et il n'en
+  aura pas. Ce qu'il gagne est un **serveur réel**, ⛔ pas un DOM réel.
+- 🆕 **CINQ DES SIX CODES DU POINT D'ENTRÉE SONT PROVOQUÉS, ET LE SIXIÈME EST LU DANS LE
+  FLOT** (`dn8-2`, 2026-09-12). L'en-tête de `installeur/DeskNode-installeur.bat` publie
+  `0` `2` `3` `4` `5` `6` ; avant cette date, **aucun n'était provoqué** — la seule chose jouée
+  était `prevol()` **par import**, sur **quatre** de ses issues, donc **`2`, `4` et `5`
+  n'étaient joués par RIEN**. `tools/verif_entree_dn82.py` provoque désormais **`0`, `3`, `4`,
+  `5` et `6`** en appelant **`main()`** du produit — ⚠️ `main()` ⛔ ne prend **aucun
+  paramètre** : c'est `sys.argv` qui est **posé**, `--verifier` pour `0`, `3`, `5` et `6`, et
+  **`--sans-navigateur`** pour le `4`, parce que sous `--verifier` `main()` **rend avant le
+  `bind`** et ⛔ ne peut donc pas le donner — dans une **copie jetable** de
+  `installeur/` — la page est réellement retirée, la charge réellement amputée —, et lit chacun
+  **par son nom**, `5` **avant** `6`. Le `4` est provoqué en **empêchant le `bind` au niveau
+  `socket`**, ⛔ pas en substituant un nom de serveur.
+  ⚠️ **Pourquoi `main()` et non `prevol()` : c'est mesuré.** Un `if a.verifier: return 0` —
+  c'est-à-dire le précédent `dn7-1` rejoué **un cran plus loin** — laissait la première
+  rédaction de cette gate à `36 OK / 0 KO` : `prevol()` rendait toujours ses codes, et
+  personne ne regardait ce que le point d'entrée en **faisait**.
+  ⛔ **Le `2`, lui, n'est PAS provoqué** : il est posé par `cmd.exe` sur un argument inconnu,
+  et la CI de ce dépôt tourne sur **Linux**. Du `.bat`, la gate **modélise le FLOT** —
+  étiquettes, `goto`, chute, `exit /b` — et exige quatre choses : toute étiquette à code est
+  **atteinte depuis la tête du fichier**, elle pose **le** code que la table déclare, ⛔ **aucune
+  étiquette hors table** ne pose de code, les **deux** appels `%PY%` relaient
+  `%ERRORLEVEL%` **immédiatement**, et `:FIN` sort par **`exit /b %RC%`**. Ces quatre-là
+  étaient absentes, et quatre mutations l'ont démontré en restant vertes.
+  ⚠️ **Le tir réel sous `cmd.exe` est NON JOUÉ**, et son porteur est **au ledger**
+  (`epic-dn8`) — ⛔ pas une autre marche : aucune AC d'une marche existante ne le porte.
+- 📏 **CE QUE COÛTE UNE INTERROGATION D'ÉTAT — MESURÉ, PUIS DÉCLARÉ** (`dn8-2`, 2026-09-12,
+  banc WSL). `etat_machine()` coûte **387,73 ms** (médiane, n=5) ; `GET /api/etat` sous les
+  doubles de la gate, **3,72 ms**. 🔴 **La moitié qu'on croyait chère est RÉFUTÉE** : relire
+  **et** CRC32-er l'asset de **614 416 o** coûte **0,74 ms**, soit **0,2 %** (CRC32 seul :
+  **0,20 ms**) — la réduire n'achèterait rien et **coûterait** la garde d'intégrité qui attrape
+  l'asset blanc. 🔴 **Et l'attribution de ce qui coûte était FAUSSE, dans ce README même** :
+  ce ne sont ⛔ **pas** des « allers-retours PowerShell ». Sur ce banc `powershell` et `pwsh`
+  sont **introuvables** (`PATH` : 35 entrées `/mnt`), `_powershell()` rend `rc=None` avec
+  `echec='lancement'`, et les **99 / 103 / 107 ms** de `decouvrir_port`, `tache_presente` et
+  `localiser_pilote` sont le coût d'un **lancement qui ÉCHOUE**. La sonde réellement chère
+  **mesurée ici** est `dependance_presente` : **158,15 ms**, **deux interpréteurs Python par
+  module**, et **deux modules** par requête.
+  ⚠️ **Le chiffre côté Windows — là où PowerShell existe et où `decouvrir_port` porte un
+  plafond de 45 s — est ⛔ NON MESURÉ**, et il ne peut pas l'être d'ici : le WSL de cette tour
+  est en **NAT**. ⇒ **387,73 ms est un minorant dont la cause est fausse**, c'est **écrit**, et
+  le relevé Windows est **porté au ledger** (`epic-dn8`). ⛔ Aucun cache n'est posé au
+  passage : un cache qui survivrait à un débranchement serait **pire** que le coût qu'il
+  économise.
+- ⚠️ **ET CE QUI RESTE OUVERT, ÉCRIT AVEC SON PORTEUR** : la **lisibilité du choix de
+  langue** sur la page servie. La moitié mécanique est livrée — un **vrai clic** sur
+  `b-langue-fr` puis `b-langue-en`, `aria-pressed` **relu sur les vrais boutons**, et l'état
+  de départ des **quatre** boutons de choix **lu dans le balisage** par un parseur (l'anglais
+  est pressé) au lieu d'être supposé par le banc — mais savoir si l'option retenue se
+  **distingue à l'œil** ⛔ ne se mesure pas ici : il n'y a aucun rendu dans ce banc, et le WSL
+  de cette tour est en **NAT**, donc la page servie ⛔ ne s'ouvre pas depuis lui. ⇒ **écart
+  déclaré**, porteur **`dn8-3`** — son `AC8.3.1` ré-héberge `AC7.4.3`, qui porte cette
+  lisibilité au ledger.
 
 ### 🔴 Ce que vous devez installer vous-même — **écart déclaré**, avec son porteur
 

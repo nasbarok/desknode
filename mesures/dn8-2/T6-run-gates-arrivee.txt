@@ -1,0 +1,73 @@
+=== T6 — LA PASSE ENTIERE A L'ARRIVEE  (2026-09-12)
+
+  bash tools/run_gates.sh
+  BILAN : 44 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 46 gates (625 s)   rc=1
+  borne PROPRE de ce tir : **625 s**, imprimee par le runner lui-meme.
+
+⚠️ LA PREMIERE REDACTION DE CE TITRE PORTAIT « 00:57:48 → 01:20:51 » — soit
+   **1 383 s** — SUR UNE PASSE QUI DIT 625 s, et c'etait un chiffre que ⛔ rien
+   ne pouvait falsifier. Ces 1 383 s sont la fenetre des **TROIS** tirs enchaines
+   de la campagne (`dn56` avec cockpit, `dn56` sans cockpit, puis `run_gates.sh`),
+   ⛔ pas la duree de la passe. La ligne est corrigee, ⛔ pas effacee.
+
+⚠️ `rc=1` EST LE VERDICT DE LA GATE ROUGE, ⛔ PAS UN ECHEC DE LA PASSE : le
+   runner rend le `rc` du pire verdict, et il le rendait DEJA a l'entree.
+
+--- CONFRONTE A LA BORNE D'ENTREE (2026-09-11, a HEAD 8a2a8c7)
+                       ENTREE                        ARRIVEE
+  gates au glob        45                            **46**  (+1 : la gate neuve)
+  VERTE                43                            **44**
+  ROUGE                 1                              1     — la MEME
+  NON-JOUABLE           1                              1     — la MEME
+  duree               666 s                          **625 s**
+
+--- 🔬 LA POPULATION DE `verif_campagne_dn56.py`, AUX DEUX BORNES
+⛔ `8 OK / 0 KO` NE VARIE **NI** AVEC LE NOMBRE DE CIBLES **NI** AVEC CELUI DES
+   MUTANTS : c'est un compte de CONTROLES, et il ne pouvait donc pas prouver que
+   la gate neuve soit entree dans la campagne. ⇒ on capture la POPULATION, en
+   APPELANT `cibles()` et `liste_mutants()` de `dn56` (⛔ pas en les rejouant).
+
+                        ENTREE (8a2a8c7, worktree)   ARRIVEE
+  cibles decouvertes    19                           **20**
+  mutants confrontes    579                          **634**
+  dont banc_langue_dn73 32                           **63**
+  dont entree_dn82      ⛔ la gate n'existait pas     **24**
+  (les 18 autres cibles sont INCHANGEES, mutant pour mutant)
+⇒ CE COUPLE-LA BOUGE quand une cible ou un mutant s'ajoute, et c'est lui qui
+  prouve que la gate neuve est dans la campagne — ⛔ pas le bilan.
+
+--- LE SEUL ROUGE, ET IL EST PRE-EXISTANT
+  [ROUGE] tools/verif_dossier_dn415.py   rc=1   7s   BILAN : 23 OK, 10 KO
+  ⇒ MEME COMPTE qu'a l'entree : `23 OK / 10 KO`. ⛔ PAS UN KO DE PLUS.
+  🔴 ET C'EST POURQUOI CE RELEVE PORTE LE **COMPTE** : une gate deja rouge
+     absorbe un KO de plus SANS CHANGER DE COULEUR. La couleur ne l'aurait pas dit.
+
+--- LE SEUL NON-JOUABLE, ET IL EST ATTENDU
+  [NON-JOUABLE] tools/verif_sr03.py   rc=2 (attendu)
+  temoin absent : tools/fixtures/AN4545.pdf (document ST, ⛔ non redistribuable)
+
+--- 🔴 CE QUE CETTE PASSE PROUVE **EN PROPRE** DE `dn8-2`
+ 1. LA GATE NEUVE EST DECOUVERTE PAR LE GLOB, ⛔ pas inscrite a la main :
+      [VERTE] tools/verif_entree_dn82.py   rc=0   0s
+    ⇒ 45 ⇒ 46 gates. C'est la regle (1) du runner qui la ramasse.
+ 2. LE TEMOIN **DERIVE** DE LA GATE DU BANC FONCTIONNE :
+      [  temoin  ] tools/verif_banc_langue_dn73.py  /usr/bin/node est present
+                   ⇒ la gate est JOUEE
+      [VERTE     ] tools/verif_banc_langue_dn73.py  rc=0   2s
+    ⇒ `TEMOIN_BANC_HTTP` rend le chemin du moteur **parce que les DEUX prerequis
+      tiennent** (`node` trouve ET `bind` accepte sur 127.0.0.1:0). Sur une
+      machine ou la boucle locale est filtree, il rend `/nonexistent/bind-refuse`
+      et la gate est declaree **NON-JOUABLE** — ⛔ plus `[ROUGE] rc=4`, qui est la
+      valeur signifiant « ⛔ pas un rouge » partout ailleurs dans ce fichier.
+ 3. LA TABLE `NON_JOUABLES` EST VALIDEE : le script a DEMARRE. Sa garde refuse de
+    tourner si la table porte un accent grave ou un `$(` — `dn8-1` l'avait paye
+    (le script sortait AVANT de jouer une seule gate). Mesure de la table
+    livree : **11 lignes, 5 champs chacune, 0 accent grave, 0 `$(`**.
+ 4. ⛔ AUCUNE GATE N'EST PERDUE AU GLOB, et ⛔ aucune gate voisine ne rougit sur
+    ce que cette marche a ecrit — 44 VERTE contre 43, pour une gate de plus.
+
+--- 🔴 CE QUE CE TIR NE COUVRE PAS, ET IL FAUT L'ECRIRE
+Ce tir est **ANTERIEUR** aux 17 correctifs de la seconde boucle de revue
+(2026-09-12) : il a tourne a 60 mutants et 1,95 s par tir de la gate du banc,
+quand l'etat livre en porte 63 a 2,41 s. ⇒ la passe entiere et les deux tirs de
+`dn56` **SE RE-MESURENT**, et ⛔ ce relevé ne pretend PAS le contraire.

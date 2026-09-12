@@ -1,0 +1,157 @@
+=== T5 — LA CAMPAGNE DE MUTANTS, REJOUEE EN ENTIER  (2026-09-12)
+
+Le contrat que `tools/verif_campagne_dn56.py` applique a CHAQUE mutant, et qu'il
+faut lire comme une CONJONCTION : `rc=1` **et** une ligne `BILAN` **et** au moins
+un `[KO ]`. ⚠️ Le `rc` seul ne suffit pas — un mutant INAPPLICABLE sort AUSSI en
+non-zero, sans avoir rien controle : c'est le discriminant d'une gate MORTE.
+⇒ Ce balayage ajoute une QUATRIEME exigence, que `dn56` ⛔ ne sait pas voir : les
+`[KO ]` observes doivent tomber **SUR LES CIBLES DECLAREES**.
+
+──────────────────────────────────────────────────────────────────────────────
+ 1. tools/verif_banc_langue_dn73.py — 63 mutants (38 avant la boucle de
+    revue 1, +22 a la boucle 1, +3 a la boucle 2)
+──────────────────────────────────────────────────────────────────────────────
+m1…m7    rc=1 KO=1 → c4          (la PAGE : garde du defaut anglais, succes
+                                  annonce trop tot, issues echangees, attente
+                                  d'invite, re-entrance, verrou, geste muet)
+m8       rc=1 KO=4 → c4,c5,c12,c13   (le BANC recopie au lieu d'evaluer)
+m9       rc=1 KO=1 → c6           m10   rc=1 KO=2 → c2,c3
+m11      rc=1 KO=1 → z            m12   rc=1 KO=1 → c0
+m13      rc=1 KO=1 → c9           m14   rc=1 KO=1 → c10
+m15      rc=1 KO=1 → c11          m16   rc=1 KO=1 → c1
+m17…m19  rc=1 KO=1 → c4           m20   rc=1 KO=1 → c7
+m21      rc=1 KO=2 → c4,c8        m22…m27 rc=1 KO=1 → c4
+m28      rc=1 KO=1 → c7           m29,m30 rc=1 KO=1 → c4
+m31      rc=1 KO=1 → c12          m32   rc=1 KO=1 → c4
+m33,m34  rc=1 KO=1 → c13          m35,m36 rc=1 KO=1 → c4
+m37      rc=1 KO=3 → c2,c3,c14    m38   rc=1 KO=1 → c15
+--- LES VINGT-DEUX DE LA BOUCLE DE REVUE 1 ---
+m39 hors-windows · m40 orphelin · m41 port-tenu · m42 cdn · m43 inactif ·
+m44 not-allowed · m45 unsupported · m46 reveler · m47 chargeInutilisable ·
+m48 moduleAbsent · m49 etat-charge · m50 deps · m51 lhm   ⇒ TOUS rc=1 KO=1 → c4
+m52 fermeture AVANT relachement · m53 consoleFinDeLien sans garde ·
+m54 le `.catch` de `jouer` ne rearme plus · m55 `_origines_permises` faussee
+                                           ⇒ TOUS rc=1 KO=1 → c4
+m56 asserterDom APRES runInContext + jeton en commentaire  ⇒ rc=1 KO=1 → c13
+m57 seuil de BLOCS rabaisse · m58 decision sans le seuil de fonctions ·
+m59 decision sans le seuil de blocs · m60 decision sans le verdict du banc
+                                           ⇒ TOUS rc=1 KO=1 → c15
+--- LES TROIS DE LA SECONDE BOUCLE DE REVUE (2026-09-12) ---
+m61 MOI : retire le bras `if _MUTANT:` du refus de `bind`   ⇒ rc=1 KO=1 → c16
+m62 CI  : ajoute `continue-on-error` a l'etape de couverture ⇒ rc=1 KO=1 → c17
+m63 COUVERTURE : `nFe++` INCONDITIONNEL                     ⇒ rc=1 KO=1 → c15
+=> 63 / 63 SAINS. ⛔ Aucun mutant muet, aucun sans BILAN, aucun sans [KO ].
+
+──────────────────────────────────────────────────────────────────────────────
+ 2. tools/verif_entree_dn82.py — 24 mutants (19 avant la boucle 1, +5)
+──────────────────────────────────────────────────────────────────────────────
+m1 → c8 · m2 → c1 · m3 → c7 · m4 → c6,c7 · m5 → c3 · m6 → c2 · m7 → c5 ·
+m8 → c4 · m9 → c10 · m10 → c9 · m11 → c12 · m12 → c12 · m13 → c13 ·
+m14 → c11 · m15 → c14 · m16 → c15 · m17 → c16 · m18 → c0 · m19 → z
+--- LES CINQ DE LA BOUCLE DE REVUE 1 ---
+m20  main() rend 0 sur --verifier   rc=1 KO=5 → c2,c3,c6,c7,c8
+m21  `exit /b 0` a la sortie        rc=1 KO=1 → c19
+m22  le relais devient `set "RC=0"` rc=1 KO=2 → c17,c18
+m23  etiquette HORS TABLE, RC=7     rc=1 KO=1 → c17
+m24  le choix de langue part en FR  rc=1 KO=1 → c20
+=> 24 / 24 SAINS.
+
+──────────────────────────────────────────────────────────────────────────────
+ 3. 🔴 CE QUE LE BALAYAGE A TROUVE — ⛔ PAS CE QU'IL A CONFIRME
+──────────────────────────────────────────────────────────────────────────────
+ (a) 🔴 **LE MUTANT 15 DE `verif_entree_dn82.py` ETAIT UN GARDIEN MORT : rc=0.**
+     Il deplacait la cible du mutant 1, `(c8)`. Or le mutant 20 — ecrit dans la
+     MEME passe — vise AUSSI `(c8)` : le controle restait donc garde, `(c14)`
+     restait VERT, et ce mutant ne prouvait PLUS RIEN. ⇒ il deplace desormais la
+     cible du mutant 13, **SEUL sur `(c13)`**, et il rougit.
+     ⚠️ C'est mot pour mot le piege que ce depot a deja nomme : « N mutants, N
+        vus rougir » prouve `mutant ⇒ rouge`, ⛔ JAMAIS `controle ⇒ couvert`.
+        ⛔ Et `dn56` ⛔ NE POUVAIT PAS le voir : elle n'exige que `rc=1`.
+ (b) ⚠️ QUATRE DECLARATIONS ETAIENT INCOMPLETES — les mutants faisaient tomber
+     PLUS de controles qu'ils n'en declaraient : banc m8 (+c12,c13), m21 (+c4),
+     m37 (+c2), entree m22 (+c17). ⛔ Declarer deux cibles pour un mutant qui en
+     rougit quatre decrit un mutant QUI N'EXISTE PAS. ⇒ les quatre disent le VRAI.
+
+──────────────────────────────────────────────────────────────────────────────
+ 4. LA GARDE DU NO-OP — ⛔ UN MUTANT SANS EFFET N'EST PAS UN CONTROLE VERT
+──────────────────────────────────────────────────────────────────────────────
+⚠️ LA DEMONSTRATION SE FAIT DANS UNE **COPIE JETABLE** : l'ancre du mutant est
+   retiree de la copie, ⛔ jamais de l'arbre.
+ banc, mutant 39, ancre disparue   ⇒ rc=3 · `[KO ] (c0) … SANS EFFET` · BILAN
+ entree, mutant 1, ancre disparue  ⇒ rc=3 · `[KO ] (c0) … SANS EFFET` · BILAN
+ entree, mutant 999 (INCONNU)      ⇒ rc=2 (une erreur d'APPEL, ⛔ pas un verdict)
+
+──────────────────────────────────────────────────────────────────────────────
+ 5. LE BUDGET — 🔴 LA CONTRAINTE DURE DE CETTE MARCHE
+──────────────────────────────────────────────────────────────────────────────
+Ce qui a rendu les 22 mutants neufs PAYABLES, et c'est une MESURE du 2026-09-12 :
+construire un contexte et evaluer la page coute **1,9 ms** ; tout le reste d'un
+cas est de l'ATTENTE armee. ⇒ les cas se jouent en **parallele borne** (8 a la
+fois), et :
+  banc seul            3,91 s  ⇒  0,75 s   (39 cas sans base, 42 avec)
+  gate du banc         5,73 s  ⇒  1,95 s  ⇒ **2,41 s** apres la boucle 2
+                                          — en passant de 38 a **63** mutants
+  gate d'entree                    0,16 s  — 24 mutants
+  relevé de couverture             0,92 s
+⚠️ LES 2,41 s SONT LE COUT **APRES** LA SECONDE BOUCLE DE REVUE : `(c16)` lance
+   DEUX tirs de cette gate dans une copie (le prerequis `bind`, sans mutant puis
+   sous mutant) et `(c15)` lance un temoin de COMPTAGE de plus. Trois processus
+   par tir, assumes et mesures.
+⇒ COUT DES DEUX CAMPAGNES : ~63 x 2,4 s + 24 x 0,20 s ≈ **156 s**, la ou les 38
+  mutants d'avant en coutaient deja ~217 s.
+
+ verif_campagne_dn56.py AVEC cockpit : BILAN 8 OK, 0 KO — 409,58 s
+ verif_campagne_dn56.py SANS cockpit : BILAN 8 OK, 0 KO — 347,86 s
+ 🔴 ⚠️ CES DEUX DUREES SONT **ANTERIEURES** AUX 17 CORRECTIFS DE LA SECONDE
+    BOUCLE DE REVUE (2026-09-12) : elles ont ete mesurees a **60** mutants et
+    **1,95 s** par tir. Avec 63 mutants a 2,41 s, l'ARITHMETIQUE donne
+    ~409,58 + (63 x 2,41 - 60 x 1,95) ≈ **476 s** — ⛔ une ESTIMATION, ⛔ pas une
+    mesure. ⇒ LE BUDGET SE RE-MESURE A LA PASSE COMPLETE, et c'est ecrit ici
+    plutot que suppose tenu.
+   (plafond de `tools/run_gates.sh` : **600 s** par gate · borne d'entree
+    mesuree le 2026-09-11 : **428 s** au tir de `run_gates.sh`, 430,43 s seule)
+ ⚠️ LE CHEMIN **SANS COCKPIT** EST CELUI DE LA CI, et c'est lui qui avait rendu
+    la suite ROUGE sur `dn8-1` sans qu'aucun tir local ne le voie.
+
+ 🔬 **ET LES DEUX TIRS SONT SOUS LA BORNE D'ENTREE, ⛔ pas seulement sous le
+    plafond** : 409,58 s contre **428 s** au tir d'entree, alors que la gate du
+    banc passe de **38 a 63** mutants et qu'une gate NEUVE de 24 mutants entre
+    dans la campagne. C'est le parallelisme borne du banc qui paie, et c'est
+    pourquoi il est ecrit comme une MESURE et non comme un confort.
+ ⚠️ MARGE RESTANTE : **190,42 s** sous le plafond de 600 s (31,7 %).
+
+──────────────────────────────────────────────────────────────────────────────
+ 6. LES DEUX PREREQUIS, JOUES — ⛔ pas seulement declares  (2026-09-12)
+──────────────────────────────────────────────────────────────────────────────
+⚠️ CE TITRE A ETE FAUX PENDANT UNE PASSE, ET IL EST CORRIGE ICI PLUTOT QU'EFFACE :
+   il annoncait « LES DEUX », et le corps n'en jouait qu'UN (`node`). Le second —
+   la boucle locale REFUSE le `bind` — n'etait joue par ⛔ AUCUN des 60 mutants,
+   si bien que son bras `if _MUTANT:` pouvait disparaitre SANS QUE RIEN NE
+   ROUGISSE. C'est le defaut le plus cher de `dn8-1`, et il est desormais GARDE.
+
+── (a) LE SECOND PREREQUIS : LE `bind` REFUSE  —  `(c16)` + mutant 61
+   Le temoin joue CETTE GATE dans une copie jetable, avec `DN73_TEMOIN_BIND=1` :
+   le fils patche `socket.socket.bind` (patron de `verif_entree_dn82.py`) et sort
+   AVANT de lire le moindre fichier — ⛔ aucune recursion, ⛔ aucun port.
+     chemin NORMAL  ⇒ **rc=4** (le prerequis que `run_gates.sh` declare)
+     chemin MUTANT  ⇒ **rc=1**, `⛔ PREREQUIS ABSENT SOUS MUTANT`
+   mutant 61 (il RETIRE le bras `if _MUTANT:`) ⇒ **rc=1, 1 KO, sur `(c16)`**.
+
+── (b) LE PREMIER PREREQUIS : `node` ABSENT
+`PATH` vide de `node`, gate du banc :
+  chemin NORMAL   ⇒ **rc=4**, motif + remede imprimes, ⛔ aucun bilan
+                     (« PREREQUIS ABSENT : `node` est introuvable dans le PATH …
+                       le geste : installer Node.js »)
+  chemin MUTANT   ⇒ **rc=1**, `[KO ] (c1) … PREREQUIS ABSENT SOUS MUTANT`,
+                     `SORTIE ANTICIPEE — 1 controle(s) emis sur 76 prevus`,
+                     `BILAN : 0 OK, 1 KO`
+🔴 POURQUOI LES DEUX DIFFERENT, ET C'EST LE DEFAUT LE PLUS CHER DE `dn8-1` :
+   `tools/verif_campagne_dn56.py` exige `rc=1` de CHAQUE mutant et ⛔ elle n'est
+   PAS `NON_JOUABLE`. Un `rc=4` sous mutant l'aurait fait rendre `7 OK / 1 KO`
+   **sur un runner seulement** — un rouge qu'⛔ aucun tir local ne voit.
+   ⚠️ La docstring promettait ce rouge nomme pour les DEUX prerequis et ⛔ ne le
+      tenait que pour le `bind` : corrige, et JOUE ci-dessus.
+gate d'entree, meme `PATH` ⇒ **45 OK / 0 KO, rc=0**. ⇒ elle ⛔ n'a AUCUN
+   prerequis d'environnement, et c'est pourquoi elle ⛔ n'a PAS de ligne
+   `NON_JOUABLES` : lui en fabriquer une la sauterait EN SILENCE le jour ou son
+   faux temoin disparaitrait.
