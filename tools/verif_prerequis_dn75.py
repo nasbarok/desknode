@@ -27,8 +27,28 @@ d'une tache planifiee — c'est-a-dire LA OU PERSONNE NE REGARDE.
 
     (a) ⇒ (c1)          (b) ⇒ (c2) **et** (c3)      (c) ⇒ (c4)
     (d) ⇒ (c5)          (e) ⇒ (c6)                  (f) ⇒ (c7)
-    (g) ⇒ (c8)          (h) ⇒ (c9) **et** (c10)     (i) ⇒ (c11)
+    (g) ⇒ (c8)          (h) ⇒ (c9) **et** (c10)     (i) ⇒ (c11) **et** (c18)
     (j) ⇒ (c12)         (k) ⇒ (c13)
+
+  🔴 **`(i)` A ETE COUPE EN DEUX LE 2026-09-12 (`dn4-48`), ET LE DOSSIER
+     QU'IL SERVAIT A ETE RENVERSE PAR UNE MESURE.** L'item disait « le refus
+     LHM sort en `exit 12` ». ⛔ **CE REFUS N'EXISTE PLUS** : au redemarrage du
+     2026-09-12 la tache au logon a tire a `18:13:13` et rendu `12` pendant que
+     LHM montait a `18:13:34` — **21 s trop tard** —, la reprise
+     `RestartCount 3 / RestartInterval PT1M` ⛔ **n'a pas tire** (`LastRunTime`
+     fige, releve a `18:25`), et la dalle est restee **morte, en silence**,
+     toute la session, sur une machine **SAINE**. Le refus dur allait de
+     surcroit **contre la conception du produit** : `agent/dn_agent.py` pose
+     ⛔ aucune grandeur LHM en position 0, precisement pour qu'une source LHM
+     absente n'empeche RIEN.
+     ⇒ le pre-vol **ATTEND** LHM (borne `-AttenteLhm`, 300 s par defaut) puis
+       **DEMARRE QUAND MEME**, champs LHM a « -- ».
+     ⇒ `(c11)` garde le **COMPORTEMENT** du bloc (il attend, ⛔ il ne refuse
+       plus) ; `(c18)` garde le **CODE** `12` — son unicite, et son **nouvel
+       emetteur** : le verbe `poser`, ⛔ plus le pre-vol.
+     ⚠️ **LES DEUX MOITIES SONT SEPAREES, ET C'EST LA MEME LECON QUE `(b)` ET
+        `(h)`** : un controle qui porte deux faits ⛔ ne peut pas dire LEQUEL a
+        cede, et un mutant qui le vise ⛔ ne prouve rien de l'autre.
 
   🔴 **ET UN CONTROLE QUI NE VIENT D'AUCUN ITEM DU DOSSIER : `(c17)`.** Il
      vient de la **matrice d'E/S**, ligne *« LHM monte APRES le logon »* — la
@@ -102,8 +122,12 @@ d'une tache planifiee — c'est-a-dire LA OU PERSONNE NE REGARDE.
     `(c7)(c8)(c9)(c10)(c12)`. ⛔ Ce qui le ferme A L'ŒIL reste
     `mesures/dn7-5/T2`, cote Windows.
   · `AC7.5.2` — la RE-DERIVATION, dans les deux sens : `(c1)…(c6)`.
-  · `AC7.5.3` — le refus DUR, avec son propre code : `(c11)(c13)`, **et
-    `(c17)` pour la piece *(ii)* de son prix** — la course au logon, dont la
+  · `AC7.5.3` — ~~le refus DUR, avec son propre code~~ : `(c11)(c13)`, **et
+    `(c17)` pour la piece *(ii)* de son prix**
+    🔴 **AMENDE LE 2026-09-12 (`dn4-48`)** : l'AC est devenue *l'ATTENTE
+    bornee puis le demarrage DEGRADE*, et son code a change d'emetteur ⇒
+    `(c11)(c18)(c13)`. L'ancienne redaction est **barree, ⛔ pas effacee** :
+    elle etait exacte du 2026-09-10 au 2026-09-12. — la course au logon, dont la
     parade et la borne sont publiees a trois endroits.
     ⚠️ Que le `6` de l'installeur ⛔ n'ait PAS bouge est garde par `(c28)` de
        `tools/verif_installeur_dn71.py`, qui IMPORTE le produit et JOUE ses
@@ -135,12 +159,14 @@ d'une tache planifiee — c'est-a-dire LA OU PERSONNE NE REGARDE.
   🔴 **CETTE GATE EST STRUCTURELLE.** Elle ⛔ n'installe pas LHM, ⛔ n'ouvre
      aucun navigateur, ⛔ ne lance aucune tache planifiee et ⛔ n'emet AUCUNE
      requete reseau. Elle prouve que LE MECANISME EST BRANCHE : la sonde
-     existe, elle vise CE QUE L'AGENT VISE, le refus a SON code, et la prose
-     couvre EXACTEMENT le derive.
-  ⛔ Elle ⛔ ne prouve PAS qu'une tour reelle SANS LHM refuse. Ce qui ferme ce
-     fait est `mesures/dn7-5/T2`, cote Windows, ou le refus est joue DANS LES
-     DEUX SENS et ou **l'absence de l'agent est VERIFIEE** par
-     `dn-agent.bat etat` — ⛔ pas deduite du message.
+     existe, elle vise CE QUE L'AGENT VISE, le bloc ATTEND au lieu de refuser,
+     `12` a SON emetteur, et la prose couvre EXACTEMENT le derive.
+  ⛔ Elle ⛔ ne prouve PAS qu'une tour reelle SANS LHM ~~refuse~~ **degrade**.
+     ⚠️ `mesures/dn7-5/T2` fermait le REFUS, cote Windows ; depuis `dn4-48`
+     (2026-09-12) ce que ferme l'œil owner est l'inverse : **l'agent TOURNE**
+     et la dalle **se remplit** alors que LHM est absent, et le POURQUOI
+     **atteint** l'humain. La capture de `dn7-5` ⛔ n'est PAS effacee — elle
+     dit ce que le produit faisait ce jour-la.
   ⚠️ **ECART DECLARE SUR LA LETTRE DU DOSSIER, ⛔ pas sur sa propriete.** Le
      dossier ecrit « `12` n'apparait nulle part ailleurs dans le fichier ».
      MESURE : `tools/dn_agent_tour.ps1` porte deja un `12` — `Get-Content $LOG
@@ -222,6 +248,33 @@ A_INSTANCES = "$i = Get-Instances"
 #    des branches du `switch`, ⛔ pas celui des declarations.
 A_CAS_PREVOL = "'prevol' {"
 A_CAS_SUIVANT = "'lancer' {"
+# 🔴 dn4-48 — LE VERBE QUI REND `12` DESORMAIS. Le code a CHANGE
+#    D'EMETTEUR : il quitte le bloc LHM de `prevol` (qui ⛔ ne refuse plus)
+#    pour `poser`, seul appelant qui SACHE lire une table de codes. Le rang se
+#    mesure donc dans DEUX regions, ⛔ jamais dans le fichier entier.
+A_CAS_POSER = "'poser' {"
+A_CAS_APRES_POSER = "'retirer' {"
+# Ce que le bloc LHM doit porter depuis `dn4-48` — l'attente BORNEE, sa ligne
+# PAR TOUR, et le bandeau du demarrage DEGRADE. ⚠️ Les trois sont cherches
+# DANS LE BLOC : les poser ailleurs serait un `grep` vert sur un produit muet.
+A_BORNE = "$AttenteLhm"
+A_ATTENTE_TOUR = "on ATTEND ("
+A_ATTENTE_PAS = "Start-Sleep -Seconds $pas"
+# 🔴 ET LE PAS EST **DERIVE DE LA BORNE**, ⛔ pas fige : une borne de 6 s
+#    sondee DEUX fois (pas fixe de 5 s) n'est pas une attente, c'est un
+#    tirage au sort. `Pas-Attente` garantit AU MOINS DIX TOURS, quelle que
+#    soit la borne — et c'est aussi ce qui rend le banc PowerShell payable.
+A_PAS_DERIVE = "Pas-Attente $AttenteLhm"
+A_DEGRADE = "DEMARRAGE DEGRADE"
+# La surface Windows du POURQUOI — `msg.exe`, sans elevation ni .NET (`D8`).
+A_SURFACE_WINDOWS = "Prevenir-Windows"
+# Ce que la fonction imprime EN PROPRE quand la surface manque, et la forme
+# par laquelle l'appelant JETTE son retour — c'est ce `$null =` qui rend
+# impossible qu'une surface absente deplace le code de sortie du pre-vol.
+A_MOT_SANS_SURFACE = "AUCUNE SURFACE DE NOTIFICATION"
+A_SURFACE_DEBUT = "function Prevenir-Windows "
+A_SURFACE_FIN = "function Rotation-Journal {"
+A_RETOUR_JETE = "$null = Prevenir-Windows"
 # ── LA PARADE DE LA COURSE AU LOGON, ET SA BORNE ──────────────────────────
 # 🔴 CE QUE (c17) GARDE, ET POURQUOI IL EXISTE. Le refus dur transforme un
 #    `-RestartCount` retire ou releve en **PANNE SILENCIEUSE DE TOUTE LA
@@ -333,9 +386,17 @@ CIBLES[10] = ("c9",)
 MUTANTS[11] = ("verse LHM dans `manquantes` ⇒ le `6` bouge et le "
                "geste `pip` s'imprime pour LHM")
 CIBLES[11] = ("c10",)
-MUTANTS[12] = ("rend le refus LHM en `exit 4` ⇒ un code a DEUX "
-               "sens, neutralise en 0 par `lancer`")
-CIBLES[12] = ("c11",)
+# 🔴 REECRIT LE 2026-09-12 (`dn4-48`) — L'ANCIEN MUTANT REPLANTAIT « le
+#    refus sort en 4 au lieu de 12 ». Ce refus ⛔ N'EXISTE PLUS, donc son ancre
+#    non plus : garde tel quel, il serait sorti en `rc=3` (PERIME), c'est-a-dire
+#    en gardien MORT. ⛔ IL NE DEBRANCHE RIEN : il REPLANTE la faute NEUVE — le
+#    refus dur REVIENT dans le bloc LHM —, qui est exactement la forme sous
+#    laquelle la regression se reintroduirait un jour (« LHM est un prerequis
+#    dur, remettons le refus »). Il fait rougir `(c11)` (le bloc REFUSE de
+#    nouveau) ET `(c18)` (`12` n'est plus unique) : les deux sont DECLARES.
+MUTANTS[12] = ("REPLANTE le refus dur dans le bloc LHM ⇒ le "
+               "pre-vol avorte le lancement qu'il doit permettre")
+CIBLES[12] = ("c11", "c18")
 MUTANTS[13] = ("fait trancher le PROCESSUS au lieu de `/metrics` "
                "⇒ un LHM sans serveur web passe VERT")
 CIBLES[13] = ("c12",)
@@ -356,9 +417,19 @@ CIBLES[18] = ("c0",)
 MUTANTS[19] = ("replante une SORTIE ANTICIPEE NON DECLAREE ⇒ le "
                "bilan sort sur une population RETRECIE")
 CIBLES[19] = ("z",)
-MUTANTS[20] = ("efface le refus LHM ENTIER de l'outil ⇒ le seul "
-               "pre-vol qui refuse cesse de refuser")
+MUTANTS[20] = ("efface le bloc LHM ENTIER de l'outil ⇒ plus "
+               "aucune sonde, plus aucune attente, plus rien")
 CIBLES[20] = ("c2", "c11", "c12")
+# 🔴 dn4-48 — IL REPLANTE LA FAUTE : une SURFACE ABSENTE redevient un ECART.
+#    Le pre-vol se remettrait a REFUSER parce que `msg.exe` n'est pas la —
+#    c'est-a-dire qu'une edition Familiale de Windows perdrait l'agent que
+#    cette marche existe pour lui rendre. ⛔ Ce n'est pas un debranchement.
+MUTANTS[31] = ("fait PESER la surface absente sur le code de "
+               "sortie ⇒ une ignorance redevient un ECART")
+CIBLES[31] = ("c19",)
+MUTANTS[30] = ("fait rendre `0` a `poser` sur un agent vivant "
+               "SANS LHM ⇒ la page annonce un succes PLEIN")
+CIBLES[30] = ("c18",)
 MUTANTS[21] = ("retire l'impression de LHM au pre-vol ⇒ l'ecart "
                "existe et ne se dit plus la ou on le lit")
 CIBLES[21] = ("c10",)
@@ -387,10 +458,12 @@ MUTANTS[29] = ("rend le verdict de la sonde a `status != 500` ⇒ "
                "n'importe quel voisin vaut preuve de LHM")
 CIBLES[29] = ("c12",)
 
-# ⚠️ LE COMPTE DU CHEMIN NORMAL : 1 pre-vol + un controle par mutant + les 17
+# ⚠️ LE COMPTE DU CHEMIN NORMAL : 1 pre-vol + un controle par mutant + les 18
 #    controles numerotes. Il se PERIME si on ajoute un controle sans le mettre
 #    a jour — et c'est voulu : c'est ce qui rend (z) FALSIFIABLE.
-CONTROLES_PREVUS = 1 + len(MUTANTS) + 17
+#    ⚠️ PASSE DE 17 A 18 LE 2026-09-12 (`dn4-48`) : `(c11)` a ete COUPE EN
+#       DEUX — le comportement du bloc d'un cote, le code `12` de l'autre.
+CONTROLES_PREVUS = 1 + len(MUTANTS) + 19
 
 _MUTANT = 0
 
@@ -794,10 +867,17 @@ def muter(etat):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[PY] = py.replace(src, neuf, 1)
     elif _MUTANT == 12:
+        # 🔴 IL **REPLANTE** LE REFUS DUR, ⛔ il ne debranche aucune garde :
+        #    le bloc LHM se remet a sortir en `12` au lieu de degrader. C'est
+        #    la regression exacte que `dn4-48` repare, et elle est REELLE —
+        #    `tools/dn-agent.bat:112` fait `if errorlevel 1 goto :FIN` juste
+        #    apres, donc l'agent ne demarrerait PAS.
         bloc = bloc_lhm_ps1(ps1)
-        if "exit 12" not in bloc:
+        a12 = "            $LhmDegrade = $true"
+        if not bloc or a12 not in bloc:
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
-        p[OUTIL] = ps1.replace(bloc, bloc.replace("exit 12", "exit 4"), 1)
+        p[OUTIL] = ps1.replace(
+            bloc, bloc.replace(a12, "            exit 12\n" + a12, 1), 1)
     elif _MUTANT == 13:
         bloc = bloc_lhm_ps1(ps1)
         if not bloc or "Invoke-WebRequest" not in bloc:
@@ -921,6 +1001,29 @@ def muter(etat):
         if not m28:
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[ROADMAP] = road.replace(m28.group(0), "5 restarts, 1 minute apart", 1)
+    elif _MUTANT == 31:
+        # 🔴 IL REPLANTE LA FAUTE : le retour de la surface cesse d'etre JETE,
+        #    et une surface ABSENTE redevient un ECART. Sur une edition
+        #    Familiale de Windows — ⛔ pas de `msg.exe` — le pre-vol refuserait
+        #    de nouveau, et l'agent serait PERDU exactement comme le 2026-09-12.
+        #    ⛔ Ce n'est pas un debranchement : la fonction reste entiere, c'est
+        #    l'APPELANT qui se remet a en dependre.
+        if A_RETOUR_JETE not in ps1:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[OUTIL] = ps1.replace(
+            A_RETOUR_JETE,
+            "if (-not (Prevenir-Windows", 1)
+    elif _MUTANT == 30:
+        # 🔴 LA RECIPROQUE DU 12, ET ELLE REPLANTE UNE **AUTRE** FAUTE :
+        #    `poser` cesse de dire que l'agent tourne SANS LHM. La page
+        #    annoncerait alors « la tache est POSEE ET VERIFIEE, et l'agent
+        #    tourne » sur une machine dont quatre champs resteront a « -- »
+        #    pour toujours — un SUCCES FAUX, pire qu'un echec.
+        cas = region(ps1, A_CAS_POSER, A_CAS_APRES_POSER)
+        if not cas or "            exit 12" not in cas:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[OUTIL] = ps1.replace(
+            cas, cas.replace("            exit 12", "            exit 0", 1), 1)
     elif _MUTANT == 29:
         # 🔴 LE DEFAUT EXACT DEMONTRE LE 2026-09-10, REPLANTE MOT POUR MOT :
         #    il laissait TOUTES les gates vertes parce que le mot « status »
@@ -1000,8 +1103,10 @@ def main():
     print("⛔ CETTE GATE EST STRUCTURELLE : elle N'INSTALLE PAS LHM, n'ouvre")
     print("   aucun navigateur, ne lance aucune tache et n'emet AUCUNE requete")
     print("   reseau. Elle prouve que LE MECANISME EST BRANCHE, ⛔ pas qu'une")
-    print("   tour sans LHM refuse — ce fait se ferme par `mesures/dn7-5/T2`,")
-    print("   cote Windows, ou l'absence de l'agent est VERIFIEE.")
+    print("   tour sans LHM DEGRADE — ce fait se ferme a l'œil owner, cote")
+    print("   Windows, ou l'agent VIVANT est verifie (`mesures/dn4-48`).")
+    print("   ⚠️ `mesures/dn7-5/T2` fermait le REFUS : il ⛔ n'est PAS efface,")
+    print("      il dit ce que le produit faisait du 09-10 au 09-12.")
 
     # ── (c0) LE PRE-VOL : LES FICHIERS SE LISENT ────────────────────────
     print("\n── (c0) LE PRE-VOL — ⛔ AUCUN CONTROLE SUR DU VIDE ────────────────")
@@ -1291,32 +1396,109 @@ def main():
                  "`DEPENDANCES_AGENT`, l.%s"
                  % " ".join(str(x) for x in (hors or []))))
 
-    # ── (c11)(c12) LE PRE-VOL QUI REFUSE VRAIMENT ───────────────────────
-    print("\n── (c11)(c12) LE REFUS DUR, SON CODE, ET CE QUI TRANCHE ──────────")
+    # ── (c11)(c18)(c12) LE PRE-VOL QUI **ATTEND**, ET LE CODE QUI RESTE ──
+    # 🔴 AMENDE LE 2026-09-12 (`dn4-48`) — ET C'EST UNE **DECISION QUE
+    #    L'OWNER A RENVERSEE SUR UNE MESURE**, ⛔ pas un assouplissement.
+    #    `(c11)` gardait « le refus LHM sort en `exit 12` ». Ce refus ⛔
+    #    N'EXISTE PLUS : au redemarrage du 2026-09-12 la tache au logon a tire
+    #    a 18:13:13 et rendu `12` pendant que LHM montait a 18:13:34 — 21 s
+    #    trop tard —, la reprise `RestartCount 3` ⛔ n'a PAS tire, et la dalle
+    #    est restee MORTE toute la session sur une machine SAINE.
+    #    ⇒ le bloc LHM **ATTEND** (borne `-AttenteLhm`), puis **DEGRADE**.
+    # ⚠️ LE CONTROLE EST **COUPE EN DEUX**, ET C'EST LA LECON DEJA PAYEE ICI
+    #    (voir `(b)` et `(h)` en tete) : un controle qui porte deux faits ⛔ ne
+    #    peut pas dire LEQUEL a cede, et un mutant qui le vise ⛔ ne prouve
+    #    rien de l'autre. `(c11)` garde le COMPORTEMENT du bloc ; `(c18)` garde
+    #    le CODE `12` — son unicite ET son nouvel emetteur.
+    print("\n── (c11)(c18)(c12) L'ATTENTE, LE CODE, ET CE QUI TRANCHE ─────────")
     codes = RE_EXIT.findall(ps1)
     codes_bloc = RE_EXIT.findall(bloc_ps1)
-    ailleurs = [c for c in RE_EXIT.findall(ps1.replace(bloc_ps1, "", 1))
-                if bloc_ps1 and c == "12"]
     cas = region(ps1, A_CAS_PREVOL, A_CAS_SUIVANT)
     i_deps = cas.find(A_SONDE_PS1)
     i_bloc = cas.find(A_LHM_DEBUT)
     i_inst = cas.find(A_INSTANCES)
     range_ok = bool(cas) and -1 < i_deps < i_bloc < i_inst
-    ok = (bool(bloc_ps1) and codes_bloc == ["12"] and not ailleurs
-          and codes.count("12") == 1 and range_ok)
-    ctrl(ok, "(c11) le refus LHM sort en `exit 12`, code LIBRE",
-         "12 unique parmi %s, et pose avant toute destruction d'etat"
-         % ",".join(sorted(set(codes), key=int)) if ok
-         else "⛔ %s — `4` porte DEJA DEUX SENS selon le verbe et `lancer` le "
-              "neutralise en `0` : un refus qui l'emprunterait laisserait "
-              "l'agent DEMARRER"
+    # Les trois pieces de l'attente, cherchees DANS LE BLOC.
+    manque_att = [n for n, a in (("la borne `-AttenteLhm`", A_BORNE),
+                                 ("la ligne PAR TOUR", A_ATTENTE_TOUR),
+                                 ("le pas de l'attente", A_ATTENTE_PAS),
+                                 ("le pas DERIVE de la borne", A_PAS_DERIVE),
+                                 ("le bandeau DEGRADE", A_DEGRADE),
+                                 ("la surface Windows", A_SURFACE_WINDOWS))
+                  if a not in bloc_ps1]
+    ok = bool(bloc_ps1) and codes_bloc == [] and not manque_att and range_ok
+    ctrl(ok, "(c11) le bloc LHM ATTEND, ⛔ il ne refuse plus",
+         "⛔ aucune sortie dans le bloc ; attente bornee, ligne par tour, "
+         "bandeau degrade et surface Windows presents" if ok
+         else "⛔ %s — un pre-vol qui REFUSE sur LHM fait sauter `:EXEC` dans "
+              "`tools/dn-agent.bat` (`if errorlevel 1 goto :FIN`, l.112), "
+              "c'est-a-dire EXACTEMENT la panne du 2026-09-12, deplacee d'un "
+              "cran : l'agent ne demarre pas, et la dalle reste MORTE"
               % ("le bloc LHM de l'outil ne se delimite pas" if not bloc_ps1
-                 else "sortie(s) du bloc : %s (attendu 12 seul)"
-                 % (",".join(codes_bloc) or "AUCUNE") if codes_bloc != ["12"]
-                 else "`12` sert DEJA ailleurs" if ailleurs
-                      or codes.count("12") != 1 else
+                 else "le bloc LHM porte encore une sortie : exit %s"
+                 % ",".join(codes_bloc) if codes_bloc
+                 else "piece(s) manquante(s) de l'attente : %s"
+                 % " · ".join(manque_att) if manque_att else
                  "le bloc n'est pas ENTRE les dependances et le compte "
                  "d'instances — un pre-vol qui echoue ⛔ ne detruit rien"))
+
+    # 🔴 `(c18)` — `12` A CHANGE D'EMETTEUR, ET IL RESTE **UNIQUE**.
+    #    Ce qu'il veut dire a change avec lui : ⛔ plus « REFUS », mais
+    #    « posee et **VIVANTE**, mais SANS LHM ». Le sens est garde ailleurs —
+    #    `(c20)` de `tools/verif_preconditions_dn76.py` JOUE la table
+    #    `CODES_POSER` et exige que `12` **nomme LibreHardwareMonitor**. Ici on
+    #    garde la MECANIQUE : un seul `12`, et il sort du bon verbe.
+    cas_poser = region(ps1, A_CAS_POSER, A_CAS_APRES_POSER)
+    dans_poser = RE_EXIT.findall(cas_poser).count("12")
+    ok = (codes.count("12") == 1 and dans_poser == 1 and "12" not in codes_bloc)
+    ctrl(ok, "(c18) `12` est UNIQUE, et c'est `poser` qui le rend",
+         "12 unique parmi %s, emis par le verbe `poser`"
+         % ",".join(sorted(set(codes), key=int)) if ok
+         else "⛔ %s — `4` porte DEJA DEUX SENS selon le verbe et `lancer` le "
+              "neutralise en `0` ; et `12` rendu par le PRE-VOL avorterait le "
+              "lancement, alors que rendu par `poser` il informe un appelant "
+              "qui SAIT lire une table de codes"
+              % ("le verbe `poser` ne se delimite pas" if not cas_poser
+                 else "`12` apparait %d fois dans le fichier (attendu 1)"
+                 % codes.count("12") if codes.count("12") != 1
+                 else "`12` ⛔ n'est PAS rendu par `poser` (%d occurrence(s))"
+                 % dans_poser))
+
+    # 🔴 `(c19)` — UNE SURFACE ABSENTE SE **DIT**, ET ELLE ⛔ NE PESE SUR RIEN.
+    #    LIGNE DE LA MATRICE D'E/S : « Surface Windows de notification absente
+    #    ⇒ le pre-vol le DIT, `rc` inchange ». Elle ⛔ n'avait AUCUN porteur
+    #    mecanique — et le banc `tools/verif_lhm_ps_dn83.py` ⛔ n'en aura
+    #    jamais : il DOUBLE `Prevenir-Windows` dans sa copie jetable, pour ⛔ ne
+    #    pas pousser une vraie boite de message sur le bureau de qui le joue.
+    #    ⇒ la STRUCTURE se garde ICI, le reste se ferme A L'ŒIL.
+    # ⚠️ LES DEUX MOITIES SONT LA MEME PROPRIETE, ET ELLES SONT JUGEES
+    #    ENSEMBLE : « il le DIT » sans « ca ne pese sur rien » laisserait une
+    #    edition Familiale de Windows PERDRE l'agent avec un beau message.
+    # ⚠️ `source_fonction()` lit du PYTHON (`def`) — ⛔ pas du PowerShell.
+    #    La fonction se borne donc par ses DEUX marqueurs litteraux, comme
+    #    `bloc_lhm_ps1()` le fait deja pour le bloc LHM.
+    src_surf = region(ps1, A_SURFACE_DEBUT, A_SURFACE_FIN)
+    dit = A_MOT_SANS_SURFACE in (src_surf or "")
+    rend_faux = "return $false" in (src_surf or "")
+    sans_exit = not RE_EXIT.findall(src_surf or "")
+    jete = A_RETOUR_JETE in ps1
+    ok = bool(src_surf) and dit and rend_faux and sans_exit and jete
+    ctrl(ok, "(c19) une surface ABSENTE se DIT, et ⛔ ne pese sur rien",
+         "elle NOMME l'absence, rend `$false`, ⛔ ne sort pas, et l'appelant "
+         "JETTE son retour" if ok
+         else "⛔ %s — une ignorance ⛔ N'EST PAS un ecart : sans cela, une "
+              "edition Familiale de Windows (⛔ pas de `msg.exe`) PERDRAIT "
+              "l'agent que cette marche existe pour lui rendre"
+              % ("`%s` est introuvable" % A_SURFACE_WINDOWS if not src_surf
+                 else "elle ⛔ ne NOMME pas l'absence (`%s`)" % A_MOT_SANS_SURFACE
+                 if not dit
+                 else "elle ⛔ ne rend PAS `$false` sur l'absence"
+                 if not rend_faux
+                 else "elle porte une SORTIE : exit %s"
+                 % ",".join(RE_EXIT.findall(src_surf)) if not sans_exit
+                 else "l'appelant ⛔ ne JETTE pas son retour (`%s` absent)"
+                 % A_RETOUR_JETE))
+
 
     proc_ps1 = [j for j in JETONS_PROCESSUS if j in bloc_ps1.lower()]
     proc_py = [j for j in JETONS_PROCESSUS if j in src_sonde.lower()]
@@ -1448,11 +1630,12 @@ def main():
          else "⛔ cible(s) SANS mutant : %s · mutant(s) SANS cible : %s"
               % (orph or "—", sans_cible or "—"))
 
-    print("\n⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'une tour SANS LHM refuse.")
+    print("\n⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'une tour SANS LHM degrade.")
     print("   Elle prouve que le mecanisme est BRANCHE — la sonde vise ce que")
-    print("   l'agent vise, le refus a SON code, la prose couvre EXACTEMENT le")
-    print("   derive. Le refus REEL se ferme par `mesures/dn7-5/T2`, cote")
-    print("   Windows, avec l'ABSENCE DE L'AGENT verifiee — ⛔ pas deduite.")
+    print("   l'agent vise, le bloc ATTEND au lieu de refuser, `12` a SON")
+    print("   emetteur (`poser`), la prose couvre EXACTEMENT le derive.")
+    print("   Le DEGRADE REEL se ferme a l'œil owner (`mesures/dn4-48`), cote")
+    print("   Windows, avec l'AGENT VIVANT verifie — ⛔ pas deduit du message.")
     return bilan(1 if ko_total[0] else 0)
 
 

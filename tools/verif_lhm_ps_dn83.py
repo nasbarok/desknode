@@ -31,11 +31,34 @@ sens** :
   · stub en `--mode normal` (la capture reelle)
         ⇒ attendu ⛔ **PAS 12** ET la ligne `LHM : <url> repond 200.`
 
+🔴 **AMENDE LE 2026-09-12 (`dn4-48`) — CE BANC JOUE DESORMAIS **TROIS** SENS,
+   ET LE PREMIER CI-DESSUS A CHANGE DE VERDICT. L'ANCIENNE REDACTION RESTE
+   AU-DESSUS, BARREE PAR CELLE-CI, ⛔ PAS EFFACEE** : elle etait exacte du
+   2026-09-10 au 2026-09-12.
+   Le pre-vol ⛔ **ne refuse plus** sur LHM — il l'**ATTEND** (`-AttenteLhm`,
+   300 s par defaut) puis **DEMARRE QUAND MEME**, champs LHM a « -- ». Motif
+   MESURE : la tache au logon a tire a `18:13:13` et rendu `12` pendant que LHM
+   montait a `18:13:34`, et la reprise du Planificateur ⛔ n'a **pas** tire.
+
+  · **DEGRADE** — stub `--mode vide`, `-AttenteLhm 3`
+        ⇒ attendu ⛔ **PAS 12**, la ligne `DEMARRAGE DEGRADE` qui NOMME LHM,
+          **et** au moins une ligne d'attente : le pre-vol CONTINUE.
+  · **PASSANT** — stub `--mode normal`, `-AttenteLhm 0`
+        ⇒ attendu ⛔ **PAS 12**, la ligne `LHM : <url> repond 200.`,
+          **et ⛔ AUCUNE ligne d'attente** : `0` = aucune attente.
+  · **RETARD** — le stub est lance **APRES** le pre-vol, `-AttenteLhm 60`
+        ⇒ attendu au moins une ligne d'attente **PUIS** la ligne passante,
+          ⛔ sans `DEMARRAGE DEGRADE`. C'est **le cas MESURE du 2026-09-12**,
+          rejoue : LHM qui monte APRES la tache.
+
 ⚠️ **LE DISCRIMINANT EST `12` vs ⛔ PAS `12`, ⛔ JAMAIS `12` vs `0`** — ET C'EST
    MESURE (2026-09-12) : au sens passant, le pre-vol CONTINUE apres le bloc LHM
    et sort en **`5`** sur une machine sans `COM3`. Un banc qui attendrait `0`
    rougirait sur une machine SAINE. ⇒ on vise **l'echec NOMME** et ce que la
    commande **imprime EN PROPRE**, ⛔ pas le `rc` global.
+   🔴 **ET DEPUIS `dn4-48`, `12` ⛔ NE DOIT PLUS SORTIR DU TOUT** de ce
+   pre-vol : il a change d'emetteur pour le verbe `poser`. Le `12` reste donc
+   le discriminant — mais comme **INTERDIT**, ⛔ plus comme attendu.
 
 ── CE QU'ELLE NE PROUVE ⛔ PAS, ECRIT PLUTOT QUE TU ─────────────────────────
 
@@ -45,7 +68,15 @@ sens** :
    machine provisionnee. La regle de partage tient : la STRUCTURE aux gates
    statiques, le COMPORTEMENT a ce banc, l'ŒIL a une seance owner.
 ⛔ Elle ⛔ ne dit RIEN de la tour reelle, de sa tache planifiee, ni de la course
-   au logon — ⛔ et rien de ce qui se juge A L'ŒIL.
+   au logon — ⛔ et rien de ce qui se juge A L'ŒIL. ⚠️ Le sens **RETARD**
+   REJOUE le mecanisme de la course, ⛔ il ne rejoue PAS le Planificateur : ce
+   qui ferme « la dalle se remplit apres un vrai redemarrage » reste l'œil
+   owner, sur la tour.
+⛔ Elle ⛔ ne prouve RIEN de la surface Windows du POURQUOI (`msg.exe`) : ce
+   banc tourne sans session interactive attachee, et une notification remise
+   ⛔ ne se relit nulle part depuis ici. `(c11)` de
+   `tools/verif_prerequis_dn75.py` garde que l'appel EXISTE dans le bloc ; que
+   quelqu'un la VOIE se ferme a l'œil owner.
 ⛔ Elle ⛔ ne se substitue PAS au vrai LHM : `stub_lhm_dn48.py` **refuse 8085**
    par construction, et ce banc travaille sur **8086**.
 
@@ -129,14 +160,64 @@ NOMS_POWERSHELL = ("powershell.exe", "pwsh.exe", "powershell", "pwsh")
 # Ce que la commande imprime EN PROPRE, dans les deux sens. ⚠️ ASCII PUR, et
 # c'est load-bearing : la console Windows ⛔ n'est PAS en UTF-8, et un motif
 # accentue ne se retrouverait PAS dans la sortie capturee.
-MOT_REFUS = "LibreHardwareMonitor est INJOIGNABLE"
+# 🔴 `MOT_REFUS` EST DEVENU `MOT_DEGRADE` LE 2026-09-12 (`dn4-48`) : le bloc
+#    ⛔ ne refuse plus, il DECLARE un demarrage degrade. Le mot vise ce que la
+#    commande imprime **EN PROPRE** dans ce cas-la, et il NOMME LHM — c'est la
+#    propriete qui survit au changement de verdict.
+MOT_DEGRADE = "DEMARRAGE DEGRADE"
+MOT_NOMME_LHM = "LibreHardwareMonitor"
 MOT_PASSANT = "repond 200."
+# Ce qu'un TOUR d'attente imprime. ⚠️ Une attente muette serait indiscernable
+#    d'un gel : le banc EXIGE la ligne au sens RETARD, et il l'INTERDIT au sens
+#    PASSANT avec `-AttenteLhm 0`.
+MOT_ATTENTE = "on ATTEND ("
+# dn4-48 — les deux lignes de la matrice d'E/S qui n'avaient AUCUN
+# porteur mecanique avant le 2026-09-12 : la borne REFUSEE, et l'adresse
+# de LHM INTROUVABLE dans l'agent (une ignorance, ⛔ pas un ecart).
+MOT_BORNE_REFUSEE = "-AttenteLhm invalide"
+MOT_SONDE_IMPOSSIBLE = "sonde IMPOSSIBLE"
+A_HOTE_AGENT = 'LHM_HOTE = "127.0.0.1"'
+CODE_BORNE_REFUSEE = 3
+# 🔴 L'ECHEANCE DE CES DEUX TIRS EST **COURTE**, ET C'EST UNE MESURE DE LA
+#    GATE, ⛔ pas du sujet. Les deux sens repondent en ~1 s : un refus de
+#    parametre ⛔ n'attend rien, et une adresse introuvable ⛔ ne sonde rien.
+# ⚠️ MOTIF CHIFFRE : le mutant 14 REPLANTE le repli silencieux sur le defaut
+#    (300 s). Sous l'echeance generale de 90 s il rougissait **par TIMEOUT** —
+#    juste, mais a 90 s le tir, et `verif_campagne_dn56.py` rejoue CHAQUE
+#    mutant de CHAQUE gate. ⇒ 20 s suffisent a distinguer « immediat » de
+#    « il attend », et la seconde economisee ici se paie autant de fois.
+DELAI_COURT = 20
+# ⛔ `12` ⛔ N'EST PLUS ATTENDU DE CE PRE-VOL : il est **INTERDIT** dans les
+#    TROIS sens. Il a change d'emetteur pour le verbe `poser`.
 CODE_REFUS = 12
+# Les trois bornes d'attente du banc. ⚠️ ELLES SONT PETITES EXPRES, ET C'EST UN
+#    CHIFFRE MESURE : chaque mutant rejoue ce banc en entier
+#    (`tools/verif_campagne_dn56.py`), et cette campagne consommait DEJA
+#    **588 s** sur un plafond de 600 s avant `dn4-48` (releve T0). Le pas
+#    d'attente du produit est **derive de la borne** (au moins dix tours),
+#    donc une borne PETITE rend un pas PETIT : c'est ce qui rend le troisieme
+#    sens payable.
+#      DEGRADE : borne 3 s ⇒ pas 1 s ⇒ 3 tours imprimes, ~3 s de sommeil
+#      PASSANT : borne 0 s ⇒ ⛔ AUCUN tour  (c'est CE que `(c3)` exige)
+#      RETARD  : borne 20 s ⇒ pas 2 s ⇒ le stub monte pendant le 1er tour
+BORNE_DEGRADE = 3
+BORNE_PASSANT = 0
+BORNE_RETARD = 20
 
 # ── LES ANCRES LITTERALES DES MUTANTS ─────────────────────────────────────
 # Une ancre qui bouge rend son mutant PERIME (rc=3) ⇒ elle se remarque,
 # ⛔ elle ne pourrit pas en silence.
-A_EXIT_REFUS = "            exit 12"
+# 🔴 L'ANCRE DU REFUS A DISPARU DU PRE-VOL LE 2026-09-12, ET C'EST LE SUJET
+#    DE `dn4-48`. Ce qui la remplace est la LIGNE QUI DECLARE LA DEGRADATION :
+#    c'est la que le mutant 1 REPLANTE le refus dur.
+A_DECLARE_DEGRADE = "            $LhmDegrade = $true"
+# La sortie de boucle sur l'echeance — le mutant 12 la replante en `break` nu,
+# c'est-a-dire « le pre-vol sonde UNE fois et repart », l'etat d'AVANT dn4-48.
+A_ECHEANCE = "            if ($lhmEcoule -ge $AttenteLhm) { break }"
+# La ligne PAR TOUR — le mutant 13 la sort de la boucle pour qu'elle s'imprime
+# MEME quand LHM repond du premier coup.
+A_LIGNE_ATTENTE = '            Dire ("LHM : pas encore la sur " + $lhmUrl'
+A_SORTIE_BOUCLE = "            if ($lhmVu) { break }"
 A_PREDICAT_CORPS = "[string]$rep.Content -cmatch '(?m)^lhm_'"
 A_LIGNE_PASSANTE = 'Dire ("LHM : " + $lhmUrl + " repond 200.")'
 A_REFUS_8085 = "if a.port == 8085:"
@@ -150,6 +231,20 @@ A_ARGL_LHM = "        $argl += @('--lhm', $Lhm)"
 #    reste du produit est le VRAI. C'est le patron `PS1_DE_PAPIER` du depot.
 A_SWITCH = "# " + "=" * 74 + "\nswitch ($Action) {"
 DOUBLE_PORT = "function Get-EtatPort { param($p) return 'libre' }\n"
+# 🔴 LA SURFACE WINDOWS EST DOUBLEE ELLE AUSSI, ET C'EST UN **DEFAUT MESURE**,
+#    ⛔ pas une precaution. `Prevenir-Windows` lance le VRAI `msg.exe`, et
+#    `msg.exe` EXISTE sur cette tour (`C:\WINDOWS\System32\msg.exe`, verifie le
+#    2026-09-12). Le sens DEGRADE l'atteint a CHAQUE tir ⇒ un banc de 1 nominal
+#    + 13 mutants poussait **14 boites de message** sur le bureau de l'owner,
+#    et `verif_campagne_dn56.py`, qui rejoue tous les mutants, en poussait
+#    autant de nouveau. ⛔ UNE GATE NE SPAMME PAS LE BUREAU DE QUI LA JOUE.
+# ⚠️ CE QUE CE DOUBLE COUTE, ET IL EST DEJA DECLARE EN TETE : ce banc ⛔ ne
+#    prouve RIEN de la surface Windows. Elle est gardee STATIQUEMENT par
+#    `(c11)` et `(c19)` de `tools/verif_prerequis_dn75.py`, et A L'ŒIL par une
+#    seance owner. C'est le partage habituel du depot.
+DOUBLE_SURFACE = ("function Prevenir-Windows { param($Texte) "
+                  "Write-Host '  [banc] surface Windows DOUBLEE - "
+                  "aucun msg.exe lance.'; return $false }\n")
 LHM_DRAPEAU = "127.0.0.1:%d" % PORT_BANC
 A_PORT_AGENT = "LHM_PORT = 8085"
 
@@ -159,33 +254,44 @@ DELAI_STUB = 20
 MUTANTS = {}                      # ⛔ AU NIVEAU MODULE — `--liste-mutants`
 CIBLES = {}                       # le controle que chaque mutant doit ROUGIR
 
-MUTANTS[1] = ("OUTIL : le refus LHM sort en `exit 4` au lieu de `exit 12` — "
-              "LE PRECEDENT `dn7-5`, et `4` est NEUTRALISE en `0` par `lancer`")
+# 🔴 REECRIT LE 2026-09-12 (`dn4-48`) — L'ANCIEN REPLANTAIT « le refus sort
+#    en 4 au lieu de 12 ». Ce refus ⛔ N'EXISTE PLUS, donc son ancre non plus :
+#    garde tel quel, il sortait en `rc=3` (PERIME), c'est-a-dire en gardien
+#    MORT. ⛔ IL NE DEBRANCHE RIEN : il REMET le refus dur dans le bloc LHM,
+#    c'est-a-dire la regression exacte que cette marche repare — et elle est
+#    REELLE : `tools/dn-agent.bat:112` fait `if errorlevel 1 goto :FIN` juste
+#    apres le pre-vol, donc l'agent ⛔ ne demarrerait PAS.
+MUTANTS[1] = ("OUTIL : REPLANTE le refus dur dans le bloc LHM — le pre-vol "
+              "sort en `12` au lieu de degrader, et `:RUN` avorte le lancement")
 CIBLES[1] = ("c2",)
 MUTANTS[2] = ("OUTIL : le predicat de corps `^lhm_` DISPARAIT ⇒ un `200` nu "
               "suffit, et un exportateur VOISIN passerait pour LHM")
 CIBLES[2] = ("c2",)
 MUTANTS[3] = ("OUTIL : la ligne passante ne dit plus `repond 200.` ⇒ le sens "
               "PASSANT n'est plus ancre sur ce que la commande imprime")
-CIBLES[3] = ("c3",)
+CIBLES[3] = ("c3", "c9")         # MESURE : le sens RETARD exige la MEME ligne
 MUTANTS[4] = ("BANC : le staging ⛔ NE COPIE PAS l'agent ⇒ le pre-vol sort en "
               "`3` EN AMONT, et ⛔ n'atteint JAMAIS le bloc LHM")
-CIBLES[4] = ("c2", "c3", "c4", "c7", "c8")  # MESURE : sans agent, les DEUX
-#                        stagings sont amputes ⇒ ⛔ aucune URL et ⛔ aucun `args :`
+CIBLES[4] = ("c2", "c3", "c4", "c7", "c8", "c9")  # MESURE : sans agent, les
+#                        DEUX stagings sont amputes ⇒ ⛔ aucune URL, ⛔ aucun
+#                        `args :`, et ⛔ aucun des TROIS sens n'atteint le bloc
 MUTANTS[5] = ("BANC : le stub est lance dans le MAUVAIS mode ⇒ les deux sens "
               "mesurent le meme etat, et la polarite n'est plus eprouvee")
 CIBLES[5] = ("c2",)              # MESURE : les 2 modes sains ⇒ SEUL le sens REFUS ment
 MUTANTS[6] = ("BANC : le port du banc ⛔ n'est PAS pose dans l'agent stagge ⇒ "
               "la sonde vise le port du VRAI LHM, que ce banc ⛔ ne lie pas")
-CIBLES[6] = ("c2", "c4")         # MESURE : le VRAI LHM ecoute ici ⇒ le sens REFUS ne refuse plus
+CIBLES[6] = ("c2", "c4", "c9")   # MESURE : le VRAI LHM ecoute ici ⇒ le sens
+#                        DEGRADE ne degrade plus, et le sens RETARD passe du
+#                        premier coup — ⛔ aucun tour d'attente nulle part
 MUTANTS[7] = ("STUB : le refus de `8085` DISPARAIT ⇒ un stub pourrait ecouter "
               "a la place du vrai LHM, et on mesurerait le stub")
 CIBLES[7] = ("c5",)
 MUTANTS[9] = ("BANC : le plafond d'un tir tombe a ZERO ⇒ le pre-vol est TUE "
               "avant d'avoir rendu un code. Un `rc is None` de depassement est "
               "la mesure de CETTE GATE, ⛔ pas le verdict du sujet")
-CIBLES[9] = ("c1", "c2", "c3", "c4", "c7", "c8")  # MESURE : ⛔ aucun code ⇒
-#                        ⛔ aucune URL, et ⛔ aucune ligne `args :` non plus
+CIBLES[9] = ("c1", "c2", "c3", "c4", "c7", "c8", "c9")  # MESURE : ⛔ aucun
+#                        code ⇒ ⛔ aucune URL, ⛔ aucune ligne `args :`, et le
+#                        sens RETARD ⛔ ne rend RIEN non plus
 MUTANTS[10] = ("OUTIL : la SURCHARGE par `-Lhm` DISPARAIT ⇒ la sonde reste "
                "sur le port LU dans l'agent, et le drapeau ne pilote RIEN")
 CIBLES[10] = ("c7", "c8")        # MESURE : sans surcharge, `$LhmSonde` reste
@@ -196,11 +302,31 @@ CIBLES[11] = ("c8",)
 MUTANTS[8] = ("declare une cible VIDE pour le mutant 7 — SEUL sur `(c5)` ⇒ un "
               "controle garde par ZERO mutant, le risque deja paye ailleurs")
 CIBLES[8] = ("c6",)
+# 🔴 LES DEUX MUTANTS DE `dn4-48` — ILS REPLANTENT L'ETAT D'AVANT, ⛔ ILS NE
+#    DEBRANCHENT AUCUNE GARDE.
+MUTANTS[12] = ("OUTIL : la boucle d'attente sort AU PREMIER TOUR ⇒ le pre-vol "
+               "sonde UNE fois et repart — l'etat d'AVANT `dn4-48`, remis")
+CIBLES[12] = ("c2", "c9")        # MESURE : sans attente, le sens DEGRADE
+#                        n'imprime AUCUN tour non plus — les deux sont DECLARES
+MUTANTS[13] = ("OUTIL : la ligne d'attente s'imprime MEME quand LHM repond du "
+               "premier coup ⇒ `-AttenteLhm 0` n'est plus « aucune attente »")
+CIBLES[13] = ("c3",)
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL : un (c0) par mutant declare + les 6 controles
 #    numerotes. Il se PERIME si on ajoute un controle sans le mettre a jour —
 #    et c'est voulu : c'est ce qui rend `(z)` FALSIFIABLE.
-CONTROLES_PREVUS = len(MUTANTS) + 8
+# ⚠️ PASSE DE 8 A 9 LE 2026-09-12 (`dn4-48`) : le sens **RETARD** est un
+#    controle a lui seul, `(c9)`.
+# 🔴 dn4-48 — LES DEUX MUTANTS DES LIGNES DE MATRICE NEUVES. Tous deux
+#    REPLANTENT la faute dans le PRODUIT, ⛔ aucun ne debranche une garde.
+MUTANTS[14] = ("OUTIL : la borne NEGATIVE est REPLIEE EN SILENCE sur "
+               "le defaut ⇒ on attend ce que personne n'a demande")
+CIBLES[14] = ("c10",)
+MUTANTS[15] = ("OUTIL : une adresse LHM INTROUVABLE devient un "
+               "DEMARRAGE DEGRADE ⇒ une ignorance passe pour un ecart")
+CIBLES[15] = ("c11",)
+
+CONTROLES_PREVUS = len(MUTANTS) + 11
 
 _MUTANT = 0
 
@@ -312,9 +438,10 @@ def muter(etat):
     p, r, c = e["fichiers"], e["regles"], e["cibles"]
 
     if _MUTANT == 1:
-        if A_EXIT_REFUS not in p.get(OUTIL, ""):
+        if A_DECLARE_DEGRADE not in p.get(OUTIL, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
-        p[OUTIL] = p[OUTIL].replace(A_EXIT_REFUS, "            exit 4", 1)
+        p[OUTIL] = p[OUTIL].replace(
+            A_DECLARE_DEGRADE, "            exit 12\n" + A_DECLARE_DEGRADE, 1)
     elif _MUTANT == 2:
         if A_PREDICAT_CORPS not in p.get(OUTIL, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
@@ -359,6 +486,47 @@ def muter(etat):
         if not c.get(7):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         c[7] = ()
+    elif _MUTANT == 14:
+        # REPLANTE LA FAUTE : la borne negative est REPLIEE sur le defaut au
+        # lieu d'etre REFUSEE. ⛔ Pas un debranchement — c'est le repli
+        # silencieux que ce fichier reproche deja a `-Lhm`, quinze lignes plus
+        # haut, et que `agent/dn_agent.py` a paye quatre fois.
+        a14 = "if ($AttenteLhm -lt 0) {"
+        if a14 not in p.get(OUTIL, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[OUTIL] = p[OUTIL].replace(
+            a14, "if ($AttenteLhm -lt 0) { $AttenteLhm = 300 }\nif ($false) {", 1)
+    elif _MUTANT == 15:
+        # REPLANTE LA FAUTE : une adresse LHM INTROUVABLE cesse d'etre une
+        # IGNORANCE et devient un DEMARRAGE DEGRADE declare. La tour dirait
+        # « LHM est absent » la ou la verite est « je ne sais pas OU le
+        # chercher » — deux etats differents fondus en un, ce que ce depot
+        # nomme « une ignorance n'est pas un ecart ».
+        a15 = 'Alerte "Adresse de LHM introuvable dans dn_agent.py : sonde IMPOSSIBLE."'
+        if a15 not in p.get(OUTIL, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[OUTIL] = p[OUTIL].replace(
+            a15,
+            'Alerte "DEMARRAGE DEGRADE : LibreHardwareMonitor introuvable."', 1)
+    elif _MUTANT == 12:
+        # 🔴 IL REPLANTE L'ETAT D'AVANT `dn4-48` : le pre-vol sonde UNE fois
+        #    et repart. C'est LE defaut du 2026-09-12, mot pour mot.
+        if A_ECHEANCE not in p.get(OUTIL, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[OUTIL] = p[OUTIL].replace(A_ECHEANCE, "            break", 1)
+    elif _MUTANT == 13:
+        # 🔴 IL REPLANTE UNE ATTENTE QUI **BAVARDE** : la ligne sort du chemin
+        #    « pas encore la » et s'imprime a CHAQUE tour, LHM debout ou non.
+        #    `-AttenteLhm 0` cesse alors de vouloir dire « aucune attente », et
+        #    chaque logon sain gagne une ligne qui annonce un retard imaginaire.
+        if (A_LIGNE_ATTENTE not in p.get(OUTIL, "")
+                or A_SORTIE_BOUCLE not in p.get(OUTIL, "")):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[OUTIL] = p[OUTIL].replace(
+            A_SORTIE_BOUCLE,
+            '            Dire ("LHM : pas encore la sur " + $lhmUrl +\n'
+            '                  " - on ATTEND (mutant).")\n'
+            "            if ($lhmVu) { break }", 1)
     return e
 
 
@@ -381,6 +549,15 @@ def stagger(fichiers, regles, racine_temp, double_le_port=False):
                                "la sonde de port ⛔ n'a PAS pu etre doublee"
                                % OUTIL)
         outil = outil.replace(A_SWITCH, DOUBLE_PORT + A_SWITCH, 1)
+    # !!! LE DOUBLE DE LA SURFACE EST POSE **TOUJOURS**, ⛔ pas sous condition :
+    #     tout tir qui atteint le sens DEGRADE pousserait sinon une vraie boite
+    #     de message. Il est pose APRES le double du port pour que l'ordre des
+    #     deux fonctions reste lisible dans la copie jetable.
+    if A_SWITCH not in outil:
+        raise AncreAbsente("l'ancre du `switch` est INTROUVABLE dans `%s` : la "
+                           "surface Windows ⛔ n'a PAS pu etre doublee, et un "
+                           "tir degrade pousserait un vrai `msg.exe`" % OUTIL)
+    outil = outil.replace(A_SWITCH, DOUBLE_SURFACE + A_SWITCH, 1)
     with io.open(os.path.join(stage, "dn_agent_tour.ps1"), "w",
                  encoding="utf-8", newline="") as fh:
         fh.write(outil)
@@ -409,6 +586,38 @@ def stagger(fichiers, regles, racine_temp, double_le_port=False):
     return stage
 
 
+def attendre_le_port_libre(port, delai=15.0):
+    """Le port du banc est-il RENDU ? ⛔ On ne lance PAS un stub par-dessus.
+
+    🔴 DEFAUT MESURE LE 2026-09-12, ⛔ PAS UNE PRECAUTION. Ce banc lie
+       `PORT_BANC` **trois fois par tir** (degrade, passant, retard) plus une
+       pour le drapeau, et `tools/verif_campagne_dn56.py` rejoue le tir a
+       CHAQUE mutant. Deux tirs qui se suivent de pres se marchent dessus : le
+       stub du second MEURT (`Address already in use`), `attendre_le_stub()` le
+       voit, le sens rend `rc is None`, et la gate sort **`20 OK, 2 KO`** — vu
+       UNE fois sur sept tirs, puis ⛔ jamais reproduit en isole. Une gate qui
+       rougit une fois sur sept est **pire** qu'une gate rouge : elle rend
+       « 0 KO de plus » invérifiable.
+    ⚠️ ON **SONDE** LA LIBERATION, ⛔ ON NE DORT PAS : une duree dormie ferait
+       dependre le verdict de la vitesse de la machine. Et si le port ⛔ ne se
+       libere pas dans la borne, on le DIT — l'appelant en fait un `rc is
+       None`, qui est la mesure de CETTE GATE, ⛔ pas le verdict du sujet.
+    """
+    t0 = time.time()
+    dernier = ""
+    while time.time() - t0 < delai:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("127.0.0.1", port))
+            return True, "libre"
+        except OSError as exc:
+            dernier = "%s: %s" % (type(exc).__name__, exc)
+            time.sleep(0.1)
+        finally:
+            s.close()
+    return False, dernier or "cause inconnue"
+
+
 def attendre_le_stub(stub, port, delai=10.0):
     """Le stub ecoute-t-il ? ⛔ On ne DORT PAS une duree fixe : on SONDE.
 
@@ -434,13 +643,22 @@ def attendre_le_stub(stub, port, delai=10.0):
     return False
 
 
-def jouer_un_sens(ps, stage, mode, py_stub, delai):
+def jouer_un_sens(ps, stage, mode, py_stub, delai, borne):
     """Lance le stub dans `mode`, joue le pre-vol, rend (rc, sortie).
 
     ⛔ LE STUB EST FERME DANS UN `finally` — un banc qui laisse un serveur
-       derriere lui empoisonne le tir suivant."""
+       derriere lui empoisonne le tir suivant.
+    🔴 `borne` EST PASSEE EXPLICITEMENT (`-AttenteLhm`), ⛔ jamais laissee au
+       defaut : le defaut du produit vaut **300 s**, et un sens DEGRADE qui
+       l'emprunterait depasserait le plafond de ce banc — le `rc is None` d'un
+       depassement est la mesure de CETTE GATE, ⛔ pas le verdict du sujet."""
     stub = None
     try:
+        libre, motif_port = attendre_le_port_libre(PORT_BANC)
+        if not libre:
+            return None, ("⛔ LE PORT %d ⛔ N'EST PAS RENDU (%s) — lancer un stub "
+                          "par-dessus mesurerait l'ETRANGER" % (PORT_BANC,
+                                                                motif_port))
         stub = subprocess.Popen(
             [py_stub, os.path.join(stage, "tools", "stub_lhm_dn48.py"),
              "--port", str(PORT_BANC), "--mode", mode],
@@ -455,7 +673,8 @@ def jouer_un_sens(ps, stage, mode, py_stub, delai):
             r = subprocess.run(
                 [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                  chemin_windows(os.path.join(stage, "dn_agent_tour.ps1")),
-                 "prevol", "-Serie", "COM_DE_BANC_INEXISTANT"],
+                 "prevol", "-Serie", "COM_DE_BANC_INEXISTANT",
+                 "-AttenteLhm", str(borne)],
                 timeout=delai, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
             return r.returncode, r.stdout.decode("utf-8", "replace")
@@ -465,6 +684,111 @@ def jouer_un_sens(ps, stage, mode, py_stub, delai):
                           % (delai, brut.decode("utf-8", "replace")))
         except OSError as exc:
             return None, "⛔ IMPOSSIBLE A LANCER : %s" % exc
+    finally:
+        if stub is not None:
+            stub.terminate()
+            try:
+                stub.wait(timeout=5)
+            except subprocess.TimeoutExpired:              # pragma: no cover
+                stub.kill()
+
+
+def jouer_sans_stub(ps, stage, args_sup, delai):
+    """Un tir de pre-vol SANS stub — pour les sens qui ⛔ n'atteignent jamais
+    la sonde, ou qui la trouvent INTERROGEABLE NULLE PART.
+
+    🔴 ⛔ AUCUN PORT N'EST LIE, et c'est le point : ces deux sens se jugent sur
+       ce que la commande imprime EN PROPRE **avant** toute sonde. Lier un stub
+       leur ferait payer l'attente du port pour rien, et `verif_campagne_dn56.py`
+       rejoue CHAQUE mutant de CHAQUE gate — la seconde depensee ici se paie
+       autant de fois."""
+    try:
+        r = subprocess.run(
+            [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+             chemin_windows(os.path.join(stage, "dn_agent_tour.ps1")),
+             "prevol", "-Serie", "COM_DE_BANC_INEXISTANT"] + list(args_sup),
+            timeout=delai, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        return r.returncode, r.stdout.decode("utf-8", "replace")
+    except subprocess.TimeoutExpired as exc:
+        brut = exc.output or b""
+        return None, ("⛔ TIMEOUT apres %s s\n%s"
+                      % (delai, brut.decode("utf-8", "replace")))
+    except OSError as exc:
+        return None, "⛔ IMPOSSIBLE A LANCER : %s" % exc
+
+
+def jouer_le_retard(ps, stage, py_stub, delai):
+    """Le sens **RETARD** : le pre-vol part le PREMIER, le stub arrive APRES.
+
+    🔴 C'EST LE CAS MESURE DU 2026-09-12, REJOUE — ⛔ pas une variante de
+       confort. La tache au logon a tire a `18:13:13` et rendu `12` pendant que
+       LHM montait a `18:13:34` : **21 s trop tard**. Ce tir reproduit
+       l'**ORDRE**, ⛔ pas les durees.
+    🔴 ET L'ORDRE EST **OBSERVE**, ⛔ PAS DORMI — C'EST UNE MESURE DE REVUE.
+       Une premiere redaction lancait le stub apres `time.sleep(2)`. MESURE :
+       le pre-vol met plus longtemps que ca a ATTEINDRE son bloc LHM (il
+       cherche python, puis joue `import psutil, serial`), si bien que le stub
+       ecoutait DEJA au premier tir de sonde : **zero ligne d'attente**, et le
+       sens RETARD ne jouait pas ce qu'il annonce. ⇒ on LIT la sortie du
+       pre-vol jusqu'a voir SA PREMIERE LIGNE D'ATTENTE, et c'est **elle** qui
+       declenche le stub. Une duree dormie aurait fait dependre le verdict de
+       la vitesse de la machine ; l'observation, non.
+    ⚠️ SI LE PRE-VOL N'ATTEND JAMAIS, la lecture s'arrete a la fin de sa
+       sortie (`readline` rend b"") ou au plafond du tir, et le verdict est
+       rendu SUR CE QU'IL A IMPRIME — c'est exactement ce que le mutant 12
+       replante.
+    ⛔ LE STUB EST FERME DANS UN `finally`, comme les deux autres sens."""
+    stub = None
+    proc = None
+    vus = []
+
+    def tout(reste):
+        return (b"".join(vus) + (reste or b"")).decode("utf-8", "replace")
+
+    try:
+        try:
+            proc = subprocess.Popen(
+                [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                 chemin_windows(os.path.join(stage, "dn_agent_tour.ps1")),
+                 "prevol", "-Serie", "COM_DE_BANC_INEXISTANT",
+                 "-AttenteLhm", str(BORNE_RETARD)],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except OSError as exc:
+            return None, "⛔ IMPOSSIBLE A LANCER : %s" % exc
+        t0 = time.time()
+        vu = False
+        marque = MOT_ATTENTE.encode("utf-8")
+        while time.time() - t0 < delai:
+            ligne = proc.stdout.readline()
+            if not ligne:
+                break                      # le pre-vol a ferme sa sortie
+            vus.append(ligne)
+            if marque in ligne:
+                vu = True
+                break
+        if vu:
+            libre, motif_port = attendre_le_port_libre(PORT_BANC)
+            if not libre:
+                proc.kill()
+                return None, ("⛔ LE PORT %d ⛔ N'EST PAS RENDU (%s)\n%s"
+                              % (PORT_BANC, motif_port,
+                                 tout(proc.communicate()[0])))
+            stub = subprocess.Popen(
+                [py_stub, os.path.join(stage, "tools", "stub_lhm_dn48.py"),
+                 "--port", str(PORT_BANC), "--mode", "normal"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if not attendre_le_stub(stub, PORT_BANC):
+                proc.kill()
+                return None, ("⛔ LE STUB N'ECOUTE PAS sur %d — le sens RETARD "
+                              "⛔ n'a PAS ete joue\n%s"
+                              % (PORT_BANC, tout(proc.communicate()[0])))
+        try:
+            reste = proc.communicate(timeout=delai)[0]
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            return None, ("⛔ TIMEOUT apres %s s\n%s"
+                          % (delai, tout(proc.communicate()[0])))
+        return proc.returncode, tout(reste)
     finally:
         if stub is not None:
             stub.terminate()
@@ -484,6 +808,10 @@ def jouer_le_drapeau(ps, stage, py_stub, delai):
        ligne `args :` n'est imprimee qu'APRES elle. ⛔ Rien dans l'arbre."""
     stub = None
     try:
+        libre, motif_port = attendre_le_port_libre(PORT_BANC)
+        if not libre:
+            return None, ("⛔ LE PORT %d ⛔ N'EST PAS RENDU (%s)"
+                          % (PORT_BANC, motif_port))
         stub = subprocess.Popen(
             [py_stub, os.path.join(stage, "tools", "stub_lhm_dn48.py"),
              "--port", str(PORT_BANC), "--mode", "normal"],
@@ -494,7 +822,8 @@ def jouer_le_drapeau(ps, stage, py_stub, delai):
             r = subprocess.run(
                 [ps, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                  chemin_windows(os.path.join(stage, "dn_agent_tour.ps1")),
-                 "prevol", "-Serie", "COM3", "-Lhm", LHM_DRAPEAU],
+                 "prevol", "-Serie", "COM3", "-Lhm", LHM_DRAPEAU,
+                 "-AttenteLhm", "0"],
                 timeout=delai, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
             return r.returncode, r.stdout.decode("utf-8", "replace")
@@ -655,6 +984,7 @@ def main():
     regles = neuf["regles"]
     stage = None
     stage_lhm = None
+    stage_muet = None
     try:
         try:
             stage = stagger(neuf["fichiers"], regles, racine_temp)
@@ -663,6 +993,21 @@ def main():
             stage_lhm = stagger(neuf["fichiers"],
                                 dict(regles, pose_le_port=False),
                                 racine_temp, double_le_port=True)
+            # ⚠️ LE STAGING **MUET** : le meme produit, avec un agent dont la
+            #    ligne `LHM_HOTE` a DISPARU. C'est la seule facon de jouer
+            #    « l'adresse ne se relit pas » sans toucher a l'arbre.
+            stage_muet = stagger(neuf["fichiers"],
+                                 dict(regles, pose_le_port=False), racine_temp)
+            chemin_muet = os.path.join(stage_muet, "dn_agent.py")
+            with io.open(chemin_muet, encoding="utf-8") as fh:
+                muet = fh.read()
+            if A_HOTE_AGENT not in muet:
+                raise AncreAbsente(
+                    "l'ancre `%s` est INTROUVABLE dans `%s` : le sens « adresse "
+                    "introuvable » ⛔ n'a PAS pu etre monte"
+                    % (A_HOTE_AGENT, AGENT))
+            with io.open(chemin_muet, "w", encoding="utf-8", newline="") as fh:
+                fh.write(muet.replace(A_HOTE_AGENT, "# LHM_HOTE RETIRE PAR LE BANC", 1))
         except AncreAbsente as exc:
             ctrl(False, "(c0) les ancres du banc EXISTENT dans le produit",
                  "⛔ %s" % exc)
@@ -679,49 +1024,103 @@ def main():
         mode_refus, mode_passant = regles["modes"]
         py_stub = sys.executable
 
-        print("\n── (c1)(c2)(c3) LES DEUX SENS, JOUES DANS LE VRAI POWERSHELL ──")
+        print("\n── (c1)(c2)(c3)(c9) LES TROIS SENS, DANS LE VRAI POWERSHELL ─")
         delai = regles["delai"]
-        rc_r, out_r = jouer_un_sens(ps, stage, mode_refus, py_stub, delai)
-        rc_p, out_p = jouer_un_sens(ps, stage, mode_passant, py_stub, delai)
+        rc_r, out_r = jouer_un_sens(ps, stage, mode_refus, py_stub, delai,
+                                    BORNE_DEGRADE)
+        rc_p, out_p = jouer_un_sens(ps, stage, mode_passant, py_stub, delai,
+                                    BORNE_PASSANT)
+        rc_t, out_t = jouer_le_retard(ps, stage, py_stub, delai)
 
-        joues = rc_r is not None and rc_p is not None
-        ctrl(joues, "(c1) les DEUX sens ont ete JOUES",
-             "sens REFUS ⇒ rc=%s · sens PASSANT ⇒ rc=%s" % (rc_r, rc_p)
-             if joues
+        joues = rc_r is not None and rc_p is not None and rc_t is not None
+        ctrl(joues, "(c1) les TROIS sens ont ete JOUES",
+             "DEGRADE ⇒ rc=%s · PASSANT ⇒ rc=%s · RETARD ⇒ rc=%s"
+             % (rc_r, rc_p, rc_t) if joues
              else "⛔ un tir n'a rendu AUCUN code — un `rc is None` de "
                   "depassement est la mesure de CETTE GATE, ⛔ pas le verdict "
                   "du sujet : %s"
-                  % (out_r if rc_r is None else out_p).strip()[:160])
+                  % (out_r if rc_r is None else
+                     out_p if rc_p is None else out_t).strip()[:160])
 
-        # 🔴 L'ECHEC NOMME, ⛔ PAS LE `rc` GLOBAL.
-        dit_refus = MOT_REFUS in (out_r or "")
-        ok2 = rc_r == CODE_REFUS and dit_refus
-        ctrl(ok2, "(c2) sens REFUS : `exit %d` ET la ligne qui NOMME LHM"
+        # 🔴 L'ECHEC NOMME, ⛔ PAS LE `rc` GLOBAL — ET DEPUIS `dn4-48` CE QUI
+        #    EST NOMME EST LE **DEMARRAGE DEGRADE**, ⛔ plus un refus. Les trois
+        #    moities comptent : le pre-vol ⛔ NE REFUSE PAS (`rc != 12`), il
+        #    NOMME LHM, et il a VRAIMENT attendu (au moins un tour imprime).
+        degrade = MOT_DEGRADE in (out_r or "")
+        nomme = MOT_NOMME_LHM in (out_r or "")
+        attendu_r = MOT_ATTENTE in (out_r or "")
+        ok2 = (rc_r is not None and rc_r != CODE_REFUS
+               and degrade and nomme and attendu_r)
+        ctrl(ok2, "(c2) sens DEGRADE : ⛔ PAS `%d`, bandeau, attente"
              % CODE_REFUS,
-             "rc=%d, et la sortie porte `%s`" % (CODE_REFUS, MOT_REFUS)
+             "rc=%s (⛔ pas %d), la sortie porte `%s`, elle NOMME %s, et elle a "
+             "ATTENDU" % (rc_r, CODE_REFUS, MOT_DEGRADE, MOT_NOMME_LHM)
              if ok2
-             else "⛔ %s — un LHM qui REPOND sans une seule ligne `lhm_` ⛔ "
-                  "n'est PAS LUI, et le pre-vol doit REFUSER"
-                  % ("rc=%s au lieu de %d" % (rc_r, CODE_REFUS)
-                     if rc_r != CODE_REFUS
-                     else "rc=%d mais la sortie ⛔ ne porte PAS `%s`"
-                          % (CODE_REFUS, MOT_REFUS)))
+             else "⛔ %s — un LHM qui REPOND sans une seule ligne `lhm_` ⛔ n'est "
+                  "PAS LUI ; mais depuis `dn4-48` le pre-vol ⛔ NE REFUSE PLUS : "
+                  "il DEGRADE, et `tools/dn-agent.bat:112` avorterait le "
+                  "lancement sur tout code non nul"
+                  % ("rc=%s : le pre-vol a REFUSE" % rc_r
+                     if rc_r == CODE_REFUS else
+                     "aucun code rendu" if rc_r is None else
+                     "la sortie ⛔ ne porte PAS `%s`" % MOT_DEGRADE
+                     if not degrade else
+                     "le bandeau ⛔ ne NOMME PAS %s" % MOT_NOMME_LHM
+                     if not nomme else
+                     "⛔ AUCUN tour d'attente imprime : une attente muette est "
+                     "indiscernable d'un gel"))
 
         # ⚠️ `12` vs ⛔ PAS `12` — ⛔ JAMAIS `12` vs `0` : MESURE le 2026-09-12,
         #    le pre-vol continue et sort en `5` sur une machine sans COM3.
+        # 🔴 ET LA MOITIE **NEGATIVE** COMPTE AUTANT : avec `-AttenteLhm 0` et
+        #    LHM debout, il ⛔ ne doit y avoir AUCUNE ligne d'attente. Sans
+        #    elle, une attente qui bavarde a chaque logon SAIN passerait verte.
         dit_passant = MOT_PASSANT in (out_p or "")
-        ok3 = rc_p is not None and rc_p != CODE_REFUS and dit_passant
-        ctrl(ok3, "(c3) sens PASSANT : ⛔ PAS `%d`, ET la ligne passante"
+        sans_attente = MOT_ATTENTE not in (out_p or "")
+        ok3 = (rc_p is not None and rc_p != CODE_REFUS and dit_passant
+               and sans_attente)
+        ctrl(ok3, "(c3) sens PASSANT : ⛔ PAS `%d`, ⛔ aucune attente"
              % CODE_REFUS,
-             "rc=%s (⛔ pas %d), et la sortie porte `%s`"
-             % (rc_p, CODE_REFUS, MOT_PASSANT) if ok3
+             "rc=%s (⛔ pas %d), la sortie porte `%s`, et `-AttenteLhm 0` n'a "
+             "fait ATTENDRE personne" % (rc_p, CODE_REFUS, MOT_PASSANT)
+             if ok3
              else "⛔ %s — le discriminant est `%d` vs ⛔ PAS `%d`, ⛔ jamais "
                   "`%d` vs `0` : apres le bloc LHM le pre-vol CONTINUE et sort "
                   "en 4/5/6 selon la machine"
                   % ("rc=%s : le sens passant a REFUSE" % rc_p
                      if rc_p == CODE_REFUS
-                     else "la sortie ⛔ ne porte PAS `%s`" % MOT_PASSANT,
+                     else "la sortie ⛔ ne porte PAS `%s`" % MOT_PASSANT
+                     if not dit_passant else
+                     "`-AttenteLhm 0` a QUAND MEME fait attendre : la ligne "
+                     "`%s` est la" % MOT_ATTENTE,
                      CODE_REFUS, CODE_REFUS, CODE_REFUS))
+
+        # 🔴 (c9) LE SENS **RETARD** — LE CAS MESURE DU 2026-09-12, REJOUE.
+        #    Le pre-vol part le PREMIER, le stub arrive APRES : c'est l'ORDRE
+        #    qui a rendu `12` sur une machine SAINE et laisse la dalle morte.
+        #    ⚠️ LES TROIS MOITIES : il a ATTENDU (au moins un tour imprime), il
+        #    est PASSE (la ligne passante), et il ⛔ n'a PAS degrade.
+        attendu_t = MOT_ATTENTE in (out_t or "")
+        passe_t = MOT_PASSANT in (out_t or "")
+        pas_degrade_t = MOT_DEGRADE not in (out_t or "")
+        ok9 = (rc_t is not None and rc_t != CODE_REFUS
+               and attendu_t and passe_t and pas_degrade_t)
+        ctrl(ok9, "(c9) sens RETARD : il ATTEND, puis il PASSE",
+             "rc=%s (⛔ pas %d), au moins un tour d'attente PUIS `%s`"
+             % (rc_t, CODE_REFUS, MOT_PASSANT) if ok9
+             else "⛔ %s — c'est LE cas du 2026-09-12 : la tache a tire a "
+                  "18:13:13 et rendu 12 pendant que LHM montait a 18:13:34. Un "
+                  "pre-vol qui ⛔ n'attend pas laisse la dalle MORTE toute la "
+                  "session, sur une machine SAINE"
+                  % ("aucun code rendu : %s" % (out_t or "").strip()[:120]
+                     if rc_t is None else
+                     "rc=%s : le pre-vol a REFUSE" % rc_t
+                     if rc_t == CODE_REFUS else
+                     "⛔ AUCUN tour d'attente : le pre-vol a sonde UNE fois et "
+                     "il est reparti" if not attendu_t else
+                     "il a attendu, mais il ⛔ n'est PAS PASSE (`%s` absent)"
+                     % MOT_PASSANT if not passe_t else
+                     "il a DEGRADE alors que LHM est arrive dans la borne"))
 
         # ── (c4) L'ADRESSE EST **LUE DANS L'AGENT**, ⛔ JAMAIS RECOPIEE ──
         print("\n── (c4)(c5) L'ADRESSE LUE, ET LE STUB QUI REFUSE LE VRAI PORT ──")
@@ -775,6 +1174,46 @@ def main():
                      % (attendu, ligne_args) if ligne_args
                      else "⛔ AUCUNE ligne `args :` (rc=%s)" % rc_d))
 
+        # ── (c10)(c11) LES DEUX LIGNES DE MATRICE SANS PORTEUR ─────────
+        # 🔴 ELLES N'EN AVAIENT AUCUN AVANT LE 2026-09-12, ET C'EST L'AUDIT DE
+        #    LA MATRICE D'E/S QUI L'A DIT : « borne invalide » et « adresse LHM
+        #    illisible » etaient ECRITES et jouees par PERSONNE. Un cas de
+        #    matrice sans porteur est une intention, ⛔ pas une garde.
+        # ⛔ AUCUN STUB ICI : ces deux sens ⛔ n'atteignent jamais la sonde.
+        print("\n── (c10)(c11) LA BORNE REFUSEE, ET L'ADRESSE INTROUVABLE ─────")
+        rc10, out10 = jouer_sans_stub(ps, stage, ["-AttenteLhm", "-1"],
+                                      DELAI_COURT)
+        ok10 = (rc10 == CODE_BORNE_REFUSEE and MOT_BORNE_REFUSEE in (out10 or "")
+                and MOT_ATTENTE not in (out10 or ""))
+        ctrl(ok10, "(c10) une borne NEGATIVE est REFUSEE, ⛔ pas repliee",
+             "rc=%s et la sortie NOMME la borne, ⛔ sans un seul tour d'attente"
+             % rc10 if ok10
+             else "⛔ %s — un repli silencieux sur le defaut ferait ATTENDRE "
+                  "300 s a qui a demande autre chose, et le diagnostic "
+                  "accuserait ensuite LHM"
+                  % ("rc=%s (attendu %d)" % (rc10, CODE_BORNE_REFUSEE)
+                     if rc10 != CODE_BORNE_REFUSEE
+                     else "la sortie ⛔ ne NOMME pas `%s`" % MOT_BORNE_REFUSEE
+                     if MOT_BORNE_REFUSEE not in (out10 or "")
+                     else "elle a ATTENDU alors que la borne est REFUSEE"))
+
+        rc11, out11 = jouer_sans_stub(ps, stage_muet, [], DELAI_COURT)
+        ok11 = (MOT_SONDE_IMPOSSIBLE in (out11 or "")
+                and MOT_DEGRADE not in (out11 or "")
+                and MOT_ATTENTE not in (out11 or ""))
+        ctrl(ok11, "(c11) une adresse INTROUVABLE est une IGNORANCE",
+             "la sortie dit `%s`, ⛔ sans bandeau degrade et ⛔ sans attente"
+             % MOT_SONDE_IMPOSSIBLE if ok11
+             else "⛔ %s — « je ne sais pas OU chercher » ⛔ N'EST PAS « il "
+                  "est absent » : les fondre ferait accuser LHM sur une tour "
+                  "dont seul le fichier de l'agent a bouge (rc=%s)"
+                  % (("la sortie ⛔ ne dit PAS `%s`" % MOT_SONDE_IMPOSSIBLE
+                      if MOT_SONDE_IMPOSSIBLE not in (out11 or "")
+                      else "elle DECLARE un `%s`" % MOT_DEGRADE
+                      if MOT_DEGRADE in (out11 or "")
+                      else "elle a ATTENDU une adresse qu'elle ⛔ n'a PAS"),
+                     rc11))
+
         # ── (c6) LA RECIPROQUE, MECANIQUE ──────────────────────────────
         print("\n── (c6) ⛔ AUCUN CONTROLE GARDE PAR ZERO MUTANT ───────────────")
         lus = dn_gates.ids_par_ast(os.path.abspath(__file__))
@@ -804,7 +1243,7 @@ def main():
                       "le TEMP de Windows, et il faut le retirer a la main."
                       % (d, type(exc).__name__, exc))
 
-    print("\n⛔ CE QUE CETTE GATE NE PROUVE PAS : que la TOUR REELLE refuse.")
+    print("\n⛔ CE QUE CETTE GATE NE PROUVE PAS : que la TOUR REELLE degrade.")
     print("   Elle ⛔ n'installe pas LHM, ⛔ ne pose aucune tache planifiee et")
     print("   ⛔ n'ouvre aucun navigateur. La tour reelle, sa tache et la course")
     print("   au logon sont NOMMEES au ledger — et ce qui se juge A L'ŒIL y")

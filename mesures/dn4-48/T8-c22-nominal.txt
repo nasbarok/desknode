@@ -1,0 +1,86 @@
+==============================================================================
+dn7-6 — LA PAGE INSTALLE CE QU'ELLE PEUT, ET ELLE BLOQUE
+==============================================================================
+cibles     : installeur/index.html · installeur/dn_installeur.py · tools/dn_agent_tour.ps1 · installeur/IDENTITE.md · firmware/desknode/main/dn_ui.c
+⛔ CETTE GATE EST STRUCTURELLE : elle N'OUVRE AUCUN NAVIGATEUR,
+   N'INSTALLE RIEN et NE POSE AUCUNE TACHE. Elle prouve que LE
+   MECANISME EST BRANCHE, ⛔ pas qu'un bouton soit grise sous les
+   yeux de quelqu'un : ca vit dans `mesures/dn7-6/T2`, COTE
+   WINDOWS, et c'est l'ŒIL DE L'OWNER qui ferme `AC7.6.1`.
+
+── (c0) LE PRE-VOL — ⛔ AUCUN CONTROLE SUR DU VIDE ────────────────
+  [OK ] (c0) tout fichier attendu est LISIBLE                      5 fichier(s) lus
+  [OK ] (c0) le mutant 1 a une CIBLE et un LIBELLE                 → c1
+  [OK ] (c0) le mutant 2 a une CIBLE et un LIBELLE                 → c1
+  [OK ] (c0) le mutant 3 a une CIBLE et un LIBELLE                 → c2
+  [OK ] (c0) le mutant 4 a une CIBLE et un LIBELLE                 → c2
+  [OK ] (c0) le mutant 5 a une CIBLE et un LIBELLE                 → c3
+  [OK ] (c0) le mutant 6 a une CIBLE et un LIBELLE                 → c3
+  [OK ] (c0) le mutant 7 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 8 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 9 a une CIBLE et un LIBELLE                 → c5
+  [OK ] (c0) le mutant 10 a une CIBLE et un LIBELLE                → c6
+  [OK ] (c0) le mutant 11 a une CIBLE et un LIBELLE                → c6
+  [OK ] (c0) le mutant 12 a une CIBLE et un LIBELLE                → c7
+  [OK ] (c0) le mutant 13 a une CIBLE et un LIBELLE                → c7
+  [OK ] (c0) le mutant 14 a une CIBLE et un LIBELLE                → c8
+  [OK ] (c0) le mutant 15 a une CIBLE et un LIBELLE                → c8
+  [OK ] (c0) le mutant 16 a une CIBLE et un LIBELLE                → c9
+  [OK ] (c0) le mutant 17 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 18 a une CIBLE et un LIBELLE                → c11
+  [OK ] (c0) le mutant 19 a une CIBLE et un LIBELLE                → c12
+  [OK ] (c0) le mutant 20 a une CIBLE et un LIBELLE                → c13
+  [OK ] (c0) le mutant 21 a une CIBLE et un LIBELLE                → c14
+  [OK ] (c0) le mutant 22 a une CIBLE et un LIBELLE                → c15
+  [OK ] (c0) le mutant 23 a une CIBLE et un LIBELLE                → c16
+  [OK ] (c0) le mutant 24 a une CIBLE et un LIBELLE                → c0
+  [OK ] (c0) le mutant 25 a une CIBLE et un LIBELLE                → z
+  [OK ] (c0) le mutant 26 a une CIBLE et un LIBELLE                → c17
+  [OK ] (c0) le mutant 27 a une CIBLE et un LIBELLE                → c18
+  [OK ] (c0) le mutant 28 a une CIBLE et un LIBELLE                → c19
+  [OK ] (c0) le mutant 29 a une CIBLE et un LIBELLE                → c20
+  [OK ] (c0) le mutant 30 a une CIBLE et un LIBELLE                → c21
+  [OK ] (c0) le mutant 31 a une CIBLE et un LIBELLE                → c20
+  [OK ] (c0) le mutant 32 a une CIBLE et un LIBELLE                → c22
+
+── (c1)(c2)(c3) L'ETAT PAR ETAPE, ET ⛔ AUCUN VERT ───────────────
+  [OK ] (c1) chaque etape porte son temoin, et il est su           4 etapes, 4 temoins, tous dans `CHAMPS` (11)
+  [OK ] (c2) le temoin se peint dans les jetons STATUES            3 regles, 6 valeur(s), toutes en jetons declares
+  [OK ] (c17) les regles d'etat sont ATTEIGNABLES                  9 delimiteur(s) apparie(s), 3 regle(s) atteignable(s)
+  [OK ] (c3) ⛔ AUCUN VERT : la valeur rejetee reste dehors         3 occurrence(s) de `0x4ade80`, toutes en annotation de REJET ; 7 jetons, ⛔ aucun vert
+
+── (c4)(c5) GRISE, ⛔ PAS AVERTI — ET LA RAISON EST SOUS LUI ─────
+  [OK ] (c4) les gestes passent par UNE fabrique nommee            9 appel(s), 3 geste(s) pilotes, ⛔ aucun `.disabled` disperse
+  [OK ] (c5) le motif du desarmement est ECRIT sous le bouton      3 bloc(s) de raison, tous sous leur bouton, tous ecrits par `blocMot`
+
+── (c6)…(c9) LE VERBE NEUF COMPOSE, ET IL N'ELEVE RIEN ───────────
+  [OK ] (c6) le verbe neuf est sur ses TROIS surfaces              `poser` sur ses 3 surfaces : 8 verbe(s) valides, 3 expose(s)
+  [OK ] (c7) le verbe neuf COMPOSE, et il REEMPLOIE                il compose permanence + lancer, et ⛔ il recopie 0 des 4 reglages de tache
+  [OK ] (c8) le code de demi-reussite est PROPRE                   `13` unique, DANS le bloc ; les autres sorties du bloc (0,12) servent deja
+  [OK ] (c9) ⛔ aucune elevation dans le bloc du verbe neuf         7 motifs cherches, 0 trouve
+
+── (c10)…(c13) ELLE INSTALLE CE QU'ELLE PEUT, ET ELLE L'ECRIT ────
+  [OK ] (c10) `pip` est EXECUTABLE, LHM ⛔ ne l'est pas             route `/api/dependances` servie depuis `do_POST` · ⛔ aucune route pour LHM, et le motif est ecrit
+  [OK ] (c11) la route NEUVE refuse `Origin` et `Host`             Host ⇒ 403 · Origin ⇒ 403, sur la route NEUVE
+  [OK ] (c12) le geste joue est LE geste publie                    la commande jouee sort de `GESTE_DEPENDANCES`, ⛔ d'aucune copie
+  [OK ] (c18) les TROIS issues du geste `pip` sont JOUEES          3 issues jouees, 3 verdicts distincts, `rc` relaye tel quel
+  [OK ] (c19) la page POSTE sur la route que le serveur SERT       page 'api/dependances' == serveur '/api/dependances'
+  [OK ] (c20) les codes de `poser` sont RENDUS, ⛔ pas aplatis      4 codes joues, 4 verdicts distincts, `13` nomme sa moitie, `12` nomme LHM ET la moitie VIVANTE
+  [OK ] (c21) la fabrique grise DANS LE BON SENS                   `.disabled = !permis` — la polarite est ancree
+  [OK ] (c22) LHM absent ARME le geste, ⛔ il ne le grise plus      LHM arme avec `raison.agent-lhm`, et il est evalue APRES le grisage sur `raison.agent-sans-port`
+  [OK ] (c13) elle dit ce qu'elle N'INSTALLE PAS, et pourquoi      LHM et Python nommes, chacun avec sa raison, en paraphrase
+
+── (c14)(c15)(c16) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c14) chaque controle est vise par >= 1 mutant             24 controle(s) lu(s) a l'AST, 24 cible(s) declaree(s)
+  [OK ] (c15) chaque cible de mutant est un controle REEL          24 cible(s) confrontee(s)
+  [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent               32 mutant(s), 32 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'un bouton soit REELLEMENT
+   grise sous les yeux de quelqu'un, ni qu'un agent soit REELLEMENT
+   active. Elle prouve que le mecanisme est BRANCHE. Le reste vit
+   dans `mesures/dn7-6/T2`, cote Windows, et c'est l'ŒIL DE
+   L'OWNER — ⛔ aucune gate de ce depot.
+
+==============================================================================
+BILAN : 55 OK, 0 KO
+==============================================================================

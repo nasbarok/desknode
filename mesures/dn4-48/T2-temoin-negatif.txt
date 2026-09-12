@@ -1,0 +1,57 @@
+==============================================================================
+TEMOIN NEGATIF - dn4-48 - 2026-09-12
+==============================================================================
+Les gates AMENDEES par dn4-48, jouees contre l'ARBRE D'AVANT
+  (desknode fe1d2bfa829bf031ff3ff7946a18a0b8d977cf14, git archive dans un
+   dossier jetable - RIEN n'est ecrit dans le depot).
+Attendu : ROUGE. Une gate qui resterait VERTE ici ne garderait RIEN de
+ce que cette marche a change.
+==============================================================================
+
+### verif_prerequis_dn75.py ###
+  [KO ] (c11) le bloc LHM ATTEND, ⛔ il ne refuse plus              ⛔ le bloc LHM porte encore une sortie : exit 12 — un pre-vol qui REFUSE sur LHM fait sauter `:EXEC` dans `tools/dn-agent.bat` (`if errorlevel 1 goto :FIN`, l.112), c'est-a-dire EXACTEMENT la panne du 2026-09-12, deplacee d'un cran : l'agent ne demarre pas, et la dalle reste MORTE
+  [KO ] (c18) `12` est UNIQUE, et c'est `poser` qui le rend        ⛔ `12` ⛔ n'est PAS rendu par `poser` (0 occurrence(s)) — `4` porte DEJA DEUX SENS selon le verbe et `lancer` le neutralise en `0` ; et `12` rendu par le PRE-VOL avorterait le lancement, alors que rendu par `poser` il informe un appelant qui SAIT lire une table de codes
+BILAN : 47 OK, 2 KO
+rc=1
+
+### verif_lhm_ps_dn83.py ###
+  [KO ] (c2) sens DEGRADE : ⛔ PAS `12`, bandeau, attente         ⛔ la sortie ⛔ ne porte PAS `DEMARRAGE DEGRADE` — un LHM qui REPOND sans une seule ligne `lhm_` ⛔ n'est PAS LUI ; mais depuis `dn4-48` le pre-vol ⛔ NE REFUSE PLUS : il DEGRADE, et `tools/dn-agent.bat:112` avorterait le lancement sur tout code non nul
+  [KO ] (c3) sens PASSANT : ⛔ PAS `12`, ⛔ aucune attente         ⛔ la sortie ⛔ ne porte PAS `repond 200.` — le discriminant est `12` vs ⛔ PAS `12`, ⛔ jamais `12` vs `0` : apres le bloc LHM le pre-vol CONTINUE et sort en 4/5/6 selon la machine
+  [KO ] (c9) sens RETARD : il ATTEND, puis il PASSE              ⛔ ⛔ AUCUN tour d'attente : le pre-vol a sonde UNE fois et il est reparti — c'est LE cas du 2026-09-12 : la tache a tire a 18:13:13 et rendu 12 pendant que LHM montait a 18:13:34. Un pre-vol qui ⛔ n'attend pas laisse la dalle MORTE toute la session, sur une machine SAINE
+  [KO ] (c4) le pre-vol SONDE le port pose dans l'agent stagge   ⛔ ⛔ AUCUNE URL LHM dans la sortie — si l'outil figeait l'adresse, ce banc mesurerait le port du VRAI LHM, que ⛔ personne n'a lie ici
+  [KO ] (c7) `-Lhm` SURCHARGE le port LU dans l'agent            ⛔ ⛔ AUCUNE URL LHM dans la sortie (rc=1) — le drapeau ⛔ ne pilote alors RIEN, et une tour dont LHM ecoute ailleurs resterait refusee
+  [KO ] (c8) l'agent RECOIT `--lhm` — la ligne `args :` le porte ⛔ ⛔ AUCUNE ligne `args :` (rc=1) — la sonde aurait VU l'adresse et l'agent ⛔ ne la RECEVRAIT PAS : `DN_ARGS` est ce que `:EXEC` rejoue
+BILAN : 16 OK, 6 KO
+rc=1
+
+### verif_preconditions_dn76.py ###
+  [KO ] (c20) les codes de `poser` sont RENDUS, ⛔ pas aplatis      ⛔ `12` dit encore « RIEN n'a ete pose » — c'est FAUX depuis `dn4-48` : la tache EST posee et l'agent TOURNE
+BILAN : 52 OK, 1 KO
+rc=1
+
+==============================================================================
+CE QUE CE TEMOIN PROUVE, ET CE QU'IL NE PROUVE PAS
+==============================================================================
+
+VU ROUGIR, ET C'EST LE POINT : les deux controles neufs ou amendes de
+`verif_prerequis_dn75.py` — `(c11)` « le bloc LHM ATTEND, il ne refuse plus »
+et `(c18)` « `12` est UNIQUE, et c'est `poser` qui le rend » —, le controle
+amende de `verif_preconditions_dn76.py` — `(c20)`, sur le NOUVEAU sens de
+`12` —, et les TROIS sens du banc PowerShell.
+
+ATTENTION — TROIS DES SIX ROUGES DU BANC SONT UN EFFET DE BORD, ET ILS SONT
+DECLARES PLUTOT QUE PRESENTES COMME UNE COUVERTURE :
+  `(c4)`, `(c7)` et `(c8)` rougissent parce que l'arbre d'AVANT ne connait pas
+  le commutateur `-AttenteLhm` : PowerShell refuse le parametre, le pre-vol
+  meurt EN AMONT, et aucun des tirs n'atteint le bloc LHM. Ces trois-la ne
+  disent donc RIEN de ce que `dn4-48` a change — ce sont `(c2)`, `(c3)` et
+  `(c9)` qui le disent.
+  => c'est la meme regle que ce depot a deja payee : un temoin negatif prouve
+     « ce controle voit ce que cette marche a change », il ne prouve JAMAIS
+     « ce controle garde quelque chose ». Ce qui garde, ce sont LES MUTANTS
+     (T3), et eux seuls.
+
+CE QU'IL NE PROUVE PAS : que la tour REELLE degrade. Aucune verification de ce
+depot n'installe LibreHardwareMonitor, n'ouvre un navigateur ni ne pose de
+tache planifiee. Ce fait se ferme A L'OEIL DE L'OWNER, sur la tour.
+==============================================================================

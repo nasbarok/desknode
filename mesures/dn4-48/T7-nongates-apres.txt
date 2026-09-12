@@ -1,0 +1,160 @@
+==============================================================================
+dn4-48 / T7 - LES NON-GATES, REJOUEES
+  Le garde-fou << 0 KO de plus, gate par gate >> leur est AVEUGLE : elles ne
+  sont ni decouvertes par le glob, ni jouees par run_gates.sh.
+==============================================================================
+VERDICT : les DEUX rendent RC=0, et leurs verdicts sont IDENTIQUES a T0.
+
+  . campagne_ctrl_dn440.py : sortie STRICTEMENT identique a T0.
+  . inventaire_motif_dn53.py : verdict identique (mesures/ INTACT), SEULE
+    la POPULATION bouge - 208 -> 211 fichiers, 1901 -> 1914 sites. Ce sont
+    les relevés que cette marche depose sous mesures/dn4-48/. Le compte est
+    une propriete du DEPOT, pas un verdict : l'outil classe toujours ce
+    dossier en << registre de preuves (INTACT) >>.
+==============================================================================
+
+### inventaire_motif_dn53.py ###
+==============================================================================
+dn5-3 — INVENTAIRE PAR CLASSE DU MOTIF « machine nommee »
+==============================================================================
+arbre mesure : ARBRE DE TRAVAIL (git ls-files --cached --others)
+motif        : nasbarok|naoua|~/projects|wsl\.localhost
+⛔ un compte sans son motif ne veut rien dire — et un AUTRE motif rend
+   un AUTRE compte. Dire lequel fait partie du chiffre.
+
+── 0. TEMOIN DE L'INSTRUMENT — ⛔ AVANT TOUT CHIFFRE ──────────────
+   🔴 AC3.1.c : s'il echoue, ⛔ ON NE CONCLUT RIEN DU DEPOT.
+  [OK ] extracteur : defaut sur UNE ligne                        'C:\\Users\\quiconque\\T\\x.csv'
+  [OK ] extracteur : defaut REPLIE sur deux lignes               'C:\\Users\\quiconque\\T\\x.csv'
+  [OK ] extracteur : defaut CALCULE, replie                      '⟨calcule⟩ os.path.join(tempfile.gettempdir()'
+  [OK ] extracteur : option ABSENTE ⇒ None, ⛔ pas un jeton bouchon None
+  [OK ] ecriture : une vraie ouverture est VUE                   1 site
+  [OK ] ecriture : la MEME citee en COMMENTAIRE ⛔ n'est PAS vue  0 site
+  [OK ] ecriture : les deux ensemble ⇒ UN seul site              1 site
+  [OK ] classe 1 : le defaut de `--csv` est LOCALISE par AST     ancre semantique, ⛔ pas verbatim
+  [OK ] classe 1 : l'arbre du jour est SOLDE                     0 fait
+  [OK ] classe 1 : faute REPLANTEE ⇒ elle REMONTE                ≥1 fait
+
+── 1. LES CINQ CLASSES ───────────────────────────────────────────
+  1. dependance FONCTIONNELLE  (le seul defaut)      0 fichiers      0 sites
+  2. exemple d'usage          (declare au site)     23 fichiers     58 sites
+  3. trace de generation      (polices — INTACTES)    5 fichiers      5 sites
+  4. registre de preuves      (mesures/ — INTACT)  211 fichiers   1914 sites
+  5. le motif est le SUJET    (EXCLUSION DECLAREE)    4 fichiers     20 sites
+       TOTAL                                       243 fichiers   1997 sites
+
+── 2. LA CLASSE 1, CONTROLEE ⛔ PAS DECLAREE D'AUTORITE ───────────
+  [OK ] tools/verif_dossier_d5_dn45.py                 solde
+  [OK ] tools/bench_lisseur_dn45.py                    solde
+  [OK ] tools/thermique_ventilos_dn48.py               solde
+
+── 3. LES EXCLUSIONS, ECRITES ⛔ PAS SILENCIEUSES ─────────────────
+  .github/workflows/cla.yml                  1 site(s)
+      un LOGIN GitHub dans l'URL du CLA — le retirer CASSE le bot
+  CONTRIBUTING.md                            8 site(s)
+      la page qui ENONCE le motif et publie ses comptes (le `git grep`, la phrase sur le motif seul, la declaration des exclusions)
+  docs/dn5-1-ecart-promesses.md              10 site(s)
+      la page qui DOCUMENTE l'ecart — la censurer rendrait le releve illisible
+  tools/inventaire_motif_dn53.py             1 site(s)
+      CET INSTRUMENT — il ecrit le motif pour pouvoir le chercher
+
+── 4. LE CONTROLE `--csv`, AVEC CE QU'IL A VRAIMENT LU ────────────
+  defaut lu : '⟨calcule⟩ os.path.join( tempfile.gettempdir()'
+  ⇒ nomme-t-il un profil utilisateur ? ✅ NON
+  ouvertures en ECRITURE (⛔ commentaires exclus) : 2
+      l.196   with open(pid_f, "w") as f:
+      l.208   with open(chemin, "w", newline="", encoding="utf-8") as f:
+
+── 5. CE QUE CE COMPTE NE DIT PAS ────────────────────────────────
+  ⛔ Il BOUGE des qu'une declaration ou une capture s'ajoute — et une
+     declaration est precisement ce que ce depot demande. Ce qui est
+     STABLE, c'est la classe 1 : plus aucun outil ne depend d'une
+     machine en particulier.
+  ⛔ Il ne voit PAS une LETTRE DE LECTEUR (`H:\...`) : le motif ne la
+     porte pas. Site connu : `tools/rendre-port.sh`, declare au site.
+==============================================================================
+RC=0
+
+### campagne_ctrl_dn440.py ###
+==============================================================================
+dn4-40 / AC40.2 — TRI DES `ctrl(True, …)` LITTERAUX, PROUVE PAR MUTANT
+==============================================================================
+critere : LEGITIME = le chemin d'echec SORT EN AMONT ;
+          TROU     = un arbre defaillant ATTEINT le site ;
+          INERTE   = la population du site est VIDE ;
+          BRANCHE  = branche de SUCCES d'une alternative dont la
+                     branche d'echec porte `ctrl(False, MEME LIBELLE)`
+                     ⇒ exactement UNE des deux s'execute (dn4-44).
+⛔ aucune ecriture dans l'arbre reel — `git archive HEAD` + copie.
+
+  [T0]          verif_ledger_dn416.py                rc=0 · 36 controle(s) traces · 0 KO
+  [OK] LEGITIME verif_ledger_dn416.py:1134           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant, ⛔ aucun jumeau KO (rc=4)
+           mutant : le ledger retire du cockpit ⇒ prerequis absent, rc=4, sortie EN AMONT
+  [OK] LEGITIME verif_ledger_dn416.py:1135           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant, ⛔ aucun jumeau KO (rc=4)
+           mutant : idem — meme garde amont
+  [OK] LEGITIME verif_ledger_dn416.py:1136           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant, ⛔ aucun jumeau KO (rc=4)
+           mutant : idem
+  [OK] BRANCHE  verif_ledger_dn416.py:1155           PROUVE — sous mutant la BRANCHE D'ECHEC parle : verif_ledger_dn416.py:1152
+           mutant : le ledger rendu NON-UTF-8 ⇒ la branche `ctrl(False, <MEME LIBELLE>)` est prise, PUIS `return 1`
+  [OK] BRANCHE  verif_ledger_dn416.py:1167           PROUVE — sous mutant la BRANCHE D'ECHEC parle : verif_ledger_dn416.py:1164
+           mutant : le tracker rendu NON-UTF-8 ⇒ la branche `ctrl(False, <MEME LIBELLE>)` est prise, PUIS `return 1`
+  [T0]          verif_dossier_dn415.py               rc=1 · 32 controle(s) traces · 10 KO
+  [OK] LEGITIME verif_dossier_dn415.py:1094          PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant, ⛔ aucun jumeau KO (rc=4)
+           mutant : `--cockpit` vers un chemin inexistant ⇒ la branche `absent` est prise
+  [T0]          verif_hist_dn413.py                  rc=4 · 52 controle(s) traces · 0 KO  ⚠️ TERRAIN INCOMPLET (prerequis absent) — le tri ne vaut que pour les sites ATTEINTS et VERTS ci-dessous
+  [OK] LEGITIME verif_hist_dn413.py:712              PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant, ⛔ aucun jumeau KO (rc=1)
+           mutant : `dn_hist.c` rendu incompilable ⇒ ctrl(False) puis `return 1`
+  [T0]          verif_lissage_dn45.py                rc=0 · 21 controle(s) traces · 0 KO
+  [OK] LEGITIME verif_lissage_dn45.py:198            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant, ⛔ aucun jumeau KO (rc=1)
+           mutant : la capture retiree ⇒ ctrl(False) puis `return 1`
+  [T0]          verif_paliers_dn441.py               rc=0 · 42 controle(s) traces · 0 KO
+  [OK] BRANCHE  verif_paliers_dn441.py:335           PROUVE — sous mutant la BRANCHE D'ECHEC parle : verif_paliers_dn441.py:331
+           mutant : la liste canonique retiree ⇒ la branche `dire(False, <MEME LIBELLE>)` est prise — le constat d'origine le disait DEJA, et le tri le classait quand meme LEGITIME
+  [OK] INERTE   exemption motivée :                  REMEDE APPLIQUE — le libelle SURVIT au source hors d'un `ctrl()`
+           constat : population VIDE au 2026-09-02 (`(aucune)` a la console) ⇒ le site n'est JAMAIS execute
+  [OK] TROU     les exclusions sont DECLAREES, ⛔ p   REMEDE APPLIQUE — le libelle SURVIT au source hors d'un `ctrl()`
+           constat : aucune donnee ne peut le rendre faux — il PUBLIE, il ne controle pas
+  [OK] TROU     ⚠️ et la limite de ce calcul est D   REMEDE APPLIQUE — le libelle SURVIT au source hors d'un `ctrl()`
+           constat : declaration de limite : aucune donnee ne peut la rendre fausse
+  [OK] TROU     les archives sont LISTEES, ⛔ pas e   REMEDE APPLIQUE — le libelle SURVIT au source hors d'un `ctrl()`
+           constat : aucune donnee ne peut le rendre faux ; ⚠️ ses chemins sont ABSOLUS (dn5-3) ⇒ il lit l'arbre REEL meme depuis une copie
+  [T0]          verif_polices_dn440.py               rc=0 · 11 controle(s) traces · 0 KO
+  [OK] BRANCHE  verif_polices_dn440.py:153           PROUVE — sous mutant la BRANCHE D'ECHEC parle : verif_polices_dn440.py:149
+           mutant : le CMakeLists porte `^dn_font_[0-9]+**…` : CMake l'accepte, Python la refuse ⇒ la branche `ctrl(False, …)` est prise
+  [OK] BRANCHE  verif_dossier_dn415.py:1692          PROUVE — sous mutant la BRANCHE D'ECHEC parle : verif_dossier_dn415.py:1687
+           mutant : l'en-tete du bloc DEPLACE en fin de fichier ⇒ plus aucun `*/` apres lui ⇒ la branche `ctrl(False, …)` est prise
+
+── INVENTAIRE : tout `ctrl(True, …)` du depot est-il CLASSE ? ─
+   ✅ aucun site non classe — 15 site(s) au tableau
+
+── AC40.2.c — CONTROLES EXERCES, PAR GATE TOUCHEE ─────────────
+   convention : SITE = appel au SOURCE · INVOCATION = ligne imprimee
+   ⚠️ MESURE PRISE SUR L'ARBRE REEL ET LE COCKPIT REEL, en lecture
+      seule. Deux montages ont ete essayes avant, et tous deux
+      mesuraient LE MONTAGE : le cockpit temporaire (3 fichiers)
+      fait rendre 21 invocations a la gate du dossier, et l'arbre
+      temporaire 19, la ou le poste en rend 26. ⛔ Un compte pris
+      sur un decor mesure le decor.
+   gate                            sites  invoc distin  ecart
+   verif_dossier_d5_dn45.py            9     12      6      3
+   verif_dossier_dn415.py             53     33     26     27
+   verif_hist_dn413.py                69     56     53     16
+   verif_journal_soak_dn45.py         24     26     24      0
+   verif_ledger_dn416.py              46     36     36     10
+   verif_lissage_dn45.py              22     21     21      1
+   verif_paliers_dn441.py             32     42     30      2
+   verif_polices_dn440.py             10     11      9      1
+   verif_verrou_lvgl_dn413.py         15     60     10      5
+   ⚠️ TROIS COLONNES, ⛔ PAS DEUX — et c'est la mesure qui l'impose.
+      `invoc` peut DEPASSER `sites` : un site dans une boucle
+      s'execute autant de fois que sa population a d'elements.
+      C'est `distincts` (sites REELLEMENT atteints) qui se compare
+      a `sites`, et leur ecart compte le code HORS du chemin par
+      defaut (modes `--manifeste`/`--mutant`, branches d'echec).
+      ⇒ Cet ecart devient un DEFAUT le jour ou rien ne l'exerce —
+        c'est ce que mesure « gardes par rien » (verif_campagne_dn440).
+
+==============================================================================
+BILAN TRI : 15 cas au tableau — dont 11 SITE(S) VIVANT(S) et 4 FICHE(S) de remede — 6 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 5 BRANCHE(S), 0 echec(s)
+==============================================================================
+RC=0

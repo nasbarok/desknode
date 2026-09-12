@@ -36,6 +36,22 @@ REM    !!! LA 4e PLACE (le temoin) DOIT ETRE OCCUPEE : "" si pas de temoin.
 REM        Sinon cmd.exe lit l'adresse en %4, et le port part en silence.
 REM    !!! Une valeur malformee est REFUSEE par dn_agent_tour.ps1 (exit 3),
 REM        JAMAIS repliee en silence sur le defaut.
+REM
+REM  L'ATTENTE DE LHM - 6e ARGUMENT                            (dn4-48)
+REM    dn-agent.bat run COM3 0 "" "" 300
+REM    dn-agent.bat start COM3 0 -Temoin "" 300
+REM                                 Le nombre de SECONDES pendant lesquelles
+REM                                 le pre-vol ATTEND LibreHardwareMonitor
+REM                                 avant de demarrer QUAND MEME, champs LHM
+REM                                 a " -- ". Defaut : 300. `0` = aucune
+REM                                 attente. Une valeur NEGATIVE est REFUSEE
+REM                                 (exit 3), JAMAIS repliee en silence.
+REM    !!! LA 5e PLACE (l'adresse LHM) DOIT ETRE OCCUPEE A SON TOUR : "" si
+REM        vous n'en voulez pas. Sinon cmd.exe lit la borne en %5, l'outil la
+REM        refuse comme adresse malformee, et l'attente part en silence.
+REM    !!! ET LE PRE-VOL DEGRADE REND **0** : c'est OBLIGATOIRE. Voir :RUN,
+REM        qui fait `if errorlevel 1 goto :FIN` - tout code non nul y
+REM        AVORTERAIT le lancement que cette attente existe pour permettre.
 REM    dn-agent.bat retirer         retire la tache
 REM
 REM  !!! AUCUNE CONTINUATION DE LIGNE (accent circonflexe) ICI.
@@ -65,6 +81,12 @@ REM  -Lhm, et le .ps1 garde l'adresse qu'il LIT dans dn_agent.py.
 set "LHM=%~5"
 set "LHMARG="
 if defined LHM set "LHMARG=-Lhm %LHM%"
+REM  dn4-48 - LA BORNE D'ATTENTE DE LHM. %~6 deshabille les guillemets s'il y
+REM  en a. ATTARG reste VIDE quand rien n'est demande : le .ps1 garde alors
+REM  SON defaut (300 s), et il n'y a qu'UNE valeur par defaut dans la chaine.
+set "ATTENTE=%~6"
+set "ATTARG="
+if defined ATTENTE set "ATTARG=-AttenteLhm %ATTENTE%"
 
 if not exist "%DN_PS1%" goto :SANSPS1
 
@@ -89,7 +111,7 @@ goto :FIN
 REM Les arguments 3 et 4 (duree, temoin) sont TRANSMIS : c'est la tache qui
 REM porte le regime, et le temoin en fait partie. Sans ca, la cible posee
 REM aurait dit autre chose que ce que l'appel demandait.
-%PS% "%DN_PS1%" permanence -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG%
+%PS% "%DN_PS1%" permanence -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG% %ATTARG%
 goto :FIN
 
 :RETIRER
@@ -100,15 +122,29 @@ goto :FIN
 REM Le pre-vol s'affiche ICI, dans la fenetre du double-clic : si COM3 est
 REM absent, l'owner LE VOIT. C'est ensuite seulement qu'on detache.
 set "DN_REGIME=double-clic (detache)"
-%PS% "%DN_PS1%" lancer -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG%
+%PS% "%DN_PS1%" lancer -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG% %ATTARG%
 goto :FIN
 
 :RUN
 REM Avant-plan : c'est ce que la tache au logon appelle. Le pere de
 REM python.exe est donc CE cmd.exe, vivant tout le temps du run - c'est ce
 REM qui rend la chaine de PID lisible (AC6.6).
+REM
+REM !!! dn4-48 - LE `if errorlevel 1` CI-DESSOUS EST LA RAISON POUR LAQUELLE
+REM     LE PRE-VOL DEGRADE REND **0**, ET C'EST ECRIT ICI PARCE QUE C'EST ICI
+REM     QUE CA SE JOUE. Ce goto est le CHEMIN DE LA TACHE AU LOGON - celui qui
+REM     a rendu 12 le 2026-09-12 pendant que LHM montait 21 s plus tard, et
+REM     qui a laisse la dalle morte TOUTE la session. Un pre-vol qui rendrait
+REM     12 sur " LHM absent " ferait sauter :EXEC, c'est-a-dire EXACTEMENT la
+REM     panne que dn4-48 repare, deplacee d'un cran.
+REM     => LA LIGNE NE BOUGE PAS, et elle n'avorte plus rien : c'est le
+REM        pre-vol qui a change de contrat. La degradation voyage par
+REM        dn-agent.started, `dn-agent.bat etat` et le bandeau - JAMAIS par un
+REM        code de retour. Les vrais refus (3/4/5/6) sont INTACTS.
+REM     !!! ET LA BORNE TRAVERSE : sans %ATTARG% ici, le SEUL chemin qui en a
+REM        besoin serait le seul a ne pas la recevoir.
 set "DN_REGIME=tache au logon (avant-plan)"
-%PS% "%DN_PS1%" prevol -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG%
+%PS% "%DN_PS1%" prevol -Serie %SERIE% -Duree %DUREE% %TEMOIN% %LHMARG% %ATTARG%
 if errorlevel 1 goto :FIN
 goto :EXEC
 

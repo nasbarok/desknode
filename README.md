@@ -142,11 +142,20 @@ paliers matériels, il ne s'y range pas.
 deux lignes *« LHM ⛔ »* restent **vraies du matériel** : la dalle afficherait bien tout cela
 sans LibreHardwareMonitor. Ce qui a changé ce jour-là, c'est **le chemin supporté**, ⛔ pas la
 mesure : l'owner a tranché que **LHM est un prérequis DUR**, et le pré-vol de l'agent
-**refuse** désormais de le lancer sans lui. ⇒ sur une machine sans LHM, ces deux lignes
+~~**refuse** désormais de le lancer sans lui~~. ⇒ sur une machine sans LHM, ces deux lignes
 décrivent ce que le **matériel** ferait, et ⛔ **plus** ce que le projet accepte de livrer —
 il n'y a **pas d'agent** pour remplir les cases. ⛔ **Effacer la table effacerait le prix de
 la décision** ; la laisser nue ferait mentir ce fichier. Voir *Ce que vous devez installer
 vous-même — écart déclaré*, plus bas, où ce prix est chiffré.
+
+🟢 **RE-ANNOTÉE LE 2026-09-12 (`dn4-48`) — LA PHRASE BARRÉE CI-DESSUS EST TOMBÉE, ET LES
+DEUX LIGNES *« LHM ⛔ »* REDEVIENNENT VRAIES DU PRODUIT, ⛔ plus seulement du matériel.** Le
+pré-vol ⛔ **ne refuse plus** : il **attend** LHM (borné, 5 min par défaut) puis **démarre
+quand même**. ⇒ sur une machine sans LHM il y a **bien un agent**, la dalle **se remplit**,
+et ce sont exactement **5 cases sur 6** — la ligne du tableau, telle qu'elle a toujours été
+écrite. ⚠️ **⛔ Aucune des deux annotations n'est effacée** : la première dit ce que le
+projet acceptait de livrer du 2026-09-10 au 2026-09-12, et c'est **elle** qui rend lisible le
+coût qu'une mesure a fait retirer. Motif : `dn4-48`, section de l'écart déclaré.
 
 ### 🔴 « VIVANT MÊME PC ÉTEINT » N'EXISTE PAS AU PALIER « DeskNode »
 
@@ -859,6 +868,71 @@ session et celle de l'agent ⛔ **non** — les deux tirent sur le **même** év
 **se courent après**. La reprise existe déjà et **porte sa borne** : **3 reprises à 1 minute**.
 ⇒ **au-delà d'environ trois minutes, l'agent est absent TOUTE LA SESSION**, en silence.
 
+🔴 **CORRECTION DATÉE DU 2026-09-12 (`dn4-48`) — LA PHRASE DU REFUS DUR A CESSÉ D'ÊTRE
+VRAIE. Elle est reprise ici, BARRÉE, et ⛔ elle n'est PAS effacée là-haut** : elle était
+**exacte** du 2026-09-10 au 2026-09-12, et l'effacer effacerait ce que ce dossier savait ces
+jours-là.
+
+~~« le pré-vol de l'agent **REFUSE** de le lancer sans lui, avec **son propre code de
+sortie**, **`12`** »~~ — **il l'ATTEND, puis il démarre QUAND MÊME.**
+
+🔬 **CE QUI A RÉFUTÉ LE REFUS, ET C'EST UNE MESURE SUR UN VRAI REDÉMARRAGE, ⛔ pas un avis.**
+Le 2026-09-12, la tâche au logon a tiré à `18:13:13` et rendu `LastTaskResult = 12` pendant
+que le process LHM montait à `18:13:34` — **21 s trop tard**. La dalle est restée **morte, en
+silence**, toute la session, sur une machine **SAINE**. ⚠️ **Et la reprise n'a PAS tiré** :
+relevé à `18:25`, bien au-delà de la borne publiée juste au-dessus, `LastRunTime` valait
+**toujours** `18:13:13` et `NextRunTime` était **vide**. ⇒ la borne décrivait un **délai** ;
+le fait mesuré est qu'il ⛔ **n'y a eu AUCUNE reprise du tout**. ⛔ **Le mécanisme, lui, n'est
+PAS établi, et c'est dit** : le journal qui le montrerait
+(`Microsoft-Windows-TaskScheduler/Operational`) est **éteint** sur cette tour, donc
+« aucun événement » est une propriété de **la méthode**, ⛔ pas du Planificateur.
+
+🎯 **CE QUE LE PRÉ-VOL FAIT DEPUIS, ET LE RÉGLAGE DE LA TÂCHE ⛔ N'A PAS BOUGÉ.** Il **attend**
+LibreHardwareMonitor, **borné** — `-AttenteLhm <secondes>`, **300 s par défaut**, `0` = aucune
+attente, une valeur **négative** est **refusée** (code `3`) et ⛔ jamais repliée en silence.
+Chaque tour d'attente **imprime sa ligne** (écoulé / borne) : une fenêtre immobile cinq minutes
+serait indiscernable d'un blocage. À l'échéance, le pré-vol **continue** :
+
+- **l'agent DÉMARRE**, et la dalle reste **vivante** — seules la température du CPU et les
+  trois vitesses de ventilateur restent à « `--` » ; le % CPU, les GHz, les Mo/s et la case
+  AMBIANCE ⛔ n'en dépendent pas. ⚠️ **Ce n'est pas une nouveauté du produit, c'est une
+  tolérance qu'il avait déjà** : `agent/dn_agent.py` pose ⛔ **aucune grandeur LHM en position
+  0**, précisément pour qu'une source LHM absente n'empêche rien — elle était acquise quand
+  LHM meurt **en cours de route**, et refusée au seul cas du **démarrage** ;
+- **le pré-vol dégradé rend `0`**, et c'est **load-bearing** : `tools/dn-agent.bat` fait
+  `if errorlevel 1 goto :FIN` juste après le pré-vol en `:RUN` — **le chemin de la tâche au
+  logon**. Un pré-vol dégradé qui rendrait `12` ferait sauter le lancement, c'est-à-dire
+  **exactement la panne réparée**, déplacée d'un cran. ⇒ la dégradation voyage par **l'état
+  écrit** (`dn-agent.started`, `dn-agent.bat etat`) et par le **bandeau**, ⛔ jamais par un
+  code de retour ;
+- **le POURQUOI part sur une surface côté Windows** — `msg.exe`, **sans élévation et sans
+  .NET** (`D8` écarte NotifyIcon, qui exige `System.Windows.Forms`, et le toast WinRT, qui
+  exige .NET ou un module tiers). ⚠️ **Son défaut est connu et il se DÉCLARE** : `msg.exe`
+  est absent des éditions Familiales ⇒ le pré-vol **dit** qu'aucune surface de notification
+  n'était disponible, au lieu de laisser croire qu'il a prévenu. ⛔ Une ignorance n'est pas
+  un écart : le code de retour ne bouge pas ;
+- **`12` change d'émetteur ET de sens, et il reste unique** dans `tools/dn_agent_tour.ps1` :
+  il quitte le bloc LHM du pré-vol pour le verbe **poser** — ⛔ le nom n'est PAS mis en
+  code ici, et c'est une garde MESUREE : `tools/verif_installeur_dn71.py` (c21) refuse
+  qu'un verbe de l'outil soit **redit** dans la section d'installation du README, qui doit
+  y **renvoyer** —, où il veut désormais dire
+  « la permanence est **posée** et l'agent **TOURNE**, mais **SANS LHM** ». ⛔ Il ne dit plus
+  « RIEN n'a été posé » — ce serait **faux**, et enverrait chercher une panne qui n'existe
+  pas. La propriété qui survit, et qu'une vérification garde, est qu'il **nomme
+  LibreHardwareMonitor**.
+
+⚠️ **CE QUE `dn4-48` ⛔ NE FAIT PAS, ET C'EST DIT PLUTÔT QUE TU.** Elle ⛔ **ne touche pas**
+au réglage de reprise de la tâche — le relever déplacerait le coût au lieu de le supprimer,
+et la mesure dit qu'il ⛔ **ne tire pas** sur ce mode de panne : elle **supprime la
+dépendance** à cette parade, qui reste une seconde ligne de défense pour les **autres**
+causes (carte attachée à WSL). Elle ⛔ **n'affiche pas** le motif **sur la dalle** : la trame
+`$DN,…` n'a **aucun champ de texte**, il faudrait toucher le protocole **et** le firmware,
+que `NFR8`/`H1` gèlent tant que le soak est en cours ⇒ **évolution POST-V1**, arbitrage owner
+du 2026-09-12, ⛔ sans porteur V1 et c'est **voulu**. Et ⛔ **la page d'installation garde
+l'activation désarmée** tant que LHM ne répond pas : c'est désormais la précondition **de la
+page**, ⛔ plus un refus de l'outil, et le geste reste **jouable à la main**
+(`tools\dn-agent.bat start`). ⇒ **écart déclaré**, porté au ledger.
+
 🎯 **DEPUIS LE 2026-09-10 (`dn7-6`), LA PAGE INSTALLE LA PREMIÈRE DE CES TROIS CHOSES —
 ⛔ ET ELLE ÉCRIT POURQUOI ELLE N'INSTALLE PAS LES DEUX AUTRES.** ⛔ Rien de ce qui précède
 n'est effacé : les trois manques sont toujours là, et c'est **le geste** qui a changé pour
@@ -953,8 +1027,11 @@ tools\dn-agent.bat start COM3 0 -Temoin 127.0.0.1:8086
 
 ⚠️ **CE QUI EST MESURÉ, ET CE QUI NE L'EST PAS** (2026-09-12). La **polarité** du refus est
 désormais **rejouée dans un vrai `powershell.exe`**, dans les deux sens, par
-`tools/verif_lhm_ps_dn83.py` : LHM qui répond **sans une seule ligne `lhm_`** ⇒ **refus** ;
-LHM debout ⇒ ⛔ **pas** de refus. 🔴 **En revanche, la TOUR RÉELLE ⛔ n'est PAS mesurée** :
+`tools/verif_lhm_ps_dn83.py`, **dans les TROIS sens depuis `dn4-48`** : LHM qui répond
+**sans une seule ligne `lhm_`** ⇒ **démarrage dégradé** (⛔ pas `12`, bandeau qui nomme LHM,
+attente imprimée) ; LHM debout sous `-AttenteLhm 0` ⇒ ligne passante et ⛔ **aucune** attente ;
+LHM qui **monte APRÈS** le pré-vol ⇒ il **attend**, puis il **passe** — le cas mesuré du
+2026-09-12, rejoué. ~~LHM debout ⇒ ⛔ **pas** de refus.~~ 🔴 **En revanche, la TOUR RÉELLE ⛔ n'est PAS mesurée** :
 ⛔ aucune vérification de ce dépôt n'installe LibreHardwareMonitor, ⛔ n'ouvre un navigateur,
 ⛔ ne pose de tâche planifiée. Ce qui reste — le bouton grisé **vu**, l'agent activé
 **constaté par requête**, la course au logon — est **porté au ledger avec son porteur**, et

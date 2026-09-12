@@ -462,22 +462,29 @@
     <div id="b-deps-raison" hidden class="discret" style="margin:-8px 0 16px"></div>
 
     <div id="etat-lhm" hidden class="avert" style="margin-bottom:16px">
-      <span lang="en"><b>LibreHardwareMonitor is not answering on this machine, and the agent
-        now refuses to start without it.</b><br>
+      <span lang="en"><b>LibreHardwareMonitor is not answering on this machine. The agent
+        ⛔ no longer refuses to start without it</b> — since 2026-09-12 its pre-flight
+        <b>waits</b> for it (5 minutes by default), then <b>starts anyway</b>: the CPU
+        temperature and the three fan speeds stay at <b>« -- »</b>, and <b>everything else
+        is published</b>.<br>
         ⚠️ <b>The flash below is ⛔ not affected</b> — and ⛔ <b>this page will not install
         it for you</b>. Its gesture needs <b>administrator rights</b>, which this installer
         ⛔ never asks for; the command is written out further down, <b>to copy</b>, with what
-        falls without it. Until it answers, <b>activating the agent stays disarmed</b>: its
-        pre-flight would stop with its own exit code, at the next logon, <b>without a line on
-        disk</b>.</span>
-      <span lang="fr"><b>LibreHardwareMonitor ne répond pas sur cette machine, et l'agent
-        refuse désormais de démarrer sans lui.</b><br>
+        falls without it. Until it answers, <b>this page keeps activation disarmed</b>: it
+        ⛔ does not activate an agent that would run <b>half-blind</b> — that is
+        <b>this page's</b> precondition, ⛔ no longer a refusal by the tool.</span>
+      <span lang="fr"><b>LibreHardwareMonitor ne répond pas sur cette machine. L'agent
+        ⛔ ne refuse plus de démarrer sans lui</b> — depuis le 2026-09-12 son pré-vol
+        l'<b>attend</b> (5 minutes par défaut), puis <b>démarre quand même</b>&nbsp;: la
+        température du CPU et les trois vitesses de ventilateur restent à <b>« -- »</b>, et
+        <b>tout le reste est publié</b>.<br>
         ⚠️ <b>Le flash ci-dessous ⛔ n'est pas concerné</b> — et ⛔ <b>cette page ne
         l'installera pas pour vous</b>. Son geste exige des <b>droits administrateur</b>, que
         cet installeur ⛔ ne demande jamais&nbsp;; la commande est écrite plus bas, <b>à
-        recopier</b>, avec ce qui tombe sans elle. Tant qu'il ne répond pas, <b>l'activation
-        de l'agent reste désarmée</b>&nbsp;: son pré-vol s'arrêterait avec son propre code de
-        sortie, à la prochaine ouverture de session, <b>sans une ligne sur disque</b>.</span>
+        recopier</b>, avec ce qui tombe sans elle. Tant qu'il ne répond pas, <b>cette page
+        garde l'activation désarmée</b>&nbsp;: elle ⛔ n'active pas un agent qui tournerait
+        <b>à moitié aveugle</b> — c'est la précondition <b>de cette page</b>, ⛔ ce n'est
+        plus un refus de l'outil.</span>
     </div>
 
     <ol class="gestes">
@@ -1376,17 +1383,42 @@ var MOTS = {
                         + "l'agent&nbsp;: son pré-vol refuserait. <b>Le "
                         + "geste</b>&nbsp;: le bouton <b>Installer les "
                         + "dépendances de l'agent</b>, en tête de cette page."],
-  "raison.agent-lhm": ["LibreHardwareMonitor is not answering, and the agent's "
-                       + "pre-flight <b>refuses</b> without it, with its own "
-                       + "exit code. <b>The gesture</b>&nbsp;: the command in "
-                       + "<i>What you must install yourself</i>, below — ⛔ this "
-                       + "page has no button for it, and it writes why.",
-                       "LibreHardwareMonitor ne répond pas, et le pré-vol de "
-                       + "l'agent <b>refuse</b> sans lui, avec son propre code "
-                       + "de sortie. <b>Le geste</b>&nbsp;: la commande de "
-                       + "<i>Ce que vous devez installer vous-même</i>, plus "
-                       + "bas — ⛔ cette page n'a pas de bouton pour elle, et "
-                       + "elle écrit pourquoi."],
+  /* 🔴 CETTE CLE A CHANGE DE SENS **DEUX FOIS** LE 2026-09-12 (`dn4-48`), ET
+     LES DEUX ETATS SONT ECRITS PLUTOT QU'UN SEUL — ⛔ NFR3.
+     ~~(1) « LHM ne repond pas ⇒ le geste est GRISE »~~ : exact jusqu'au
+     2026-09-12 au matin, quand le pre-vol sortait en `12` sans LHM.
+     ~~(2) « le grisage devient une precondition DE CETTE PAGE »~~ : ecrit
+     plus tot dans cette meme marche, et REFUTE PAR L'ARBITRAGE OWNER du
+     2026-09-12 — la page aurait refuse EXACTEMENT ce que `dn4-48` existe
+     pour permettre, et son bouton gris aurait relaye un refus qui n'existe
+     plus nulle part.
+     ⇒ (3) L'ETAT COURANT : le geste **S'ARME**, et cette raison est un
+       **AVERTISSEMENT**, ⛔ plus un motif de refus. Elle dit ce que l'agent
+       publiera EN MOINS, et le geste pour le recuperer.
+     ⚠️ LA CLE EST CONSERVEE A L'IDENTIQUE, ET C'EST VOULU : un mutant de
+        `tools/verif_preconditions_dn76.py` la vise NOMMEMENT. La renommer
+        rendrait ce mutant PERIME, c'est-a-dire un gardien mort. */
+  "raison.agent-lhm": ["LibreHardwareMonitor is not answering — ⛔ this is a "
+                       + "<b>warning</b>, ⛔ not a refusal. The agent's "
+                       + "pre-flight ⛔ <b>no longer refuses</b> without it: it "
+                       + "<b>waits</b> (5 min by default), then starts anyway. "
+                       + "Activating now gives you a <b>live</b> panel, with "
+                       + "the CPU temperature and the three fan speeds at "
+                       + "« -- » until LibreHardwareMonitor is there. "
+                       + "<b>To get those four back</b>&nbsp;: the command in "
+                       + "<i>What you must install yourself</i>, below, then "
+                       + "stop and start the agent again.",
+                       "LibreHardwareMonitor ne répond pas — ⛔ c'est un "
+                       + "<b>avertissement</b>, ⛔ pas un refus. Le pré-vol de "
+                       + "l'agent ⛔ <b>ne refuse plus</b> sans lui&nbsp;: il "
+                       + "l'<b>attend</b> (5 min par défaut), puis démarre "
+                       + "quand même. Activer maintenant vous donne une dalle "
+                       + "<b>vivante</b>, avec la température du CPU et les "
+                       + "trois vitesses de ventilateur à « -- » tant que "
+                       + "LibreHardwareMonitor n'est pas là. <b>Pour récupérer "
+                       + "ces quatre-là</b>&nbsp;: la commande de <i>Ce que "
+                       + "vous devez installer vous-même</i>, plus bas, puis "
+                       + "arrêter et relancer l'agent."],
   "raison.agent-sans-port": ["⛔ No DeskNode board is enumerated. The tool "
                             + "would fall back to its own hard-coded port, so "
                             + "the logon task would be registered on a port "
@@ -2425,8 +2457,6 @@ function rafraichirTemoins(e) {
     armerGeste("b-agent-poser", false, "raison.agent-outil");
   } else if (!depsCompletes) {
     armerGeste("b-agent-poser", false, "raison.agent-deps");
-  } else if (!lhmRepond) {
-    armerGeste("b-agent-poser", false, "raison.agent-lhm");
   } else if (!e.port_serie) {
     /* 🔴 ⛔ SANS CARTE ENUMEREE, « ACTIVER » NE DOIT PAS S'ARMER, et le motif
        est MESURE : le serveur ⛔ ne passe AUCUN `-Serie` quand il n'a pas
@@ -2435,6 +2465,29 @@ function rafraichirTemoins(e) {
        SILENCE a CHAQUE ouverture de session. C'est une precondition que
        l'outil lui-meme nomme, et elle ⛔ ne grisait rien. */
     armerGeste("b-agent-poser", false, "raison.agent-sans-port");
+  } else if (!lhmRepond) {
+    /* 🔴 ARBITRAGE OWNER DU 2026-09-12 (`dn4-48`) — ⛔ LHM NE DESARME PLUS
+       RIEN, ET CE BLOC A CHANGE DE **BRANCHE**, ⛔ pas seulement de prose.
+       ⚠️ CE QU'IL FAISAIT JUSQU'AU 2026-09-12, ET QUI ETAIT JUSTE CE
+          JOUR-LA : il GRISAIT le geste, parce que le pre-vol de l'outil
+          sortait en `12` sans LHM. ⛔ CE N'EST PLUS VRAI — il l'ATTEND
+          (borne `-AttenteLhm`, 300 s par defaut) puis DEMARRE QUAND MEME,
+          quatre champs a « -- ».
+       🔴 LAISSER LE GRISAGE AURAIT FAIT REFUSER A LA PAGE **EXACTEMENT CE
+          QUE CETTE MARCHE EXISTE POUR PERMETTRE** : une tour dont LHM ne
+          repond pas serait restee incapable d'activer l'agent DEPUIS ICI,
+          alors que le produit sait desormais tourner sans lui. Le bouton
+          gris aurait relaye un refus qui n'existe plus.
+       ⚠️ LA PLACE DE CE `else if` EST LOAD-BEARING : il vient APRES
+          `port_serie`, ⛔ pas avant. Sans carte enumeree le geste doit
+          rester GRISE (motif mesure, juste au-dessus) ; si LHM passait en
+          premier, une tour sans carte ET sans LHM s'armerait.
+       ⇒ LE GESTE S'ARME, ET IL PORTE SON AVERTISSEMENT : `raison.agent-lhm`
+         dit desormais ce que l'agent publiera **en moins**, ⛔ pas une
+         panne. La cle est CONSERVEE (un mutant de
+         `tools/verif_preconditions_dn76.py` la vise nommement), et le
+         bandeau `etat-lhm` reste VU. */
+    armerGeste("b-agent-poser", true, "raison.agent-lhm");
   } else {
     armerGeste("b-agent-poser", true, "raison.agent-arme");
   }

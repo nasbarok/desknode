@@ -29,6 +29,17 @@
          (--lhm HOTE:PORT). Sans -Lhm, elle reste LUE dans dn_agent.py.
       /!\ La 4e place (le temoin) doit etre OCCUPEE : `""` si pas de temoin.
 
+  L'ATTENTE DE LHM AU LOGON (dn4-48)
+      dn-agent.bat run COM3 0 "" "" 300
+      .\dn_agent_tour.ps1 prevol -AttenteLhm 300
+      => le pre-vol ATTEND LHM, borne a -AttenteLhm SECONDES (defaut 300),
+         au lieu de refuser aussitot. Si LHM n'arrive pas dans la borne, le
+         pre-vol CONTINUE et l'agent DEMARRE QUAND MEME : champs LHM a " -- ".
+      /!\ `0` = aucune attente. Une valeur NEGATIVE est REFUSEE (exit 3),
+          !!! jamais repliee en silence sur le defaut.
+      /!\ LA 5e PLACE (l'adresse LHM) DOIT ETRE OCCUPEE ELLE AUSSI : `""`
+          si vous n'en voulez pas, sinon cmd.exe lit la borne en %5.
+
 =============================================================================
   L'INSTRUMENT EST LE COMPTE **ET** L'ETAT DU PORT.        (dn4-17 / AC3.4)
 =============================================================================
@@ -75,7 +86,20 @@ param(
     #     /!\ [string] NU, SANS [ValidateSet] : ce fichier n'en porte
     #     qu'UN (celui du verbe), et une gate REFUSE le second - un
     #     ensemble ambigu n'est pas un ensemble.
-    [string]$Lhm = ''
+    [string]$Lhm = '',
+
+    # !!! dn4-48 - LHM QUI MONTE APRES LE LOGON N'EST PLUS UN REFUS, IL EST
+    #     UNE **ATTENTE BORNEE**. Le defaut est MESURE (2026-09-12) : la tache
+    #     a tire a 18:13:13 et rendu 12 pendant que LHM montait a 18:13:34 -
+    #     21 s trop tard -, et la reprise du Planificateur N'A PAS TIRE.
+    #     => ce pre-vol ATTEND, et s'il n'a rien vu au bout de la borne il
+    #        CONTINUE : l'agent demarre, champs LHM a " -- ". Le produit sait
+    #        deja faire ca (agent/dn_agent.py : AUCUNE grandeur LHM en
+    #        position 0), et il le faisait DEJA quand LHM meurt en route.
+    #     /!\ [int] NU, SANS [ValidateSet] : ce fichier n'en porte qu'UN
+    #     (celui du verbe), et une gate REFUSE le second - un ensemble
+    #     ambigu n'est pas un ensemble. La borne se VALIDE plus bas.
+    [int]$AttenteLhm = 300
 )
 
 $ErrorActionPreference = 'Continue'
@@ -108,6 +132,29 @@ $USBIPD  = 'C:\Program Files\usbipd-win\usbipd.exe'
 #     La rotation a lieu AU LANCEMENT, donc un run tres long peut depasser le
 #     plafond : c'est ASSUME, et le debit mesure dit de combien.
 $LOG_MAX = 5MB
+
+# !!! LE PAS DE L'ATTENTE DE LHM - ET L'ATTENTE N'EST JAMAIS UN GEL MUET.
+#     Chaque tour IMPRIME une ligne (ecoule / borne), pour que le double-clic
+#     ET le journal de la tache disent tous deux ce qui se passe. Une fenetre
+#     qui ne bouge pas pendant cinq minutes est indiscernable d'un blocage :
+#     c'est exactement le constat owner qui a fait ecrire le `pause` du .bat.
+$LHM_PAS = 5
+# !!! ET LE PAS S'ADAPTE A LA BORNE : **AU MOINS DIX TOURS**, quelle que soit
+#     elle. Une borne de 6 s sondee DEUX fois n'est pas une attente, c'est un
+#     tirage au sort - et c'est pourtant ce que donnerait un pas FIXE de 5 s.
+#     Le pas ne depasse donc jamais le dixieme de la borne, ni $LHM_PAS, et il
+#     ne descend jamais sous la seconde.
+#       borne 300 s => pas 5 s  (60 tours, le regime livre)
+#       borne  60 s => pas 5 s  (12 tours)
+#       borne   6 s => pas 1 s  ( 6 tours)
+#     (!) C'est AUSSI ce qui rend le banc de `tools/verif_lhm_ps_dn83.py`
+#         payable : il rejoue le pre-vol a chaque mutant, et un pas fixe de
+#         5 s lui coutait un multiple de ce que la campagne peut depenser.
+function Pas-Attente ([int]$Borne) {
+    $p = [Math]::Min($LHM_PAS, [int]($Borne / 10))
+    if ($p -lt 1) { return 1 }
+    return $p
+}
 
 function Dire   ([string]$m) { Write-Host "  $m" }
 function Titre  ([string]$m) { Write-Host ""; Write-Host "=== $m ===" }
@@ -164,6 +211,38 @@ if ($Lhm) {
                       else { $m.Groups[2].Value })
     $LhmPortForce = [int]$portTxt
 }
+
+# --------------------------------------------------------------------------
+# -AttenteLhm : UNE BORNE NEGATIVE EST **REFUSEE NOMMEMENT**.       (dn4-48)
+# --------------------------------------------------------------------------
+# !!! MEME REGLE QUE -Lhm QUINZE LIGNES PLUS HAUT, ET POUR LE MEME MOTIF : un
+#     repli silencieux sur le defaut ferait ATTENDRE 300 s a quelqu'un qui a
+#     demande AUTRE CHOSE, et le diagnostic accuserait ensuite LHM. `0` est
+#     une valeur LEGITIME (aucune attente) ; le negatif, lui, ne veut RIEN
+#     dire et il est dit plutot que devine.
+if ($AttenteLhm -lt 0) {
+    Stop2 ("-AttenteLhm invalide : " + $AttenteLhm + ". Attendu : un nombre de")
+    Stop2 "  SECONDES >= 0 (0 = AUCUNE attente ; le defaut est 300)."
+    Stop2 "  !!! Une borne negative n'est PAS repliee sur le defaut : ce repli"
+    Stop2 "      silencieux ferait attendre une duree que personne n'a demandee."
+    exit 3
+}
+
+# !!! L'ETAT DE LHM VOYAGE PAR L'ETAT ECRIT, !!! JAMAIS PAR LE CODE DE SORTIE
+#     DU PRE-VOL. Motif ecrit en entier au bloc LHM, plus bas : `dn-agent.bat`
+#     fait `if errorlevel 1 goto :FIN` en `:RUN`, donc tout code non nul
+#     AVORTERAIT le lancement que cette marche existe pour permettre.
+# !!! LA VALEUR PAR DEFAUT EST CELLE DE L'IGNORANCE : tant que le bloc LHM
+#     n'a pas tourne, on ne sait RIEN - et une ignorance n'est pas un ecart.
+# !!! CE DRAPEAU EST **LU**, ET IL EST LA SEULE SOURCE DU JETON QUE `etat` ET
+#     `poser` CHERCHENT DANS dn-agent.started. Un drapeau ecrit et jamais relu
+#     serait un commentaire deguise en code : celui-ci COMMANDE la ligne `lhm`
+#     du marqueur, donc les deux verbes qui en dependent.
+$LhmDegrade = $false
+$LhmEtatMarque = 'non sonde (le pre-vol n''a pas atteint le bloc LHM)'
+# Le jeton, ecrit UNE fois. Les trois lecteurs (le marqueur, `etat`, `poser`)
+# le partagent : une chaine recopiee a trois endroits pourrirait en silence.
+$MARQUE_DEGRADE = 'DEMARRAGE DEGRADE'
 
 # --------------------------------------------------------------------------
 # Python : celui de la TOUR, jamais un stub, jamais le relais du Store.
@@ -271,7 +350,74 @@ function Ecrire-Etat ([string]$Port) {
     if (Test-Path $MARQUE) { Dire ("marqueur : " + ((Get-Content $MARQUE -Raw) -replace '\r?\n', ' ')) }
     else                   { Dire  "marqueur : absent" }
     Dire ("journal : " + $(if (Test-Path $LOG) { "" + (Get-Item $LOG).Length + " o  " + $LOG } else { "absent" }))
+    # !!! dn4-48 - UN AGENT QUI TOURNE **SANS** LHM SE DIT ICI, ET PAS
+    #     SEULEMENT AU PRE-VOL. Le bandeau du pre-vol passe une fois, dans une
+    #     fenetre que la tache au logon n'ouvre meme pas ; `etat` est
+    #     l'instrument que l'owner rejoue QUAND IL VEUT. Sans cette lecture,
+    #     " la temperature du CPU reste a -- " n'aurait aucune surface
+    #     interrogeable, et le diagnostic accuserait la carte.
+    #     (!) LA SOURCE EST LE MARQUEUR ECRIT PAR LE PRE-VOL, !!! pas une
+    #         seconde sonde : re-sonder ici dirait l'etat de MAINTENANT, et la
+    #         question posee est " avec quoi cet agent-la a-t-il demarre ? ".
+    if ((Test-Path $MARQUE) -and
+        (((Get-Content $MARQUE -Raw) -replace '\r?\n', ' ') -match $MARQUE_DEGRADE)) {
+        if ($i.Confirmes.Count -gt 0) {
+            Alerte "CET AGENT TOURNE **SANS** LibreHardwareMonitor (demarrage degrade)."
+        } else {
+            Alerte "LE DERNIER LANCEMENT S'EST FAIT SANS LibreHardwareMonitor."
+        }
+        Alerte "  La temperature du CPU et les trois vitesses de ventilateur restent"
+        Alerte "  a ' -- ' ; TOUT LE RESTE est publie. !!! Ce n'est PAS une panne de"
+        Alerte "  l'agent, et ce n'est PAS la carte : LHM n'a pas repondu au pre-vol."
+        Alerte "  => LE GESTE : .\tools\dn_lhm_tour.ps1 -Poser -Permanence tache"
+        Alerte "     puis 'dn-agent.bat stop' et 'dn-agent.bat start' pour les"
+        Alerte "     recuperer SANS attendre la prochaine ouverture de session."
+    }
     return [pscustomobject]@{ Inst = $i; Port = $p }
+}
+
+# --------------------------------------------------------------------------
+# LA SURFACE WINDOWS DU DEMARRAGE DEGRADE - msg.exe, ET RIEN D'AUTRE. (dn4-48)
+# --------------------------------------------------------------------------
+# !!! D8 DIT QUE L'AGENT N'A " NI ELEVATION, NI DRIVER, NI .NET ", et c'est LA
+#     MOITIE DE PHRASE QUI FAIT ENTRER LHM DANS LE PERIMETRE V1. Toute surface
+#     ajoutee ici s'y conforme, donc DEUX candidats tombent d'eux-memes :
+#       . NotifyIcon exige System.Windows.Forms, c'est-a-dire .NET ;
+#       . un toast WinRT exige .NET, ou un module tiers (BurntToast), donc une
+#         DEPENDANCE NEUVE - et ce fichier n'en prend aucune.
+#     msg.exe, lui, vit dans System32, n'exige NI l'un NI l'autre pour la
+#     session courante, et il est l'un des trois que l'arbitrage owner nomme.
+# !!! SON DEFAUT EST CONNU, ET IL SE **DECLARE** : msg.exe est ABSENT des
+#     editions Familiales de Windows. On ne laisse alors PAS croire qu'on a
+#     prevenu - on DIT qu'aucune surface n'etait disponible, et le motif reste
+#     au bandeau, dans dn-agent.started et dans 'dn-agent.bat etat'.
+#     (!) UNE IGNORANCE N'EST PAS UN ECART : le code de retour ne bouge PAS.
+# !!! C'EST LE **MECANISME** QUI EST ARBITRE ICI, PAS LA PROPRIETE. La
+#     propriete - " l'humain apprend le POURQUOI sans le demander " - survit a
+#     un autre mecanisme si l'owner en prefere un.
+function Prevenir-Windows ([string]$Texte) {
+    $racineWin = $(if ($env:SystemRoot) { $env:SystemRoot } else { 'C:\Windows' })
+    $msg = Join-Path $racineWin 'System32\msg.exe'
+    if (-not (Test-Path $msg)) {
+        Alerte "AUCUNE SURFACE DE NOTIFICATION : msg.exe est ABSENT de cette"
+        Alerte ("  edition de Windows (" + $msg + ").")
+        Alerte "  !!! Le POURQUOI ci-dessus n'a donc atteint PERSONNE hors de cette"
+        Alerte "      console. Il reste ECRIT dans dn-agent.started, et"
+        Alerte "      'dn-agent.bat etat' le redit a la demande."
+        return $false
+    }
+    # (!) LA CIBLE EST L'UTILISATEUR COURANT, PAS `*` : `msg *` vise TOUTES les
+    #     sessions de la machine et demande des droits que cet agent n'a pas.
+    $cible = $(if ($env:USERNAME) { $env:USERNAME } else { 'console' })
+    & $msg $cible '/TIME:120' $Texte 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Alerte ("msg.exe a rendu " + $LASTEXITCODE + " : la notification n'a PAS")
+        Alerte "  ete remise. Le motif reste au bandeau ci-dessus, dans"
+        Alerte "  dn-agent.started et dans 'dn-agent.bat etat'."
+        return $false
+    }
+    Dire "le POURQUOI a ete pousse a la session Windows (msg.exe)."
+    return $true
 }
 
 function Rotation-Journal {
@@ -364,6 +510,35 @@ switch ($Action) {
     # !!! ARBITRAGE OWNER DU 2026-09-10, VERBATIM : " LHM est-il un prerequis
     #     DUR !!! car sinon la dalle sert a rien ". => CE PRE-VOL REFUSE.
     #     L'option " confort declare " est ECARTEE.
+    #
+    # !!! ~~CE PRE-VOL REFUSE~~ - AMENDE LE 2026-09-12 (dn4-48), SUR UNE
+    #     MESURE, ET L'ANCIENNE REDACTION EST BARREE PLUTOT QU'EFFACEE : elle
+    #     etait EXACTE le 2026-09-10, et l'effacer effacerait ce que ce
+    #     fichier savait ce jour-la.
+    #     CE QUI A CHANGE, ET C'EST UN FAIT, PAS UN AVIS : au redemarrage du
+    #     2026-09-12 la tache au logon a tire a 18:13:13 et rendu 12 pendant
+    #     que le process LHM montait a 18:13:34 - !!! 21 s trop tard -, et la
+    #     parade `RestartCount 3 / RestartInterval PT1M` N'A PAS TIRE
+    #     (LastRunTime FIGE a 18:13:13, releve a 18:25). La dalle est restee
+    #     MORTE, en silence, TOUTE la session, sur une machine SAINE.
+    #     => LE REFUS EST REMPLACE PAR UNE **ATTENTE BORNEE** (-AttenteLhm,
+    #        defaut 300 s) SUIVIE, A L'ECHEANCE, D'UN **DEMARRAGE DEGRADE**.
+    #     !!! ET CE N'EST PAS UN RECUL SUR L'ARBITRAGE DU 2026-09-10 : le
+    #        refus dur allait CONTRE LA CONCEPTION DU PRODUIT. agent/dn_agent.py
+    #        pose AUCUNE grandeur LHM en position 0, precisement pour qu'une
+    #        source LHM absente n'empeche RIEN - tolerance DEJA acquise quand
+    #        LHM meurt EN COURS DE ROUTE (" une source morte meurt SEULE "),
+    #        et refusee au seul cas du DEMARRAGE. L'asymetrie est ce qui a
+    #        emporte l'arbitrage owner du 2026-09-12.
+    # !!! LE PRE-VOL DEGRADE REND **0**, ET C'EST LOAD-BEARING.
+    #     `tools/dn-agent.bat:112` fait `if errorlevel 1 goto :FIN` juste apres
+    #     le pre-vol en `:RUN` - LE CHEMIN DE LA TACHE AU LOGON. Un pre-vol
+    #     degrade qui rendrait 12 ferait sauter `:EXEC` : l'agent NE
+    #     DEMARRERAIT PAS, c'est-a-dire EXACTEMENT la panne que cette marche
+    #     repare, deplacee d'un cran. => la degradation est une DONNEE D'ETAT
+    #     (dn-agent.started, `etat`, le bandeau), !!! jamais un code de retour.
+    #     Le verbe `poser`, lui, LIT cet etat et rend `12` a la page : la, le
+    #     code est une information rendue a un appelant qui sait la lire.
     # !!! LA PLACE EST CHOISIE : APRES les dependances, AVANT le compte
     #     d'instances - donc AVANT TOUTE DESTRUCTION D'ETAT. C'est le motif
     #     ecrit vingt lignes plus haut : un pre-vol qui echoue ne casse rien.
@@ -417,39 +592,106 @@ switch ($Action) {
         #     meme famille de faux vert que compter le processus.
         #     => le CORPS doit porter le prefixe que l'agent lui-meme exige
         #        (dn_agent.py : `if not ligne.startswith("lhm_")`).
-        try {
-            $rep = Invoke-WebRequest -Uri $lhmUrl -UseBasicParsing -TimeoutSec 3
-            if ($rep.StatusCode -eq 200 -and
-                [string]$rep.Content -cmatch '(?m)^lhm_') { $lhmVu = $true }
-        } catch { }
-        if (-not $lhmVu) {
-            Stop2 ("LibreHardwareMonitor est INJOIGNABLE sur " + $lhmUrl)
-            Stop2 "  (ou il repond, mais ce n'est PAS LUI : le corps ne porte"
-            Stop2 "   aucune ligne ` lhm_ `, celle que l'agent exige.)"
-            Stop2 "  CE QUI TOMBE SANS LUI : la temperature du CPU et les trois"
-            Stop2 "  vitesses de ventilateur ne seront JAMAIS publiees. C'est"
-            Stop2 "  LHM qui lit ces sondes-la, et LUI SEUL."
-            Stop2 "  => LE GESTE : .\tools\dn_lhm_tour.ps1 -Poser -Permanence tache"
-            Stop2 "     (ce script demande des droits administrateur ; cet"
-            Stop2 "      agent-ci, non. Sans argument il VERIFIE et ne change"
-            Stop2 "      RIEN.)"
-            Stop2 "  (!) SI LHM TOURNE MAIS ECOUTE AILLEURS, CE REFUS EST"
-            Stop2 "      QUAND MEME LE BON, et sa parade est ailleurs : cette"
-            Stop2 "      sonde vise LHM_PORT de agent/dn_agent.py, et rien"
-            Stop2 "      d'autre. Un port different est une configuration"
-            Stop2 "      SUPPORTEE (dn_lhm_tour.ps1 -Port <n>), ET DEPUIS"
-            Stop2 "      dn8-3 LES DEUX OUTILS SAVENT LA PASSER :"
-            Stop2 "        dn-agent.bat run COM3 0 \"\" 127.0.0.1:<port>"
-            Stop2 "        .\\dn_agent_tour.ps1 prevol -Lhm 127.0.0.1:<port>"
-            Stop2 "      (la 4e place, le temoin, doit etre OCCUPEE.)"
-            Stop2 "      => soit -Lhm, soit aligner LHM_PORT sur le port"
-            Stop2 "      REELLEMENT ecoute, soit rejouer dn_lhm_tour.ps1"
-            Stop2 "      SANS -Port pour revenir au defaut."
-            Stop2 "  L'AGENT N'EST PAS LANCE : la dalle sans ces valeurs n'est"
-            Stop2 "  pas le produit. Voir README.md, section de l'ecart declare."
-            exit 12
+        # !!! L'ATTENTE BOUCLE SUR **CETTE** SONDE, ELLE N'EN INTRODUIT AUCUNE
+        #     AUTRE - et ce n'est pas une economie, c'est la propriete. Le
+        #     paragraphe ci-dessus dit pourquoi le CORPS tranche ; une seconde
+        #     sonde " juste pour attendre ", plus laxiste, rouvrirait
+        #     EXACTEMENT le trou de l'exportateur Prometheus voisin : on
+        #     attendrait un 200 nu, puis on repartirait en croyant avoir LHM.
+        # !!! ET L'ATTENTE N'EST JAMAIS UN GEL MUET : chaque tour IMPRIME sa
+        #     ligne (ecoule / borne). Une fenetre immobile cinq minutes est
+        #     indiscernable d'un blocage, et le journal de la tache serait muet
+        #     sur la seule chose qui explique le retard.
+        # (!) `-AttenteLhm 0` ne fait AUCUN tour d'attente : la sonde tire une
+        #     fois, et l'echeance est atteinte immediatement.
+        $lhmT0 = Get-Date
+        $lhmEcoule = 0
+        while ($true) {
+            try {
+                $rep = Invoke-WebRequest -Uri $lhmUrl -UseBasicParsing -TimeoutSec 3
+                if ($rep.StatusCode -eq 200 -and
+                    [string]$rep.Content -cmatch '(?m)^lhm_') { $lhmVu = $true }
+            } catch { }
+            if ($lhmVu) { break }
+            $lhmEcoule = [int]((Get-Date) - $lhmT0).TotalSeconds
+            if ($lhmEcoule -ge $AttenteLhm) { break }
+            Dire ("LHM : pas encore la sur " + $lhmUrl + " - on ATTEND (" +
+                  $lhmEcoule + " s / " + $AttenteLhm + " s).")
+            # (!) ON NE DORT JAMAIS AU-DELA DE L'ECHEANCE : sans ce bornage, une
+            #     borne de 3 s couterait 5 s de sommeil, et le pre-vol
+            #     ANNONCERAIT une borne qu'il ne tient pas.
+            $pas = Pas-Attente $AttenteLhm
+            $reste = $AttenteLhm - $lhmEcoule
+            if ($reste -lt $pas) { $pas = $reste }
+            if ($pas -lt 1) { $pas = 1 }
+            Start-Sleep -Seconds $pas
         }
-        Dire ("LHM : " + $lhmUrl + " repond 200.")
+        if (-not $lhmVu) {
+            # !!! CE BLOC NE REFUSE PLUS : il DECLARE un DEMARRAGE DEGRADE et
+            #     le pre-vol CONTINUE. Le bandeau nomme LHM, ce qui tombe sans
+            #     lui, et le geste - les trois moities que le refus portait
+            #     deja. Ce qui change, c'est la CONSEQUENCE.
+            $LhmDegrade = $true
+            $LhmEtatMarque = ("ABSENT (attendu " + $lhmEcoule +
+                              " s sur une borne de " + $AttenteLhm + " s)")
+            Alerte ("DEMARRAGE DEGRADE : LibreHardwareMonitor est reste INJOIGNABLE")
+            Alerte ("  sur " + $lhmUrl + " apres " + $lhmEcoule +
+                    " s d'attente (borne : " + $AttenteLhm + " s).")
+            Alerte "  (ou il repond, mais ce n'est PAS LUI : le corps ne porte"
+            Alerte "   aucune ligne ` lhm_ `, celle que l'agent exige.)"
+            Alerte "  CE QUI TOMBE SANS LUI : la temperature du CPU et les trois"
+            Alerte "  vitesses de ventilateur resteront a ' -- '. C'est LHM qui"
+            Alerte "  lit ces sondes-la, et LUI SEUL. !!! TOUT LE RESTE EST"
+            Alerte "  PUBLIE - le % CPU, les GHz, les Mo/s et la case AMBIANCE"
+            Alerte "  n'en dependent pas : la dalle reste VIVANTE."
+            Alerte "  => LE GESTE : .\tools\dn_lhm_tour.ps1 -Poser -Permanence tache"
+            Alerte "     (ce script demande des droits administrateur ; cet"
+            Alerte "      agent-ci, non. Sans argument il VERIFIE et ne change"
+            Alerte "      RIEN.) Puis 'dn-agent.bat stop' et 'dn-agent.bat start'"
+            Alerte "      pour recuperer les quatre grandeurs SANS attendre la"
+            Alerte "      prochaine ouverture de session."
+            Alerte "  (!) SI LHM TOURNE MAIS ECOUTE AILLEURS, CE CONSTAT EST"
+            Alerte "      QUAND MEME LE BON, et sa parade est ailleurs : cette"
+            Alerte "      sonde vise LHM_PORT de agent/dn_agent.py, et rien"
+            Alerte "      d'autre. Un port different est une configuration"
+            Alerte "      SUPPORTEE (dn_lhm_tour.ps1 -Port <n>), ET DEPUIS"
+            Alerte "      dn8-3 LES DEUX OUTILS SAVENT LA PASSER :"
+            # !!! CORRIGE LE 2026-09-12, ET C'EST UNE MESURE, PAS UN AVIS :
+            #     ces deux lignes portaient `\"\"` et `.\\`, c'est-a-dire du
+            #     quoting de C, PAS de PowerShell. Le seul echappement d'une
+            #     chaine entre guillemets doubles est l'accent GRAVE ; `\` y est
+            #     LITTERAL. Resultat JOUE dans powershell.exe 5.1 : la 1re ligne
+            #     sortait TRONQUEE a ` run COM3 0 \ ` - la moitie qui porte
+            #     l'adresse DISPARAISSAIT, en silence (le reste partait dans
+            #     `$args`, qu'une fonction simple avale sans rien dire) - et la
+            #     2de affichait un DOUBLE antislash. Le geste publie etait donc
+            #     INJOUABLE, dans le seul message qui sert a le jouer.
+            #     => on double les guillemets, comme PowerShell l'exige.
+            Alerte "        dn-agent.bat run COM3 0 """" 127.0.0.1:<port>"
+            Alerte "        .\dn_agent_tour.ps1 prevol -Lhm 127.0.0.1:<port>"
+            Alerte "      (la 4e place, le temoin, doit etre OCCUPEE.)"
+            Alerte "      => soit -Lhm, soit aligner LHM_PORT sur le port"
+            Alerte "      REELLEMENT ecoute, soit rejouer dn_lhm_tour.ps1"
+            Alerte "      SANS -Port pour revenir au defaut."
+            Alerte "  !!! L'AGENT EST LANCE QUAND MEME, et c'est le changement du"
+            Alerte "  2026-09-12 : une dalle a quatre champs vides bat une dalle"
+            Alerte "  MORTE. Voir README.md, section de l'ecart declare."
+            # !!! LE POURQUOI PART SUR UNE SURFACE **COTE WINDOWS**, parce que
+            #     la tache au logon n'ouvre AUCUNE console : sans ca, ce
+            #     bandeau n'atteindrait personne le jour ou il compte.
+            #     (!) Le retour est JETE EXPRES : une surface absente est
+            #         DECLAREE par la fonction, et une ignorance n'est pas un
+            #         ecart - le code de retour du pre-vol ne bouge PAS.
+            $null = Prevenir-Windows ("DeskNode : l'agent a demarre SANS " +
+                "LibreHardwareMonitor (injoignable sur " + $lhmUrl + " apres " +
+                $lhmEcoule + " s). La temperature du CPU et les trois vitesses " +
+                "de ventilateur resteront a ' -- ' ; tout le reste est publie. " +
+                "Le geste : tools\dn_lhm_tour.ps1 -Poser -Permanence tache, " +
+                "puis dn-agent.bat stop et dn-agent.bat start.")
+        } else {
+            $LhmEtatMarque = ("repond 200 sur " + $lhmUrl)
+            Dire ("LHM : " + $lhmUrl + " repond 200.")
+        }
     }
     # --- fin du prerequis LHM -----------------------------------------
 
@@ -538,6 +780,14 @@ switch ($Action) {
         ("python  : " + $py),
         ("agent   : " + $AGENT),
         ("args    : " + ($argl -join ' ')),
+        # !!! dn4-48 - LA DEGRADATION VOYAGE PAR L'ETAT ECRIT, !!! JAMAIS PAR
+        #     LE CODE DE SORTIE (motif en entier au bloc LHM). C'est CETTE
+        #     ligne que `etat` relit, et c'est elle que `poser` interroge pour
+        #     rendre `12` a la page. Un agent lance par la tache au logon
+        #     n'ouvre AUCUNE console : sans trace sur disque, " pourquoi la
+        #     temperature reste a -- " n'aurait aucune reponse.
+        ("lhm     : " + $(if ($LhmDegrade) { $MARQUE_DEGRADE + " - " }
+                          else { "" }) + $LhmEtatMarque),
         ("coeurs  : " + $env:NUMBER_OF_PROCESSORS)
     ) -join "`r`n" | Set-Content -Encoding ASCII $MARQUE
 
@@ -576,6 +826,12 @@ switch ($Action) {
     # !!! TRANSMIS, sinon le pre-vol FILS sonderait l'adresse de l'agent
     #     pendant que l'agent, lui, recevrait --lhm : deux adresses.
     $lhmArg = $(if ($Lhm) { @('-Lhm', $Lhm) } else { @() })
+    # !!! LA BORNE EST TRANSMISE **TOUJOURS**, contrairement a -Lhm : c'est un
+    #     [int] qui a un DEFAUT, donc " absent " et " 300 " sont indiscernables
+    #     du cote fils. Ne pas la passer ferait attendre au pre-vol FILS la
+    #     valeur par defaut pendant que le pere en annonce une autre - deux
+    #     bornes, comme il y avait deux adresses avant dn8-3.
+    $attArg = @('-AttenteLhm', $AttenteLhm)
     # =====================================================================
     # !!! REVUE DU 2026-08-26 - LA GARDE ANTI-DOUBLON EST UN SCAN **TOCTOU**.
     #     `prevol` tourne dans un powershell SEPARE ; entre son
@@ -609,7 +865,7 @@ switch ($Action) {
     }
     try {
         $code = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ps1 prevol `
-                    -Serie $Serie -Duree $Duree @lhmArg $tem
+                    -Serie $Serie -Duree $Duree @lhmArg @attArg $tem
         $code | ForEach-Object { Write-Host $_ }
         if ($LASTEXITCODE -eq 4) { exit 0 }   # deja lance : AUCUN doublon, et ce
                                               # n'est pas une erreur.
@@ -669,7 +925,12 @@ switch ($Action) {
     #     8086 en %4 (le temoin) et RIEN en %5. On pose `""`, que le .bat
     #     deshabille par `%~4`.
     $tem = $(if ($Temoin) { '-Temoin' } else { '""' })
-    & $env:ComSpec /c ('"' + $BAT + '" run ' + $Serie + ' ' + $Duree + ' ' + $tem + ' ' + $Lhm)
+    # !!! ET LA 5e PLACE (l'adresse LHM) EST OCCUPEE A SON TOUR, POUR LA MEME
+    #     RAISON, DEPUIS QU'UN 6e ARGUMENT EXISTE (dn4-48) : `run COM3 0 "" 300`
+    #     ferait lire 300 en %5 - l'ADRESSE de LHM -, `-Lhm 300` serait REFUSE
+    #     par la validation de forme, et la borne partirait en silence.
+    $lhmPos = $(if ($Lhm) { $Lhm } else { '""' })
+    & $env:ComSpec /c ('"' + $BAT + '" run ' + $Serie + ' ' + $Duree + ' ' + $tem + ' ' + $lhmPos + ' ' + $AttenteLhm)
     exit $LASTEXITCODE
 }
 
@@ -861,8 +1122,13 @@ switch ($Action) {
     #     dans l'agent, et le refus dur (exit 12) tomberait sur une machine
     #     SAINE. C'est le cas que le message du refus NOMME depuis dn7-5.
     $lhmCible = $(if ($Lhm) { ' -Lhm ' + $Lhm } else { '' })
+    # !!! dn4-48 - ET LA TACHE PORTE LA **BORNE D'ATTENTE**, sinon le seul
+    #     chemin qui en a besoin - la tache au logon, celle qui court apres
+    #     LHM - serait le seul a ne pas la recevoir. C'est le tir qui a rendu
+    #     `12` le 2026-09-12.
+    $attCible = ' -AttenteLhm ' + $AttenteLhm
     $cible = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
-             $ps1 + '" tache -Serie ' + $Serie + ' -Duree ' + $Duree + ' ' + $tem + $lhmCible
+             $ps1 + '" tache -Serie ' + $Serie + ' -Duree ' + $Duree + ' ' + $tem + $lhmCible + $attCible
     # !!! PAS `$action` : ce script a un PARAMETRE `$Action` avec un
     #     ValidateSet, et les variables PowerShell sont INSENSIBLES A LA
     #     CASSE. `$action = New-ScheduledTaskAction ...` declenchait donc le
@@ -913,6 +1179,25 @@ switch ($Action) {
     #     (!) NE PAS "corriger" en montant -RestartCount sans mesure : ce
     #         reglage a ete choisi pour ne PAS boucler indefiniment, et le
     #         relever deplacerait le cout au lieu de le supprimer.
+    #
+    # !!! ANNOTE LE 2026-09-12 (dn4-48) - LE BLOC CI-DESSUS RESTE, ET IL EST
+    #     TOUJOURS EXACT SUR LA COURSE ; C'EST SA **PARADE** QUI A ETE
+    #     REFUTEE PAR LA MESURE. Releve sur un VRAI redemarrage le
+    #     2026-09-12 : la tache a tire UNE SEULE FOIS, a 18:13:13, rendu 12,
+    #     et a 18:25 - bien au-dela des ~3 minutes annoncees ici -
+    #     `LastRunTime` valait TOUJOURS 18:13:13 et `NextRunTime` etait VIDE.
+    #     AUCUNE reprise n'a eu lieu. La borne de " ~3 min " decrivait un
+    #     DELAI ; le fait mesure est qu'il n'y a eu AUCUNE reprise du tout.
+    #     (!) LE MECANISME N'EST PAS ETABLI, ET C'EST DIT : le journal qui le
+    #         montrerait (Microsoft-Windows-TaskScheduler/Operational) est
+    #         ETEINT sur cette tour, donc " aucun evenement " est une propriete
+    #         de LA METHODE, pas du Planificateur.
+    #     => dn4-48 NE TOUCHE PAS a ce reglage - le relever deplacerait le
+    #        cout, comme l'ecrit la ligne ci-dessus. Elle SUPPRIME LA
+    #        DEPENDANCE a cette parade : le pre-vol ATTEND LHM, puis demarre
+    #        degrade. La reprise reste une seconde ligne de defense pour les
+    #        AUTRES causes (port attache a WSL), et c'est pour ca qu'on la
+    #        garde ENTIERE.
     # =====================================================================
     $reglages = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
         -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) `
@@ -949,6 +1234,14 @@ switch ($Action) {
     #     que celle demandee echouerait a CHAQUE logon, en silence.
     if ($Lhm -and ($argsPoses -notmatch ('-Lhm\s+' + [regex]::Escape($Lhm)))) {
         Stop2 ("-Lhm " + $Lhm + " a ete demande mais la tache posee ne le porte PAS.")
+        exit 9
+    }
+    # !!! MEME REGLE POUR LA BORNE : une tache posee sans elle rejouerait le
+    #     DEFAUT a chaque logon, et quelqu'un qui a choisi 600 s croirait
+    #     l'avoir pose. La comparaison est ANCREE sur un mot, sinon `-AttenteLhm
+    #     30` serait satisfaite par une tache qui porte `300`.
+    if ($argsPoses -notmatch ('-AttenteLhm\s+' + [regex]::Escape("$AttenteLhm") + '\b')) {
+        Stop2 ("-AttenteLhm " + $AttenteLhm + " a ete demande mais la tache posee ne le porte PAS.")
         exit 9
     }
     if ("$($t.Principal.RunLevel)" -ne 'Limited') {
@@ -998,10 +1291,14 @@ switch ($Action) {
     # !!! MEME MOTIF QUE -Python : non transmis, il serait SILENCIEUSEMENT
     #     PERDU, et la tache posee viserait une AUTRE adresse que demandee.
     $lhmArg = $(if ($Lhm) { @('-Lhm', $Lhm) } else { @() })
+    # !!! MEME MOTIF ENCORE : non transmise, la borne serait SILENCIEUSEMENT
+    #     PERDUE, et la tache posee attendrait AUTRE CHOSE que ce qui a ete
+    #     demande. Elle part TOUJOURS (voir `lancer`).
+    $attArg = @('-AttenteLhm', $AttenteLhm)
 
     Titre 'POSER LA PERMANENCE'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $moiPs1 permanence `
-        -Serie $Serie -Duree $Duree @py @lhmArg $tem | ForEach-Object { Write-Host $_ }
+        -Serie $Serie -Duree $Duree @py @lhmArg @attArg $tem | ForEach-Object { Write-Host $_ }
     # !!! `$null` N'EST PAS `0`, ET `exit $null` REND **0**.
     #     Si powershell.exe n'a pas pu etre lance du tout, $LASTEXITCODE reste
     #     $null : le test `-ne 0` est VRAI, on tombe dans la branche d'echec,
@@ -1022,7 +1319,7 @@ switch ($Action) {
 
     Titre 'DEMARRER MAINTENANT'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $moiPs1 lancer `
-        -Serie $Serie -Duree $Duree @py @lhmArg $tem | ForEach-Object { Write-Host $_ }
+        -Serie $Serie -Duree $Duree @py @lhmArg @attArg $tem | ForEach-Object { Write-Host $_ }
     # !!! MEME GARDE : $null vaudrait 0, donc " demarre " sur rien.
     $codeLancer = $(if ($null -eq $LASTEXITCODE) { 3 } else { $LASTEXITCODE })
 
@@ -1033,6 +1330,36 @@ switch ($Action) {
     if ($i.Confirmes.Count -gt 0) {
         foreach ($c in $i.Confirmes) { Dire ("agent VIVANT  PID=" + $c.ProcessId) }
         Dire ("tache '" + $NOM_TACHE + "' posee, et l'agent tourne MAINTENANT.")
+        # =================================================================
+        # !!! dn4-48 - `12` CHANGE D'EMETTEUR **ET DE SENS**, ET IL RESTE
+        #     UNIQUE DANS CE FICHIER.
+        #     AVANT : le bloc LHM du pre-vol, et il voulait dire " REFUS -
+        #     l'agent n'est PAS lance ". Ce sens-la est ANNOTE, pas efface :
+        #     il est barre a sa date dans le bloc LHM, plus haut.
+        #     MAINTENANT : ce verbe-ci, et il veut dire " POSEE et **VIVANTE**,
+        #     mais SANS LHM ". C'est la seule place ou le code peut encore
+        #     dire quelque chose : `poser` est appele PAR LA PAGE, qui SAIT
+        #     lire une table de codes (installeur/dn_installeur.py,
+        #     CODES_POSER) - le pre-vol, lui, est appele par un `.bat` qui
+        #     avorterait le lancement sur tout code non nul.
+        #     (!) LA SOURCE EST L'ETAT ECRIT PAR LE PRE-VOL, !!! pas une
+        #         nouvelle sonde : c'est l'agent QUI TOURNE qu'on qualifie, et
+        #         re-sonder ici dirait l'etat de MAINTENANT.
+        #     !!! CE N'EST NI UN SUCCES NI UN ECHEC - meme famille que `13` :
+        #         les DEUX moities ont eu lieu, et la dalle EST vivante.
+        # =================================================================
+        if ((Test-Path $MARQUE) -and
+            (((Get-Content $MARQUE -Raw) -replace '\r?\n', ' ') -match $MARQUE_DEGRADE)) {
+            Alerte "LA PERMANENCE EST POSEE ET L'AGENT TOURNE, mais SANS"
+            Alerte "  LibreHardwareMonitor : il est reste injoignable pendant toute"
+            Alerte "  l'attente du pre-vol."
+            Alerte "  !!! RIEN N'A ECHOUE : la tache est posee, l'agent est vivant,"
+            Alerte "      la dalle se remplit. Seules la temperature du CPU et les"
+            Alerte "      trois vitesses de ventilateur resteront a ' -- '."
+            Alerte "  => LE GESTE : .\tools\dn_lhm_tour.ps1 -Poser -Permanence tache"
+            Alerte "     puis 'dn-agent.bat stop' et 'dn-agent.bat start'."
+            exit 12
+        }
         exit 0
     }
     if (($codeLancer -eq 0) -or ($codeLancer -eq 10)) {

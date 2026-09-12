@@ -1493,17 +1493,33 @@ const CAS = [
                   "b-agent-poser GRISE=raison.agent-deps"]
   },
   {
-    // 🔴 LE TROU NEUF DE `dn7-5` : LHM est un prerequis DUR de l'agent, et la
-    //    page SAVAIT qu'il etait absent sans s'en servir pour rien.
+    // 🔴 ~~LE TROU NEUF DE `dn7-5` : LHM est un prerequis DUR de l'agent, et
+    //    la page SAVAIT qu'il etait absent sans s'en servir pour rien.~~
+    // 🔴 AMENDE LE 2026-09-12 (`dn4-48`), SUR ARBITRAGE OWNER — ⛔ LHM N'EST
+    //    PLUS UN PREREQUIS DUR, ET CE CAS ATTENDAIT LA DECISION RENVERSEE.
+    //    Le pre-vol de `tools/dn_agent_tour.ps1` ⛔ ne refuse plus : il ATTEND
+    //    LHM (borne `-AttenteLhm`) puis DEMARRE QUAND MEME. Ce cas exigeait
+    //    `b-agent-poser GRISE` ⇒ il gardait, DANS LE BANC, la propriete que
+    //    la marche vient de supprimer DANS LE PRODUIT.
+    // ⚠️ C'EST LA MEME LECON QUE `(c11)` DE `tools/verif_prerequis_dn75.py`,
+    //    ET ELLE SE PAIE DEUX FOIS DANS LA MEME PASSE : une gate d'un AUTRE
+    //    sujet peut coder une decision, et le jour ou la decision tombe, la
+    //    gate ⛔ n'est PAS un rouge legitime — elle est PERIMEE.
+    // ⚠️ CE QUE CE CAS DISCRIMINE ENCORE : le bandeau `etat-lhm VU`. Le
+    //    recorder du banc ⛔ n'ecrit AUCUNE cle sur un geste ARME
+    //    (`armes.push(id + (permis ? " ARME" : " GRISE=" + cle))`), donc la
+    //    RAISON portee par le bouton arme ⛔ n'est PAS gardee ici : elle l'est
+    //    par `(c22)` de `tools/verif_preconditions_dn76.py`, et par son
+    //    mutant. C'est ecrit plutot que laisse a deviner.
     nom: "lhm-absent",
-    quoi: "LHM ne repond pas ⇒ l'activation est GRISEE, avec SON motif",
+    quoi: "LHM ne repond pas ⇒ l'activation s'ARME, avec son AVERTISSEMENT",
     choix: "en", etatMachine: avec({ lhm: false }),
     attendLangueVide: true, ecritures: 0,
     attendBandeaux: ["etat-deps CACHE", "etat-lhm VU"],
     attendTemoins: QUATRE_PRETES,
     attendArmes: ["b-langue-poser ARME",
                   "b-deps GRISE=raison.deps-completes",
-                  "b-agent-poser GRISE=raison.agent-lhm"]
+                  "b-agent-poser ARME"]
   },
   {
     // 🔴 UNE IGNORANCE ⛔ N'EST PAS UN VERDICT : « non testable ici » ⛔ n'est

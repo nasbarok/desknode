@@ -1,0 +1,55 @@
+==============================================================================
+dn8-3 — LA POLARITE DE LA SONDE LHM, DANS LE **VRAI** POWERSHELL   [MUTANT 15]
+==============================================================================
+⛔ CETTE GATE ⛔ NE PARSE PAS LE POWERSHELL — ET C'EST DECLARE. Les ancres qu'elle plante dans `tools/dn_agent_tour.ps1` (le code de sortie, le predicat de corps, la ligne passante) sont cherchees et remplacees en TEXTE. ⚠️ MAIS CE QU'ELLE JUGE, ELLE ⛔ NE LE LIT PAS : elle **EXECUTE** le script dans un vrai `powershell.exe` et relit son CODE DE SORTIE et sa SORTIE. L'aveuglement porte donc sur la MUTATION, ⛔ pas sur le verdict — et un mutant dont l'ancre a disparu rend `rc=3`, ⛔ jamais un vert.
+  [OK ] (c0) le mutant 1 a une CIBLE et un LIBELLE               → c2
+  [OK ] (c0) le mutant 2 a une CIBLE et un LIBELLE               → c2
+  [OK ] (c0) le mutant 3 a une CIBLE et un LIBELLE               → c3,c9
+  [OK ] (c0) le mutant 4 a une CIBLE et un LIBELLE               → c2,c3,c4,c7,c8,c9
+  [OK ] (c0) le mutant 5 a une CIBLE et un LIBELLE               → c2
+  [OK ] (c0) le mutant 6 a une CIBLE et un LIBELLE               → c2,c4,c9
+  [OK ] (c0) le mutant 7 a une CIBLE et un LIBELLE               → c5
+  [OK ] (c0) le mutant 8 a une CIBLE et un LIBELLE               → c6
+  [OK ] (c0) le mutant 9 a une CIBLE et un LIBELLE               → c1,c2,c3,c4,c7,c8,c9
+  [OK ] (c0) le mutant 10 a une CIBLE et un LIBELLE              → c7,c8
+  [OK ] (c0) le mutant 11 a une CIBLE et un LIBELLE              → c8
+  [OK ] (c0) le mutant 12 a une CIBLE et un LIBELLE              → c2,c9
+  [OK ] (c0) le mutant 13 a une CIBLE et un LIBELLE              → c3
+  [OK ] (c0) le mutant 14 a une CIBLE et un LIBELLE              → c10
+  [OK ] (c0) le mutant 15 a une CIBLE et un LIBELLE              → c11
+
+hote PowerShell : /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+               which('powershell.exe')⇒/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+staging        : /mnt/c/Users/naoua/AppData/Local/Temp   (visible de Windows)
+port du banc   : 8086   (⛔ JAMAIS 8085 — le stub le refuse)
+
+── (c1)(c2)(c3)(c9) LES TROIS SENS, DANS LE VRAI POWERSHELL ─
+  [OK ] (c1) les TROIS sens ont ete JOUES                        DEGRADE ⇒ rc=5 · PASSANT ⇒ rc=5 · RETARD ⇒ rc=5
+  [OK ] (c2) sens DEGRADE : ⛔ PAS `12`, bandeau, attente         rc=5 (⛔ pas 12), la sortie porte `DEMARRAGE DEGRADE`, elle NOMME LibreHardwareMonitor, et elle a ATTENDU
+  [OK ] (c3) sens PASSANT : ⛔ PAS `12`, ⛔ aucune attente         rc=5 (⛔ pas 12), la sortie porte `repond 200.`, et `-AttenteLhm 0` n'a fait ATTENDRE personne
+  [OK ] (c9) sens RETARD : il ATTEND, puis il PASSE              rc=5 (⛔ pas 12), au moins un tour d'attente PUIS `repond 200.`
+
+── (c4)(c5) L'ADRESSE LUE, ET LE STUB QUI REFUSE LE VRAI PORT ──
+  [OK ] (c4) le pre-vol SONDE le port pose dans l'agent stagge   l'URL sondee porte 8086 — l'adresse est LUE dans `agent/dn_agent.py`, ⛔ pas recopiee dans l'outil
+  [OK ] (c5) le stub REFUSE 8085, et il le DIT                   rc=1, et le refus nomme 8085
+
+── (c7)(c8) `-Lhm` SURCHARGE LA SONDE, ET ARRIVE A L'AGENT ───
+  [OK ] (c7) `-Lhm` SURCHARGE le port LU dans l'agent            l'agent stagge porte 8085, la sonde a vise 8086
+  [OK ] (c8) l'agent RECOIT `--lhm` — la ligne `args :` le porte `--serie COM3 --stop-si C:\Users\naoua\AppData\Local\Temp\dn83-79ji7505\dn-agent.stop --lhm 127.0.0.1:8086`
+
+── (c10)(c11) LA BORNE REFUSEE, ET L'ADRESSE INTROUVABLE ─────
+  [OK ] (c10) une borne NEGATIVE est REFUSEE, ⛔ pas repliee      rc=3 et la sortie NOMME la borne, ⛔ sans un seul tour d'attente
+  [KO ] (c11) une adresse INTROUVABLE est une IGNORANCE          ⛔ la sortie ⛔ ne dit PAS `sonde IMPOSSIBLE` — « je ne sais pas OU chercher » ⛔ N'EST PAS « il est absent » : les fondre ferait accuser LHM sur une tour dont seul le fichier de l'agent a bouge (rc=5)
+
+── (c6) ⛔ AUCUN CONTROLE GARDE PAR ZERO MUTANT ───────────────
+  [OK ] (c6) chaque controle est vise par >= 1 mutant            11 controle(s) lu(s) a l'AST, 11 cible(s) declaree(s)
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : que la TOUR REELLE degrade.
+   Elle ⛔ n'installe pas LHM, ⛔ ne pose aucune tache planifiee et
+   ⛔ n'ouvre aucun navigateur. La tour reelle, sa tache et la course
+   au logon sont NOMMEES au ledger — et ce qui se juge A L'ŒIL y
+   reste : `AC8.3.1` et `AC8.3.3` ⛔ ne se ferment PAS ici.
+
+==============================================================================
+BILAN : 25 OK, 1 KO
+==============================================================================

@@ -1,0 +1,93 @@
+==============================================================================
+dn7-5 — L'ECART DECLARE SE RE-DERIVE, ET LHM EST UN PREREQUIS DUR
+==============================================================================
+cibles     : installeur/index.html · installeur/dn_installeur.py · installeur/DeskNode-installeur.bat · tools/dn_agent_tour.ps1 · tools/dn_lhm_tour.ps1 · agent/dn_agent.py · README.md · CHANGELOG.md · docs/roadmap.md
+⛔ CETTE GATE EST STRUCTURELLE : elle N'INSTALLE PAS LHM, n'ouvre
+   aucun navigateur, ne lance aucune tache et n'emet AUCUNE requete
+   reseau. Elle prouve que LE MECANISME EST BRANCHE, ⛔ pas qu'une
+   tour sans LHM DEGRADE — ce fait se ferme a l'œil owner, cote
+   Windows, ou l'agent VIVANT est verifie (`mesures/dn4-48`).
+   ⚠️ `mesures/dn7-5/T2` fermait le REFUS : il ⛔ n'est PAS efface,
+      il dit ce que le produit faisait du 09-10 au 09-12.
+
+── (c0) LE PRE-VOL — ⛔ AUCUN CONTROLE SUR DU VIDE ────────────────
+  [OK ] (c0) tout fichier attendu est LISIBLE                      9 fichier(s) lus
+  [OK ] (c0) le mutant 1 a une CIBLE et un LIBELLE                 → c1
+  [OK ] (c0) le mutant 2 a une CIBLE et un LIBELLE                 → c2
+  [OK ] (c0) le mutant 3 a une CIBLE et un LIBELLE                 → c3
+  [OK ] (c0) le mutant 4 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 5 a une CIBLE et un LIBELLE                 → c4,c5,c6
+  [OK ] (c0) le mutant 6 a une CIBLE et un LIBELLE                 → c5
+  [OK ] (c0) le mutant 7 a une CIBLE et un LIBELLE                 → c6
+  [OK ] (c0) le mutant 8 a une CIBLE et un LIBELLE                 → c7
+  [OK ] (c0) le mutant 9 a une CIBLE et un LIBELLE                 → c8
+  [OK ] (c0) le mutant 10 a une CIBLE et un LIBELLE                → c9
+  [OK ] (c0) le mutant 11 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 12 a une CIBLE et un LIBELLE                → c11,c18
+  [OK ] (c0) le mutant 13 a une CIBLE et un LIBELLE                → c12
+  [OK ] (c0) le mutant 14 a une CIBLE et un LIBELLE                → c13
+  [OK ] (c0) le mutant 15 a une CIBLE et un LIBELLE                → c14
+  [OK ] (c0) le mutant 16 a une CIBLE et un LIBELLE                → c15
+  [OK ] (c0) le mutant 17 a une CIBLE et un LIBELLE                → c16
+  [OK ] (c0) le mutant 18 a une CIBLE et un LIBELLE                → c0
+  [OK ] (c0) le mutant 19 a une CIBLE et un LIBELLE                → z
+  [OK ] (c0) le mutant 20 a une CIBLE et un LIBELLE                → c2,c11,c12
+  [OK ] (c0) le mutant 21 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 22 a une CIBLE et un LIBELLE                → c6
+  [OK ] (c0) le mutant 23 a une CIBLE et un LIBELLE                → c17
+  [OK ] (c0) le mutant 24 a une CIBLE et un LIBELLE                → c7
+  [OK ] (c0) le mutant 25 a une CIBLE et un LIBELLE                → c7
+  [OK ] (c0) le mutant 26 a une CIBLE et un LIBELLE                → c6
+  [OK ] (c0) le mutant 27 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 28 a une CIBLE et un LIBELLE                → c17
+  [OK ] (c0) le mutant 29 a une CIBLE et un LIBELLE                → c12
+  [OK ] (c0) le mutant 30 a une CIBLE et un LIBELLE                → c18
+  [OK ] (c0) le mutant 31 a une CIBLE et un LIBELLE                → c19
+
+── (c1) LES DEPENDANCES DE L'AGENT SONT **DERIVEES** ─────────────
+  [OK ] (c1) les dependances tierces sont derivees a l'AST         psutil · pyserial (SANS GARDE) · websockets (SANS GARDE)
+
+── (c2)(c3) L'ADRESSE DE LHM EST **LUE**, ⛔ JAMAIS RECOPIEE ─────
+  [OK ] (c2) les 2 sondes LISENT l'adresse dans l'agent            127.0.0.1:8085/metrics, lu dans `agent/dn_agent.py` par les deux
+  [OK ] (c3) ⛔ aucun miroir de l'adresse LHM hors du produit       port et chemin cherches dans 4 fichier(s)
+
+── (c4)(c5)(c6) LES DEUX SENS, ET LES DEUX ENUMERATIONS ──────────
+  [OK ] (c4) page ⇄ README ⇄ derive, DANS LES DEUX SENS            4 dependance(s) nommee(s) des deux cotes
+  [OK ] (c5) les 2 enumerations EXECUTABLES sont appariees         psutil pyserial, des deux cotes, et sous-ensemble du derive
+  [OK ] (c6) « sans garde » couvre les non gardees, PAR LANGUE     en=pyserial websockets · fr=pyserial websockets
+
+── (c7)(c8) LE GESTE PROPRE DE LHM, ET SON CHAMP ─────────────────
+  [OK ] (c7) le geste de LHM est LE SIEN, et il est BINDABLE       `tools\dn_lhm_tour.ps1 -Poser -Permanence tache` — 2 commutateur(s) confronte(s) au `param(` de `tools/dn_lhm_tour.ps1`, chaine identique page ⇄ README ⇄ serveur
+  [OK ] (c8) la ligne LHM a son `id`, et il est dans `CHAMPS`      4 champ(s) de l'ecart, tous repris
+
+── (c9)(c10) TROIS POSITIONS, ET LE `6` QUI ⛔ NE BOUGE PAS ──────
+  [OK ] (c9) `etat_machine()` expose LHM a TROIS positions         cles `lhm` et `geste_lhm`, sonde a 3 issues
+  [OK ] (c10) `prevol()` IMPRIME LHM, hors de `manquantes`         LHM a SON bloc et SON geste ; `manquantes` reste derive des modules
+
+── (c11)(c18)(c12) L'ATTENTE, LE CODE, ET CE QUI TRANCHE ─────────
+  [OK ] (c11) le bloc LHM ATTEND, ⛔ il ne refuse plus              ⛔ aucune sortie dans le bloc ; attente bornee, ligne par tour, bandeau degrade et surface Windows presents
+  [OK ] (c18) `12` est UNIQUE, et c'est `poser` qui le rend        12 unique parmi 0,3,4,5,6,7,8,9,10,11,12,13, emis par le verbe `poser`
+  [OK ] (c19) une surface ABSENTE se DIT, et ⛔ ne pese sur rien    elle NOMME l'absence, rend `$false`, ⛔ ne sort pas, et l'appelant JETTE son retour
+  [OK ] (c12) `/metrics` ET SON CORPS tranchent, ⛔ rien d'autre    les 2 sondes exigent un 200 EXACT et le prefixe `lhm_` du corps
+
+── (c13) ⛔ AUCUN JETON D'ELEVATION SOUS `installeur/` ────────────
+  [OK ] (c13) ⛔ aucun jeton d'elevation dans `installeur/`         7 motif(s) cherche(s) dans 3 fichier(s) de code
+
+── (c17) LA REPRISE AU LOGON, ET SA BORNE PUBLIEE ────────────────
+  [OK ] (c17) la reprise au logon tient, et elle est DITE          3 reprise(s) a 1 min · bloc date present · 3 surface(s) de prose d'accord
+
+── (c14)(c15)(c16) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c14) chaque controle est vise par >= 1 mutant             21 controle(s) lu(s) a l'AST, 21 cible(s) declaree(s)
+  [OK ] (c15) chaque cible de mutant est un controle REEL          21 cible(s) confrontee(s)
+  [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent               31 mutant(s), 31 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'une tour SANS LHM degrade.
+   Elle prouve que le mecanisme est BRANCHE — la sonde vise ce que
+   l'agent vise, le bloc ATTEND au lieu de refuser, `12` a SON
+   emetteur (`poser`), la prose couvre EXACTEMENT le derive.
+   Le DEGRADE REEL se ferme a l'œil owner (`mesures/dn4-48`), cote
+   Windows, avec l'AGENT VIVANT verifie — ⛔ pas deduit du message.
+
+==============================================================================
+BILAN : 51 OK, 0 KO
+==============================================================================

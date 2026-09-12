@@ -1,0 +1,113 @@
+==============================================================================
+dn4-48 / T3 - LES GATES AMENDEES, ET CHACUN DE LEURS MUTANTS
+  Releve du 2026-09-12, arbre d'ARRIVEE.
+==============================================================================
+CONTRAT PAR MUTANT (tools/verif_campagne_dn56.py) : rc=1 - UNE ligne BILAN -
+au moins un [KO ]. La colonne CIBLES va PLUS LOIN : elle confronte l'ENSEMBLE
+des controles vus rougir a l'ENSEMBLE declare dans CIBLES - un rouge NON
+DECLARE est un ECART, pas un bonus.
+
+/!\ DEUX ECARTS SONT **PRE-EXISTANTS**, MESURES SUR L'ARBRE D'AVANT
+    (git archive fe1d2bfa, dossier jetable) - ils ne sont PAS causes par
+    dn4-48, et ils ne sont pas corriges ici (hors perimetre) :
+      . verif_preconditions_dn76.py --mutant 11 => c6,c20 (declare : c6)
+      . verif_preconditions_dn76.py --mutant 20 => c10,c13 (declare : c13)
+    Porte au ledger, porteur epic-dn4.
+==============================================================================
+
+### verif_prerequis_dn75.py - chemin normal ###
+BILAN : 49 OK, 0 KO
+rc=0
+
+### verif_lhm_ps_dn83.py - chemin normal ###
+BILAN : 22 OK, 0 KO
+rc=0
+
+### verif_preconditions_dn76.py - chemin normal ###
+BILAN : 53 OK, 0 KO
+rc=0
+
+### LA CAMPAGNE, MUTANT PAR MUTANT ###
+
+-- verif_prerequis_dn75.py --
+  mutant 1   rc=1  KO=1  BILAN=1  vus=[c1]  declares=[c1]  CIBLES OK
+  mutant 2   rc=1  KO=1  BILAN=1  vus=[c2]  declares=[c2]  CIBLES OK
+  mutant 3   rc=1  KO=1  BILAN=1  vus=[c3]  declares=[c3]  CIBLES OK
+  mutant 4   rc=1  KO=1  BILAN=1  vus=[c4]  declares=[c4]  CIBLES OK
+  mutant 5   rc=1  KO=3  BILAN=1  vus=[c4,c5,c6]  declares=[c4,c5,c6]  CIBLES OK
+  mutant 6   rc=1  KO=1  BILAN=1  vus=[c5]  declares=[c5]  CIBLES OK
+  mutant 7   rc=1  KO=1  BILAN=1  vus=[c6]  declares=[c6]  CIBLES OK
+  mutant 8   rc=1  KO=1  BILAN=1  vus=[c7]  declares=[c7]  CIBLES OK
+  mutant 9   rc=1  KO=1  BILAN=1  vus=[c8]  declares=[c8]  CIBLES OK
+  mutant 10  rc=1  KO=1  BILAN=1  vus=[c9]  declares=[c9]  CIBLES OK
+  mutant 11  rc=1  KO=1  BILAN=1  vus=[c10]  declares=[c10]  CIBLES OK
+  mutant 12  rc=1  KO=2  BILAN=1  vus=[c11,c18]  declares=[c11,c18]  CIBLES OK
+  mutant 13  rc=1  KO=1  BILAN=1  vus=[c12]  declares=[c12]  CIBLES OK
+  mutant 14  rc=1  KO=1  BILAN=1  vus=[c13]  declares=[c13]  CIBLES OK
+  mutant 15  rc=1  KO=1  BILAN=1  vus=[c14]  declares=[c14]  CIBLES OK
+  mutant 16  rc=1  KO=1  BILAN=1  vus=[c15]  declares=[c15]  CIBLES OK
+  mutant 17  rc=1  KO=1  BILAN=1  vus=[c16]  declares=[c16]  CIBLES OK
+  mutant 18  rc=1  KO=1  BILAN=1  vus=[c0]  declares=[c0]  CIBLES OK
+  mutant 19  rc=1  KO=1  BILAN=1  vus=[z]  declares=[z]  CIBLES OK
+  mutant 20  rc=1  KO=3  BILAN=1  vus=[c11,c12,c2]  declares=[c11,c12,c2]  CIBLES OK
+  mutant 21  rc=1  KO=1  BILAN=1  vus=[c10]  declares=[c10]  CIBLES OK
+  mutant 22  rc=1  KO=1  BILAN=1  vus=[c6]  declares=[c6]  CIBLES OK
+  mutant 23  rc=1  KO=1  BILAN=1  vus=[c17]  declares=[c17]  CIBLES OK
+  mutant 24  rc=1  KO=1  BILAN=1  vus=[c7]  declares=[c7]  CIBLES OK
+  mutant 25  rc=1  KO=1  BILAN=1  vus=[c7]  declares=[c7]  CIBLES OK
+  mutant 26  rc=1  KO=1  BILAN=1  vus=[c6]  declares=[c6]  CIBLES OK
+  mutant 27  rc=1  KO=1  BILAN=1  vus=[c4]  declares=[c4]  CIBLES OK
+  mutant 28  rc=1  KO=1  BILAN=1  vus=[c17]  declares=[c17]  CIBLES OK
+  mutant 29  rc=1  KO=1  BILAN=1  vus=[c12]  declares=[c12]  CIBLES OK
+  mutant 30  rc=1  KO=1  BILAN=1  vus=[c18]  declares=[c18]  CIBLES OK
+  => 30 mutant(s) joue(s), 0 ecart(s) de cibles
+
+-- verif_lhm_ps_dn83.py --
+  mutant 1   rc=1  KO=1  BILAN=1  vus=[c2]  declares=[c2]  CIBLES OK
+  mutant 2   rc=1  KO=1  BILAN=1  vus=[c2]  declares=[c2]  CIBLES OK
+  mutant 3   rc=1  KO=2  BILAN=1  vus=[c3,c9]  declares=[c3,c9]  CIBLES OK
+  mutant 4   rc=1  KO=6  BILAN=1  vus=[c2,c3,c4,c7,c8,c9]  declares=[c2,c3,c4,c7,c8,c9]  CIBLES OK
+  mutant 5   rc=1  KO=1  BILAN=1  vus=[c2]  declares=[c2]  CIBLES OK
+  mutant 6   rc=1  KO=3  BILAN=1  vus=[c2,c4,c9]  declares=[c2,c4,c9]  CIBLES OK
+  mutant 7   rc=1  KO=1  BILAN=1  vus=[c5]  declares=[c5]  CIBLES OK
+  mutant 8   rc=1  KO=1  BILAN=1  vus=[c6]  declares=[c6]  CIBLES OK
+  mutant 9   rc=1  KO=7  BILAN=1  vus=[c1,c2,c3,c4,c7,c8,c9]  declares=[c1,c2,c3,c4,c7,c8,c9]  CIBLES OK
+  mutant 10  rc=1  KO=2  BILAN=1  vus=[c7,c8]  declares=[c7,c8]  CIBLES OK
+  mutant 11  rc=1  KO=1  BILAN=1  vus=[c8]  declares=[c8]  CIBLES OK
+  mutant 12  rc=1  KO=2  BILAN=1  vus=[c2,c9]  declares=[c2,c9]  CIBLES OK
+  mutant 13  rc=1  KO=1  BILAN=1  vus=[c3]  declares=[c3]  CIBLES OK
+  => 13 mutant(s) joue(s), 0 ecart(s) de cibles
+
+-- verif_preconditions_dn76.py --
+  mutant 1   rc=1  KO=1  BILAN=1  vus=[c1]  declares=[c1]  CIBLES OK
+  mutant 2   rc=1  KO=1  BILAN=1  vus=[c1]  declares=[c1]  CIBLES OK
+  mutant 3   rc=1  KO=1  BILAN=1  vus=[c2]  declares=[c2]  CIBLES OK
+  mutant 4   rc=1  KO=1  BILAN=1  vus=[c2]  declares=[c2]  CIBLES OK
+  mutant 5   rc=1  KO=1  BILAN=1  vus=[c3]  declares=[c3]  CIBLES OK
+  mutant 6   rc=1  KO=1  BILAN=1  vus=[c3]  declares=[c3]  CIBLES OK
+  mutant 7   rc=1  KO=1  BILAN=1  vus=[c4]  declares=[c4]  CIBLES OK
+  mutant 8   rc=1  KO=1  BILAN=1  vus=[c4]  declares=[c4]  CIBLES OK
+  mutant 9   rc=1  KO=1  BILAN=1  vus=[c5]  declares=[c5]  CIBLES OK
+  mutant 10  rc=1  KO=1  BILAN=1  vus=[c6]  declares=[c6]  CIBLES OK
+  mutant 11  rc=1  KO=2  BILAN=1  vus=[c20,c6]  declares=[c6]  ECART (vu=c20,c6 / declare=c6)
+  mutant 12  rc=1  KO=1  BILAN=1  vus=[c7]  declares=[c7]  CIBLES OK
+  mutant 13  rc=1  KO=1  BILAN=1  vus=[c7]  declares=[c7]  CIBLES OK
+  mutant 14  rc=1  KO=1  BILAN=1  vus=[c8]  declares=[c8]  CIBLES OK
+  mutant 15  rc=1  KO=1  BILAN=1  vus=[c8]  declares=[c8]  CIBLES OK
+  mutant 16  rc=1  KO=1  BILAN=1  vus=[c9]  declares=[c9]  CIBLES OK
+  mutant 17  rc=1  KO=1  BILAN=1  vus=[c10]  declares=[c10]  CIBLES OK
+  mutant 18  rc=1  KO=1  BILAN=1  vus=[c11]  declares=[c11]  CIBLES OK
+  mutant 19  rc=1  KO=1  BILAN=1  vus=[c12]  declares=[c12]  CIBLES OK
+  mutant 20  rc=1  KO=2  BILAN=1  vus=[c10,c13]  declares=[c13]  ECART (vu=c10,c13 / declare=c13)
+  mutant 21  rc=1  KO=1  BILAN=1  vus=[c14]  declares=[c14]  CIBLES OK
+  mutant 22  rc=1  KO=1  BILAN=1  vus=[c15]  declares=[c15]  CIBLES OK
+  mutant 23  rc=1  KO=1  BILAN=1  vus=[c16]  declares=[c16]  CIBLES OK
+  mutant 24  rc=1  KO=1  BILAN=1  vus=[c0]  declares=[c0]  CIBLES OK
+  mutant 25  rc=1  KO=1  BILAN=1  vus=[z]  declares=[z]  CIBLES OK
+  mutant 26  rc=1  KO=1  BILAN=1  vus=[c17]  declares=[c17]  CIBLES OK
+  mutant 27  rc=1  KO=1  BILAN=1  vus=[c18]  declares=[c18]  CIBLES OK
+  mutant 28  rc=1  KO=1  BILAN=1  vus=[c19]  declares=[c19]  CIBLES OK
+  mutant 29  rc=1  KO=1  BILAN=1  vus=[c20]  declares=[c20]  CIBLES OK
+  mutant 30  rc=1  KO=1  BILAN=1  vus=[c21]  declares=[c21]  CIBLES OK
+  mutant 31  rc=1  KO=1  BILAN=1  vus=[c20]  declares=[c20]  CIBLES OK
+  => 31 mutant(s) joue(s), 2 ecart(s) de cibles

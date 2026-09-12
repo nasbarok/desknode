@@ -532,7 +532,33 @@ TEMOIN_COCKPIT="${COCKPIT:-${HOME:-/nonexistent}/projects/compagnon_project}"
 #    l'autre, et un nombre ecrit dans un commentaire se perime le jour ou l'on
 #    ajoute une gate — c'est-a-dire le jour ou il compte. ⇒ la ligne de BILAN
 #    est la seule source ; l'ARGUMENT du plafond, lui, se relit a chaque ajout.
-TIMEOUT_GATE="${DN_TIMEOUT_GATE:-600}"
+# 🔴 RELEVE A **900 s** LE 2026-09-12 (`dn4-48`), SUR UNE MESURE, ET LES
+#    LIGNES CI-DESSUS ⛔ NE SONT PAS EFFACEES — elles disent l'argument tel
+#    qu'il etait, et c'est lui qui a cesse d'etre vrai.
+#    L'ARGUMENT DE 2026-09-02 (« 600 s laisse un facteur ~9 ») etait PERIME
+#    AVANT cette marche : au releve T0 du 2026-09-12, `verif_campagne_dn56.py`
+#    consommait **588 s** sur un plafond de 600 — **2 % de marge**, ⛔ pas un
+#    facteur 9. Elle rejoue CHAQUE mutant de CHAQUE gate du depot ; toute gate
+#    qui gagne un mutant, ou dont un tir coute une seconde de plus, la pousse
+#    dehors.
+#    CE QUE `dn4-48` Y A AJOUTE, ET C'EST ASSUME : `tools/verif_lhm_ps_dn83.py`
+#    joue desormais un **troisieme** sens (le RETARD), et porte 13 mutants au
+#    lieu de 11. Mesure : un tir du banc passe de ~7 s a ~16 s, et
+#    `verif_campagne_dn56.py` de 588 s a **677 s**.
+#    ⚠️ LE COUT A ETE REDUIT D'ABORD, ⛔ le plafond n'a ete releve qu'ENSUITE :
+#       le pas d'attente du produit est DERIVE de la borne (au moins dix
+#       tours), les bornes du banc sont PETITES, et chaque stub attend que le
+#       port soit RENDU. Sans ca le tir coutait 21 s, ⛔ pas 16.
+#    ⚠️ LA REGLE DU 2026-09-02 TIENT TOUJOURS : **900 s reste SOUS les 20 min
+#       du job** (`gates.yml`), donc la borne par gate demeure ATTEIGNABLE en
+#       CI et le `BILAN` sort. ⛔ Et la CI ne paie PAS le surcout : sans hote
+#       PowerShell, `verif_lhm_ps_dn83.py` y est NON-JOUABLE et ⛔ ne declare
+#       AUCUN mutant, donc `dn56` n'en rejoue aucun.
+#    🎯 CE QUI FERMERAIT LE SUJET POUR DE BON — et ce n'est ⛔ PAS ce
+#       relevement, qui DEPLACE le cout : un decoupage de `dn56` qui cesse de
+#       rejouer TOUS les mutants de TOUTES les gates dans un seul tir. C'est
+#       au ledger, porteur `epic-dn8`, motif `LE VRAI PLAFOND`.
+TIMEOUT_GATE="${DN_TIMEOUT_GATE:-900}"
 
 # 🔴 REVUE 2026-09-02 — UN TEMOIN PLUS GROSSIER QUE LE PREREQUIS FABRIQUE UN
 #    ROUGE. `[ -e "$temoin" ]` sur le REPERTOIRE est vrai des qu'il existe —
@@ -662,7 +688,7 @@ NON_JOUABLES=(
   "verif_campagne_dn440.py|CAUSE A — elle MUTE le ledger et le tracker du cockpit dans une COPIE jetable : sans ce depot PRIVE elle n'a rien a muter, et son compte « controles gardes par rien » ne veut plus rien dire puisque aucune gate ne tourne. ⚠️ dn4-44 : elle est entree au glob (decision owner du 2026-09-03) precisement parce que RIEN ne l'invoquait — une regle que rien n'applique est une regle qui pourrira.|${TEMOIN_COCKPIT}|AUCUN|4"
   "verif_banc_langue_dn73.py|CAUSE D — le moteur JavaScript node est un PREREQUIS DE BANC, ⛔ pas une dependance du depot : cette gate lance tools/banc_langue_dalle_dn73.mjs, qui EXECUTE le script de la page installeur/index.html contre un port de banc d'essai et rejoue les lignes de la matrice d'entrees-sorties de dn7-3 (⚠️ ce texte disait NEUF lignes : le banc en joue 39 sans base et 42 avec, releve du 2026-09-12 — le compte qui fait foi est CAS_ATTENDUS dans la gate, ⛔ jamais une phrase d'ici), plus les chemins que trois revues ont nommes. Sans moteur il n'y a rien a jouer, et une gate VERTE sur un banc qui n'a pas tourne serait PIRE que pas de gate. ⇒ elle rend 4 avec son motif, et la regle (3) la joue QUAND MEME pour verifier qu elle rend bien ce 4. 🔴 DEPUIS dn8-2 CETTE GATE A DEUX PREREQUIS, ET LE TEMOIN LES COUVRE DESORMAIS TOUS LES DEUX : elle lie le VRAI serveur du produit sur 127.0.0.1:0 pour que le banc lui parle par HTTP, et une boucle locale filtree lui fait rendre 4 AUSSI. ⚠️ LA LIGNE D'ORIGINE DISAIT ICI QUE LE TEMOIN NE COUVRAIT PAS CE SECOND PREREQUIS, et que ce cas sortirait en ROUGE rc=4 au lieu de NON-JOUABLE : c'etait VRAI le 2026-09-11 et c'est CORRIGE le 2026-09-12 — le temoin est DERIVE des deux (voir TEMOIN_BANC_HTTP plus haut), et un temoin reste un FICHIER.|${TEMOIN_BANC_HTTP}|AUCUN|4"
   "verif_harnais_dn81.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Les 94 CIBLES d'ancre 📍 que (c2) rejoue, portees par 86 lignes, vivent dans son ledger (⚠️ 87 lignes portent le glyphe ; la 87e est de la PROSE qui le cite entre accents graves, et ancres_du l'ecarte — le « 87 » ecrit ici d'abord comptait des LIGNES pour des CIBLES) : sans lui, (c2) n'a AUCUNE population. ⚠️ (c1) et (c3), eux, sont JOUABLES dans un clone nu — mais la gate ⛔ ne se coupe PAS en deux : un verdict partiel publie sous la meme ligne de BILAN serait indiscernable d'un verdict complet, et c'est le defaut que dn8-1 existe pour fermer. ⇒ elle rend 4 EN AMONT, et le dit. ⛔ CE N'EST PAS UN SKIP : la regle (3) la joue QUAND MEME pour verifier qu'elle rend bien ce 4.|${TEMOIN_COCKPIT}|AUCUN|4"
-  "verif_lhm_ps_dn83.py|CAUSE E — il n'existe AUCUN hote PowerShell sur un runner Linux, et cette gate EXECUTE le pre-vol de tools/dn_agent_tour.ps1 dans un vrai powershell.exe pour eprouver la polarite de la sonde LHM dans les DEUX sens (refus ⇒ exit 12, passant ⇒ pas 12). Sans hote, il n'y a rien a jouer, et une gate VERTE sur un banc qui n'a pas tourne serait PIRE que pas de gate. ⇒ elle rend 4 avec son motif, et la regle (3) la joue QUAND MEME pour verifier qu'elle rend bien ce 4. 🔴 LE TEMOIN ESSAIE PLUSIEURS NOMS, et c'est le fond de cette marche : which(powershell) rend None la ou which(powershell.exe) rend le chemin — le ledger a publie CINQ FOIS une IMPOSSIBILITE qui etait une propriete de sa METHODE de recherche. ⚠️ ELLE A TROIS PREREQUIS — l'hote, un bind accepte pour le stub, et un dossier temporaire VISIBLE DE WINDOWS — et TOUS LES TROIS rendent 4. Depuis la revue du 2026-09-12 le temoin derive de leur CONJONCTION, wslpath compris : la ligne d'origine disait qu'il ne couvrait que le premier, et ce cas sortait alors en ROUGE rc=4 au lieu de NON-JOUABLE.|${TEMOIN_POWERSHELL}|AUCUN|4"
+  "verif_lhm_ps_dn83.py|CAUSE E — il n'existe AUCUN hote PowerShell sur un runner Linux, et cette gate EXECUTE le pre-vol de tools/dn_agent_tour.ps1 dans un vrai powershell.exe pour eprouver la sonde LHM dans les TROIS sens, et depuis dn4-48 (2026-09-12) le pre-vol ⛔ NE REFUSE PLUS : il ATTEND LHM puis DEMARRE QUAND MEME. ⇒ DEGRADE : ⛔ pas 12, bandeau qui NOMME LHM, et au moins un tour d'attente imprime · PASSANT : ⛔ pas 12, ligne passante, et ⛔ aucune attente sous -AttenteLhm 0 · RETARD : le stub monte APRES le pre-vol, qui ATTEND puis PASSE — le cas MESURE du 2026-09-12, rejoue. ⚠️ 12 reste le discriminant, mais comme INTERDIT : il a change d'emetteur pour le verbe poser. Sans hote, il n'y a rien a jouer, et une gate VERTE sur un banc qui n'a pas tourne serait PIRE que pas de gate. ⇒ elle rend 4 avec son motif, et la regle (3) la joue QUAND MEME pour verifier qu'elle rend bien ce 4. 🔴 LE TEMOIN ESSAIE PLUSIEURS NOMS, et c'est le fond de cette marche : which(powershell) rend None la ou which(powershell.exe) rend le chemin — le ledger a publie CINQ FOIS une IMPOSSIBILITE qui etait une propriete de sa METHODE de recherche. ⚠️ ELLE A TROIS PREREQUIS — l'hote, un bind accepte pour le stub, et un dossier temporaire VISIBLE DE WINDOWS — et TOUS LES TROIS rendent 4. Depuis la revue du 2026-09-12 le temoin derive de leur CONJONCTION, wslpath compris : la ligne d'origine disait qu'il ne couvrait que le premier, et ce cas sortait alors en ROUGE rc=4 au lieu de NON-JOUABLE.|${TEMOIN_POWERSHELL}|AUCUN|4"
   "verif_hist_dn413.py|CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.|${TEMOIN_LVGL_HIST}|AUCUN|4"
 )
 

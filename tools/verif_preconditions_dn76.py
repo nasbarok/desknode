@@ -19,6 +19,18 @@ pouvait donc poser l'agent et decouvrir AU PROCHAIN LOGON, sans une ligne sur
 disque, qu'il refuse de demarrer — alors que la page SAIT que LHM est absent
 (cle `lhm` de `etat_machine()`) et ⛔ ne s'en servait pour RIEN.
 
+🔴 **AMENDE LE 2026-09-12 (`dn4-48`), ET LE PARAGRAPHE CI-DESSUS RESTE** : il
+   dit ce qui etait vrai du 2026-09-10 au 2026-09-12, et c'est ce trou-la qui a
+   fait ecrire les controles de cette gate. ⛔ **LE PRE-VOL NE REFUSE PLUS** :
+   il ATTEND LHM (borne `-AttenteLhm`, 300 s par defaut) puis DEMARRE QUAND
+   MEME, champs LHM a « -- ». `12` a change d'emetteur — le verbe `poser`, ⛔
+   plus le pre-vol — et de sens : « posee et **VIVANTE**, mais SANS LHM ».
+   ⇒ CE QUE CETTE GATE GARDE ⛔ NE CHANGE PAS DE NATURE : la page doit RELAYER
+     ce code EN NOMMANT LHM, et `(c20)` le JOUE. Ce qui change est le VERDICT
+     qu'elle exige de lui, et il est desormais garde **des deux cotes** : ce
+     que `12` doit dire (la moitie VIVANTE) et ce qu'il ⛔ ne doit PLUS dire
+     (« RIEN n'a ete pose »).
+
 ── LES CONTROLES DU DOSSIER, ET LEUR NUMERO ICI ────────────────────────────
 
     (a) ⇒ (c1)    (b) ⇒ (c2)    (c) ⇒ (c3)    (d) ⇒ (c4)    (e) ⇒ (c5)
@@ -94,6 +106,7 @@ import io
 import os
 import re
 import sys
+import unicodedata
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -302,6 +315,21 @@ CIBLES[28] = ("c19",)
 MUTANTS[29] = ("aplatit la demi-reussite `13` de `poser` en refus nu "
                "⇒ la page CONTREDIT sa propre sortie brute")
 CIBLES[29] = ("c20",)
+# 🔴 dn4-48 — IL REPLANTE LE SENS PERIME DE `12`, ⛔ il ne debranche rien :
+#    la page redit « RIEN n'a ete pose » sur un geste qui a POSE la tache ET
+#    demarre l'agent. C'est la forme EXACTE sous laquelle la faute survivrait :
+#    un verdict qu'on oublie de reecrire quand le produit change de sens.
+MUTANTS[31] = ("redonne a `12` le verdict PERIME « RIEN n'a "
+               "ete pose » ⇒ un ECHEC annonce sur un succes")
+CIBLES[31] = ("c20",)
+# 🔴 dn4-48 — IL **REPLANTE** LE GRISAGE SUR LHM, ⛔ il ne debranche rien :
+#    la page redevient incapable d'activer l'agent sur une tour dont LHM ne
+#    repond pas, alors que le pre-vol, lui, l'ATTEND puis DEMARRE. C'est la
+#    forme EXACTE sous laquelle la faute reviendrait — une precondition qu'on
+#    oublie de retirer quand le refus qu'elle relayait disparait.
+MUTANTS[32] = ("REPLANTE le grisage de l'activation sur LHM ⇒ la "
+               "page refuse ce que l'outil permet")
+CIBLES[32] = ("c22",)
 MUTANTS[30] = ("INVERSE la polarite de la fabrique ⇒ tous les "
                "gestes grises A L'ENVERS")
 CIBLES[30] = ("c21",)
@@ -309,7 +337,7 @@ CIBLES[30] = ("c21",)
 # ⚠️ LE COMPTE DU CHEMIN NORMAL : 1 pre-vol + un controle par mutant + les 16
 #    controles numerotes. Il se PERIME si on ajoute un controle sans le mettre
 #    a jour — et c'est voulu : c'est ce qui rend (z) FALSIFIABLE.
-CONTROLES_PREVUS = 1 + len(MUTANTS) + 21
+CONTROLES_PREVUS = 1 + len(MUTANTS) + 22
 
 _MUTANT = 0
 
@@ -1166,6 +1194,17 @@ def les_codes_de_poser_sont_rendus(produit):
     ⚠️ `12` EST JOUE AUSSI : la ligne 9 de la matrice d'E/S demande que la
        page RELAIE ce code EN NOMMANT LHM — ⛔ pas seulement dans la sortie
        brute que personne ne lit.
+    🔴 ET DEPUIS LE 2026-09-12 (`dn4-48`), `12` A CHANGE DE SENS — SA
+       PROPRIETE « il nomme LHM » SURVIT, SON VERDICT NON. Le pre-vol de
+       l'agent ⛔ ne refuse plus : il ATTEND LHM, puis il DEMARRE QUAND MEME.
+       `12` a change d'emetteur (le verbe `poser`, ⛔ plus le pre-vol) et il
+       veut dire « la permanence est POSEE et l'agent **TOURNE**, mais SANS
+       LHM ». ⇒ il ⛔ **ne doit PLUS dire « RIEN n'a ete pose »** : ce serait
+       FAUX, et un inconnu qui le lirait irait chercher une panne qui n'existe
+       pas — la tache EST posee, l'agent EST vivant, la dalle SE REMPLIT.
+       ⚠️ C'est la MEME faute que `13` a deja payee dans ce controle, et elle
+          est gardee de la MEME facon : on exige que le verdict NOMME la
+          moitie qui a REUSSI, et on INTERDIT le vocabulaire du refus total.
     ⛔ RIEN N'EST LANCE : `_powershell` est REMPLACE le temps des appels."""
     if produit is None:
         return False, "le produit n'a pas pu etre importe"
@@ -1194,7 +1233,23 @@ def les_codes_de_poser_sont_rendus(produit):
         return False, "`13` est rendu comme un REFUS NU — il ⛔ n'en est pas un"
     if "lhm" not in vus[12].lower():
         return False, "`12` ⛔ ne nomme PAS LibreHardwareMonitor"
-    return True, "4 codes joues, 4 verdicts distincts, `13` nomme sa moitie"
+    # 🔴 dn4-48 — LE NOUVEAU SENS DE `12`, GARDE SUR LES DEUX BORDS : ce
+    #    qu'il doit DIRE (la moitie vivante) et ce qu'il ⛔ ne doit PLUS dire
+    #    (le refus total). Un seul des deux laisserait passer l'autre.
+    # ⚠️ LE VERDICT EST NORMALISE (accents, gras, glyphes) AVANT D'ETRE LU :
+    #    la table l'ecrit en francais accentue, et un motif accentue se
+    #    perimerait a la premiere reecriture de la phrase.
+    v12 = unicodedata.normalize("NFKD", vus[12])
+    v12 = "".join(c for c in v12 if not unicodedata.combining(c)).lower()
+    v12 = v12.replace("*", "").replace("`", "")
+    if "rien n'a ete pose" in v12 or "rien n'a ete fait" in v12:
+        return False, ("`12` dit encore « RIEN n'a ete pose » — c'est FAUX "
+                       "depuis `dn4-48` : la tache EST posee et l'agent TOURNE")
+    if not ("posee" in v12 and ("tourne" in v12 or "vivant" in v12)):
+        return False, ("`12` ⛔ ne nomme PAS la moitie VIVANTE (posee + "
+                       "l'agent tourne) : %r" % vus[12][:70])
+    return True, ("4 codes joues, 4 verdicts distincts, `13` nomme sa moitie, "
+                  "`12` nomme LHM ET la moitie VIVANTE")
 
 
 def la_polarite_de_la_fabrique_est_gardee(js):
@@ -1221,6 +1276,67 @@ def la_polarite_de_la_fabrique_est_gardee(js):
                        "`!permis` : toute autre forme grise A L'ENVERS ou "
                        "sur autre chose" % val)
     return True, "`.disabled = !permis` — la polarite est ancree"
+
+
+def lhm_arme_le_geste_avec_son_avertissement(js):
+    """(c22) LHM absent ⇒ le geste « activer » S'ARME, ⛔ il ne grise PLUS.
+
+    🔴 POURQUOI CE CONTROLE EXISTE, ET CE QU'IL A COUTE. Jusqu'au 2026-09-12
+       la page GRISAIT `b-agent-poser` des que la sonde LHM rendait `false`,
+       parce que le pre-vol de `tools/dn_agent_tour.ps1` sortait alors en
+       `12`. `dn4-48` a supprime ce refus : le pre-vol ATTEND LHM puis DEMARRE
+       QUAND MEME. ⇒ garder le grisage faisait REFUSER A LA PAGE exactement ce
+       que la marche existe pour permettre, et le bouton gris relayait un
+       refus qui n'existe plus nulle part.
+    ⚠️ LA PLACE DANS LA CHAINE EST **LA MOITIE DU CONTROLE**, ⛔ pas un detail
+       de style : `port_serie` doit griser AVANT que LHM n'arme. Si LHM
+       passait en premier, une tour SANS CARTE et SANS LHM s'armerait, et la
+       tache serait posee sur un port qui n'existe pas — le defaut MESURE que
+       `raison.agent-sans-port` nomme. ⇒ on lit l'ORDRE des appels, ⛔ pas
+       seulement leur presence.
+    ⚠️ ET C'EST ICI, ⛔ PAS AU BANC : le recorder de
+       `tools/banc_langue_dalle_dn73.mjs` ⛔ n'ecrit AUCUNE cle sur un geste
+       ARME (`id + (permis ? " ARME" : " GRISE=" + cle)`). Le cas `lhm-absent`
+       y discrimine encore par le bandeau `etat-lhm VU`, mais la RAISON portee
+       par le bouton arme ⛔ n'y est gardee par RIEN. Elle l'est ici."""
+    corps = corps_fonction(sans_commentaires(js), "rafraichirTemoins")
+    if not corps:
+        return False, "`rafraichirTemoins` est introuvable"
+    # ⚠️ `appels()` rend `(arguments, position)`, et la valeur d'un argument
+    #    litteral se lit par `litteral()` — ⛔ pas par un `strip` de
+    #    guillemets, qui avalerait aussi ceux d'une expression.
+    # (permis, cle) dans l'ORDRE DU SOURCE — c'est l'ordre qui est juge.
+    suite = [(args[1].strip(), litteral(args[2]))
+             for args, _pos in appels(corps, NOM_FABRIQUE)
+             if len(args) >= 3 and litteral(args[0]) == "b-agent-poser"]
+    if not suite:
+        return False, ("⛔ aucun appel de `%s` sur `b-agent-poser`"
+                       % NOM_FABRIQUE)
+    lhm = [i for i, (permis, cle) in enumerate(suite)
+           if cle == "raison.agent-lhm"]
+    port = [i for i, (permis, cle) in enumerate(suite)
+            if cle == "raison.agent-sans-port"]
+    if not lhm:
+        return False, "⛔ `raison.agent-lhm` ⛔ n'est portee par AUCUN appel"
+    if not port:
+        return False, "⛔ `raison.agent-sans-port` ⛔ n'est portee par AUCUN appel"
+    permis_lhm = suite[lhm[0]][0]
+    if permis_lhm != "true":
+        return False, ("le geste est `%s` sous `raison.agent-lhm` — attendu "
+                       "`true` : LHM ⛔ n'est PLUS un refus depuis dn4-48, et "
+                       "un bouton gris y relaierait un refus DISPARU"
+                       % permis_lhm)
+    if suite[port[0]][0] != "false":
+        return False, ("le geste est `%s` sous `raison.agent-sans-port` — "
+                       "attendu `false` : sans carte enumeree la tache serait "
+                       "posee sur un port qui n'existe pas"
+                       % suite[port[0]][0])
+    if not port[0] < lhm[0]:
+        return False, ("`raison.agent-lhm` est evaluee AVANT "
+                       "`raison.agent-sans-port` : une tour sans carte ET "
+                       "sans LHM s'armerait")
+    return True, ("LHM arme avec `raison.agent-lhm`, et il est evalue APRES "
+                  "le grisage sur `raison.agent-sans-port`")
 
 
 def charger_produit(source):
@@ -1474,6 +1590,25 @@ def muter(etat):
         if a29 not in py:
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[PY] = py.replace(a29, '    if verbe == "poser" and False:', 1)
+    elif _MUTANT == 31:
+        a31 = "LA PERMANENCE EST **POSEE** ET L'AGENT **TOURNE**, mais **SANS "
+        if a31 not in py:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PY] = py.replace(
+            a31, "LibreHardwareMonitor est INJOIGNABLE, et ⛔ RIEN n'a ete "
+                 "pose. Sans lui, pas de ", 1)
+    elif _MUTANT == 32:
+        # REPLANTE LA FAUTE : le grisage sur LHM REVIENT, dans la branche
+        # qu'il occupait avant `dn4-48`. ⛔ Ce n'est pas un debranchement —
+        # c'est la page qui redevient incapable d'activer l'agent sur une tour
+        # dont LHM ne repond pas, pendant que le pre-vol, lui, l'ATTEND puis
+        # DEMARRE. La faute revient sous SA forme d'origine.
+        a32 = '    armerGeste("b-agent-poser", true, "raison.agent-lhm");'
+        if a32 not in page:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = page.replace(
+            a32, '    armerGeste("b-agent-poser", false, "raison.agent-lhm");',
+            1)
     elif _MUTANT == 30:
         a30 = "  b.disabled = !permis;"
         if a30 not in page:
@@ -1713,6 +1848,10 @@ def main():
     ok, det = la_polarite_de_la_fabrique_est_gardee(js)
     ctrl(ok, "(c21) la fabrique grise DANS LE BON SENS", det if ok
          else "⛔ %s — `(c4)` ⛔ ne juge PAS le sens" % det)
+
+    ok, det = lhm_arme_le_geste_avec_son_avertissement(js)
+    ctrl(ok, "(c22) LHM absent ARME le geste, ⛔ il ne le grise plus",
+         det if ok else "⛔ %s" % det)
 
     ok, det = elle_dit_ce_qu_elle_n_installe_pas(page)
     ctrl(ok, "(c13) elle dit ce qu'elle N'INSTALLE PAS, et pourquoi", det if ok

@@ -208,18 +208,38 @@ RE_PORT_VALIDE = re.compile(r"^COM[0-9]+$")
 #    ⇒ la page CONTREDISAIT sa propre sortie dans le meme panneau — la sortie
 #    brute disant « LA PERMANENCE EST POSEE ET VERIFIEE » au-dessus d'un
 #    verdict disant « refus ».
-# ⚠️ `12` EST LE REFUS DUR DE LHM (`dn7-5`), relaye par `permanence` : le
+# ⚠️ ~~`12` EST LE REFUS DUR DE LHM (`dn7-5`)~~, relaye par `permanence` : le
 #    nommer ICI est ce que la ligne 9 de la matrice d'E/S demande — « la page
 #    relaie ce code EN NOMMANT LHM », ⛔ pas seulement dans la sortie brute.
+# 🔴 **LE SENS DE `12` A CHANGE LE 2026-09-12 (`dn4-48`), ET L'ANCIEN EST
+#    ANNOTE PLUTOT QU'EFFACE** — il etait EXACT du 2026-09-10 au 2026-09-12, et
+#    l'effacer effacerait ce que ce fichier savait ces jours-la.
+#    Le pre-vol de l'agent ⛔ **ne refuse plus** sur LHM : il l'**ATTEND**
+#    (borne, 300 s par defaut) puis **DEMARRE QUAND MEME**, champs LHM a
+#    « -- ». `12` a donc **change d'emetteur** — il quitte le bloc LHM du
+#    pre-vol pour le verbe `poser` — **et de sens** : « la permanence est
+#    POSEE et l'agent **TOURNE**, mais SANS LHM ».
+#    ⚠️ **CE QUI SURVIT, ET C'EST LA PROPRIETE QUE `(c20)` DE
+#       `verif_preconditions_dn76.py` GARDE** : `12` **nomme LibreHardwareMonitor**.
+#       C'est le FAIT qui est garde, ⛔ pas la phrase.
+#    ⛔ **ET IL ⛔ NE DIT PLUS « RIEN N'A ETE POSE »** : ce serait desormais
+#       FAUX, et un inconnu qui le lirait irait chercher une panne qui
+#       n'existe pas — la tache EST posee, l'agent EST vivant, la dalle SE
+#       REMPLIT. Meme famille que `13` : ni un succes, ni un echec.
 CODES_POSER = {
     0: "✅ la tache est POSEE ET VERIFIEE, et l'agent tourne MAINTENANT.",
     13: ("⚠️ LA PERMANENCE EST POSEE ET VERIFIEE — seul le DEMARRAGE IMMEDIAT "
          "n'a pas eu lieu. L'agent repartira a la prochaine ouverture de "
          "session. ⛔ Ce n'est ni un succes ni un echec : les deux seraient "
          "FAUX."),
-    12: ("⛔ LibreHardwareMonitor est INJOIGNABLE, et le pre-vol de l'agent "
-         "REFUSE sans lui. ⛔ RIEN n'a ete pose. Le geste est celui de LHM, "
-         "ecrit dans l'ecart declare — ⛔ pas `pip`."),
+    12: ("⚠️ LA PERMANENCE EST **POSEE** ET L'AGENT **TOURNE**, mais **SANS "
+         "LibreHardwareMonitor** : il est reste injoignable pendant toute "
+         "l'attente du pre-vol. ⛔ Ce n'est ni un succes ni un echec : les deux "
+         "seraient FAUX. La dalle se remplit ; seules la "
+         "temperature du CPU et les trois vitesses de ventilateur resteront a "
+         "« -- ». **Le geste** : la commande de LHM, ecrite dans l'ecart "
+         "declare — ⛔ pas `pip` —, puis relancer l'agent pour les recuperer "
+         "sans attendre la prochaine ouverture de session."),
     3: ("⛔ l'outil, l'agent ou le port n'ont pas ete trouves : RIEN n'a ete "
         "pose. ⛔ Ce n'est pas un succes."),
     9: ("⛔ la tache a ete posee mais elle ⛔ NE PASSE PAS son propre "
@@ -1256,8 +1276,14 @@ def prevol(sans_site_utilisateur):
     #    bougerait un code de sortie que `README.md` publie et que `(c28)` de
     #    `tools/verif_installeur_dn71.py` JOUE.
     # ⚠️ CE PRE-VOL-CI **CONSTATE**, il ⛔ ne refuse pas : flasher la carte n'a
-    #    rien a voir avec LHM. Celui qui REFUSE est `tools/dn_agent_tour.ps1`,
-    #    et il refuse sur son propre code de sortie.
+    #    rien a voir avec LHM. ~~Celui qui REFUSE est `tools/dn_agent_tour.ps1`,
+    #    et il refuse sur son propre code de sortie.~~
+    # 🔴 **AMENDE LE 2026-09-12 (`dn4-48`), ET LA PHRASE BARREE RESTE** :
+    #    ⛔ **PLUS PERSONNE NE REFUSE SUR LHM.** `tools/dn_agent_tour.ps1`
+    #    l'**ATTEND** (borne, 300 s par defaut) puis **demarre quand meme**,
+    #    champs LHM a « -- » — ce que le produit sait DEJA faire quand LHM
+    #    meurt en cours de route. ⇒ les deux pre-vols **constatent** desormais,
+    #    et ils le disent au meme endroit : ici, et au bandeau de l'outil.
     lhm = lhm_present()
     print("  %-19s : %s" % ("LibreHardwareMonitor",
                             "present" if lhm is True else
