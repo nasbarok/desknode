@@ -98,3 +98,49 @@ droits administrateur ».
 `-Lhm`**. L'agent qu'elle lance ⛔ n'aura donc PAS l'instrument de cout, et la
 re-verification « gratuite au prochain logon » ⛔ n'aura pas lieu. C'est le comportement du
 verbe de la page, ⛔ pas une regression de cette seance.
+
+---
+
+## 🔴 AMENDE LE 2026-09-12 (2e fois) — **LE POINT *(e)* EST MESURE**, et il a MORDU
+
+⛔ **AUCUNE LIGNE CI-DESSUS N'EST EFFACEE (`NFR3`).** Le titre reste exact : l'AC ⛔ n'est
+toujours **pas** fermee — elle passe de **1/5** a **2/5**.
+
+### *(e)* LA COURSE AU LOGON : de « risque connu » a **FAIT MESURE**
+
+L'owner a redemarre la tour. **La dalle ne s'est pas remplie.** Verbatim :
+*« tour redemmarré la dalle ne se rempli pas »*.
+
+    boot                     18:12:58
+    tache agent tire         18:13:13   -> LastTaskResult = 12  (LE REFUS LHM)
+    process LHM demarre      18:13:34   -> 21 s TROP TARD
+    agents vivants 0 · COM3 LIBRE
+
+⇒ le pre-vol a sonde LHM **avant** qu'il ne soit debout et a refuse. Le refus est **JUSTE** :
+c'est le prerequis dur voulu. La machine etait **SAINE**.
+
+### 🔴 ET LE VRAI CONSTAT EST AILLEURS : LA PARADE N'A PAS TIRE
+
+La tache porte pourtant `RestartCount = 3` et `RestartInterval = PT1M`. Une reprise a
+18:14:13 aurait trouve LHM debout depuis 39 s. **Aucune n'a eu lieu** : a 18:25,
+`LastRunTime` vaut toujours **18:13:13** et `NextRunTime` est vide.
+
+⇒ **LA PARADE, TELLE QU'ELLE EST CONFIGUREE, ⛔ NE PROTEGE PAS DE CE MODE DE PANNE.**
+Le ledger ecrivait depuis `dn7-5` que *« la parade existe deja »* : elle existe, et elle
+**ne rattrape pas ce cas**. La borne « ~3 min » decrivait un delai ; le fait mesure est qu'il
+⛔ **n'y a eu aucune reprise du tout**.
+
+⛔ **LE MECANISME N'EST PAS ETABLI, ET C'EST DIT.** Le journal qui le montrerait est
+**ETEINT** (`Microsoft-Windows-TaskScheduler/Operational`, `IsEnabled : False`) : ma requete
+d'evenements a rendu « aucun evenement », ce qui ⛔ ne prouve **rien**. ⇒ ce qui
+l'etablirait : **activer ce journal, redemarrer, relire les identifiants d'evenement**.
+
+✅ **REMISE EN SERVICE** : `dn-agent.bat start` joue **le meme pre-vol**, LHM etant debout —
+il **PASSE** (`repond 200.`), agent `PID=29016`, constate **par requete**, COM3 tenu. ⇒ seul
+**l'instant** avait change.
+
+### ⛔ IL RESTE TROIS POINTS SUR CINQ
+
+- *(a)* le bouton **reellement grise** (retirer une dependance pour le voir ; le flash doit RESTER utilisable) ;
+- *(c)* le geste `pip` **et son temps** — plafond **900 s** ⛔ jamais confronte a une mesure ;
+- *(d)* le verdict de **`pip` indisponible**.

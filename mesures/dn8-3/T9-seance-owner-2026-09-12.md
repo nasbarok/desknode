@@ -167,3 +167,72 @@ Sur les cinq points de l'AC, **UN** est releve. Restent :
   ne l'a observee sur une **vraie ouverture de session**. ⚠️ RISQUE CONNU, ⛔ pas un fait mesure.
   ⇒ C'est le seul point que la tache **qui vient d'etre posee** rend enfin observable : il
     suffit d'un redemarrage, puis de rejouer ces trois requetes **sans rien lancer a la main**.
+
+---
+
+## 🔴 LA COURSE AU LOGON EST **MESUREE** — ET LA PARADE **N'A PAS TIRE**
+
+> **PARADE NON TIREE** · redemarrage owner du 2026-09-12 · c'est la **PREMIERE**
+> observation de cette course sur une **vraie ouverture de session**. Elle etait
+> jusqu'ici un **RISQUE ECRIT**, ⛔ pas un fait.
+
+**CONSTAT OWNER, VERBATIM** : *« tour redemmarré la dalle ne se rempli pas »*.
+
+### Ce qui est mesure, horodate
+
+    demarrage de la tour        18:12:58
+    tache 'DeskNode agent' tire 18:13:13   (15 s apres le boot)
+      -> LastTaskResult         = 12       <= LE REFUS LHM, exit 12
+    process LHM demarre         18:13:34   (21 s APRES le tir de la tache agent)
+    agents vivants              0
+    COM3                        LIBRE
+    /metrics (au constat)       HTTP 200, corps porteur de lignes lhm_
+
+⇒ **LE PRE-VOL A SONDE LHM AVANT QU'IL NE SOIT DEBOUT, ET IL A REFUSE.** Le refus
+est **juste** — c'est le prerequis dur voulu par l'arbitrage owner du 2026-09-10.
+La machine, elle, etait **SAINE** : LHM est monte 21 s plus tard.
+
+### 🔴 CE QUI COMPTE DAVANTAGE : LA PARADE EXISTE, ET ELLE N'A RIEN RATTRAPE
+
+La tache porte bien ce que `dn4-17` avait pose et que `dn7-5` nomme comme parade :
+
+    RestartCount     : 3
+    RestartInterval  : PT1M        (soit 3 reprises sur ~3 min)
+    StartWhenAvailable : True
+    RunLevel         : Limited
+    trigger          : MSFT_TaskLogonTrigger
+
+⇒ une reprise a 18:14:13 aurait trouve LHM debout **depuis 39 s**. Elle aurait
+reussi. **Elle n'a pas eu lieu** : releve a 18:25 (uptime 12 min, soit bien
+au-dela des 3 minutes de la parade), `LastRunTime` vaut **TOUJOURS 18:13:13** et
+`NextRunTime` est **vide**. Une reprise aurait deplace `LastRunTime`.
+
+🔴 **DONC : LA PARADE, TELLE QU'ELLE EST CONFIGUREE, ⛔ NE PROTEGE PAS DE CE MODE
+DE PANNE.** C'est un fait mesure, et il contredit ce que le ledger ecrivait
+depuis `dn7-5` — *« la parade existe deja »* — en laissant croire qu'elle couvre
+ce cas.
+
+### ⛔ CE QUE JE N'AI **PAS** PU ETABLIR, ET C'EST DIT
+
+**LE MECANISME.** L'hypothese naturelle est que le Planificateur ne declenche sa
+reprise que sur un ECHEC DE TACHE, et qu'une action rendant un code non nul
+n'en est pas un — la tache « se termine », son resultat est simplement 12.
+⛔ **JE NE L'AI PAS MESURE.** Le journal qui l'etablirait est **ETEINT** :
+
+    Get-WinEvent -ListLog 'Microsoft-Windows-TaskScheduler/Operational'
+      IsEnabled : False
+
+⇒ ma requete d'evenements a rendu « aucun evenement », et ⛔ **ca ne prouvait
+RIEN** : un resultat vide sur un journal desactive est une propriete de la
+METHODE. (C'est la meme regle que cette marche a payee huit fois.)
+⇒ **CE QUI L'ETABLIRAIT** : activer le journal Operational, redemarrer, et
+  relire les identifiants d'evenement de la tache. C'est un geste owner.
+
+### Remise en service, et elle CONFIRME que seul le TIMING etait en cause
+
+    dn-agent.bat start  ->  pre-vol : LHM 127.0.0.1:8085/metrics repond 200.
+                            agent VIVANT  PID=29016
+    constate PAR REQUETE :  agents vivants = 1 (requete OK : True) · COM3 TENU
+
+⇒ **le meme pre-vol, joue quand LHM est debout, PASSE.** Rien d'autre n'avait
+change : ⛔ ni le produit, ni la tache, ni la machine — seulement **l'instant**.
