@@ -1,0 +1,85 @@
+name: Bug report
+description: DeskNode does something wrong — on the screen, in the Windows agent, or on the install page.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Before you start, [what this project is, honestly](https://github.com/nasbarok/desknode/blob/main/CONTRIBUTING.md#what-this-project-is-honestly) says what to expect from a report.
+
+        **Already known, no need to report them:** on about 1 cold start in 6, the whole I²C bus degrades for about 40 seconds (touch unresponsive; on a DeskNode + Ambiance build the room sensors can stay empty until about a minute after power-on); the 335.8 ms it takes to open a detail page; and the portability limits. They are listed under [Known issues](https://github.com/nasbarok/desknode/blob/main/README.md#known-issues).
+
+        ⚠️ **A security vulnerability does not go here.** An issue is public: a vulnerability reported in one is a vulnerability published. Follow [SECURITY.md](https://github.com/nasbarok/desknode/blob/main/SECURITY.md) instead.
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Hardware tier
+      description: Which DeskNode you built. Both tiers are described in the [README](https://github.com/nasbarok/desknode/blob/main/README.md#two-hardware-tiers).
+      options:
+        - DeskNode
+        - DeskNode + Ambiance
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU make and model
+      description: GPU metrics come from AMD only (ADL); NVIDIA is not implemented, and Intel Arc and integrated GPUs are untested. A GPU cell showing `--` is expected there, but the make is still worth telling.
+  - type: dropdown
+    id: lhm
+    attributes:
+      label: LibreHardwareMonitor
+      description: It changes what the CPU and disk cells can show.
+      options:
+        - Installed and running
+        - Installed, not running
+        - Not installed
+        - Not sure
+  - type: input
+    id: desknode-version
+    attributes:
+      label: DeskNode version (firmware SHA)
+      description: >-
+        There is no version on the screen yet. The firmware prints a git SHA on the serial console at boot,
+        on the `App version:` line, and `python3 tools/dn_console.py --reset --port COM3` restarts the board and captures it.
+        That command cannot open the port while the DeskNode agent holds it: stop the agent first, for example with
+        "Stop the agent and hand the port back" on the install page.
+        A build from a ZIP prints `1`, a build from a modified tree prints the SHA followed by `-dirty`: say which one you saw.
+        For a bug in the Windows agent or the install page, the version is the commit you cloned (`git rev-parse --short HEAD`).
+        Details: [Reporting a bug](https://github.com/nasbarok/desknode/blob/main/CONTRIBUTING.md#reporting-a-bug).
+      placeholder: 6a91fa3
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      description: "`winver` shows it."
+      placeholder: Windows 11 23H2, build 22631
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected to see instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: From a known state — for example, right after plugging the board in.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Serial console or agent output
+      description: Paste it as text, not as a screenshot. Leave it empty if you have none.
+      render: text

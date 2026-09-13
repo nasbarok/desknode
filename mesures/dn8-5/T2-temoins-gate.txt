@@ -1,0 +1,654 @@
+==============================================================================
+dn8-5 / T2 — LES TEMOINS DE LA GATE NEUVE : verif_reception_dn85.py
+  Joue le 2026-09-13 (rejoue apres l'ajout de « What belongs here » a
+  SECURITY.md ; horodatage en tete du corps) sur l'arbre de la marche INDEXE,
+  ⛔ aucun commit. Sorties brutes versees APRES le tir.
+  Deux scripts de banc, verses en fin de fichier : `t2.sh` (la matrice I/O du
+  dossier) et `temoins.py` (chaque mutant, cible VUE ⇄ cible DECLAREE).
+==============================================================================
+
+🔴 POURQUOI `temoins.py` EXISTE : `verif_campagne_dn56.py` exige de chaque mutant
+   `rc=1` + `BILAN` + un `[KO ]`, ⛔ MAIS NE COMPARE PAS la cible vue a la cible
+   declaree — un mutant qui rougit sur le MAUVAIS controle y passe vert. Ici la
+   comparaison est JOUEE : l'ensemble des `(cN)` en `[KO ]` doit etre EGAL a
+   `CIBLES[n]`, ⛔ ni plus ni moins.
+⚠️ TROIS MUTANTS DECLARENT PLUSIEURS CIBLES, ET C'EST ECRIT PLUTOT QUE CACHE :
+   ⚠️ ANNOTE LE 2026-09-13 APRES REVUE, la ligne ci-dessus ⛔ non effacee : « TROIS »
+      est FAUX — la liste qui suit n'en nomme que DEUX (2 et 11), et c'est le compte reel.
+   · 2 (YAML casse) ⇒ (c1)(c2)(c4) : un formulaire NON LU fait rougir chaque
+     controle qui le juge — c'est la regle « jamais un vert sur un YAML non lu » ;
+   · 11 (« promptly ») ⇒ (c8)(c9) : les deux controles gardent ce mot, par
+     construction du dossier ((c8) le code de conduite, (c9) tous les neufs).
+   ⇒ chaque autre mutant rougit sur UN controle, le sien.
+⚠️ MATRICE, LIGNE « PyYAML absent » : le masque est un module `yaml` qui leve
+   ImportError, pose par PYTHONPATH (precedent : mesures/dn8-1/T1-temoin-negatif-tracker.txt §4).
+   ⛔ Ce n'est PAS le runner : l'absence REELLE de PyYAML sur `ubuntu-latest`
+   n'est ni prouvee ni refutee ici (ledger, porteur dn8-8).
+
+=== dn8-5 / T2 — debut 2026-09-13T12:16:22+02:00 · HEAD d2e63303956f55d608f5f7d7c19c34002d36061c · index 85a86051d6b642ee
+    python3 3.12.3 · PyYAML 6.0.1 /usr/lib/python3/dist-packages/yaml/__init__.py
+
+── 1. NOMINAL ─────────────────────────────────────────────────────────────
+==============================================================================
+dn8-5 — LE DEPOT SAIT RECEVOIR
+==============================================================================
+⛔ AVEUGLEMENT DECLARE — cette gate confronte les formulaires aux regles que la documentation GitHub ECRIT. Elle ⛔ ne voit PAS : (1) la validation REELLE de GitHub (mots interdits dans un label, labels « trop proches ») ; (2) le RENDU du selecteur d'issues ; (3) l'EFFET de `validations.required`, qui n'agit que sur un depot PUBLIC ; (4) l'ACTIVATION du signalement prive de failles, reglage d'un depot public. Les quatre attendent la bascule (ledger, porteur `dn8-8`).
+
+── (c1)(c2) LES FORMULAIRES, PARSES ET CONFRONTES ────────────────
+  [OK ] (c1) les trois YAML existent et SE PARSENT               yaml.safe_load : bug_report.yml, feature_request.yml, config.yml
+  [OK ] (c2) chaque formulaire suit les regles ECRITES           2 formulaire(s) · cles, types, id, labels, options, >= 1 saisie
+
+── (c3)(c4)(c5) BUG REPORT, FEATURE REQUEST, SELECTEUR ───────────
+  [OK ] (c3) bug report : 8 id, leurs types, required x5         hardware, gpu, lhm, desknode-version, windows-version, what-happened, steps, logs · required : hardware, desknode-version, windows-version, what-happened, steps
+  [OK ] (c4) feature request : statut CITE par lien, sans date   lien `…#what-this-project-is-honestly` · « does not come with a delivery date »
+  [OK ] (c5) config.yml : pas de ticket vierge, securite dehors  blank_issues_enabled false · /security/advisories/new · CODE_OF_CONDUCT.md
+
+── (c6)(c7)(c8) PR, SECURITE, CONDUITE ───────────────────────────
+  [OK ] (c6) modele de PR present, lie CLA.md qui existe         .github/pull_request_template.md → CLA.md
+  [OK ] (c7) SECURITY.md : formulaire prive, pas de ticket       lien prive · « do not open a public issue » · lie depuis README.md et CONTRIBUTING.md
+  [OK ] (c8) conduite : ni canal invente, ni promesse            Report abuse · pas de canal prive DIT · 2.1 · CC BY 4.0 · modifications
+
+── (c9)(c10)(c11) AUCUNE PROMESSE, UNE SEULE SOURCE ──────────────
+  [OK ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               6 fichier(s) neufs (adresse + delai) · 6 modifies (adresse)
+  [OK ] (c10) la section de statut dit tout, sans promesse       PUBLIC BETA · best effort · community supported · no sla · no date is promised on a feature request
+  [OK ] (c11) « public beta » : UN fichier, DANS la section      23 fichier(s) balayes (racine, .github/, docs/ hors journal) · seul porteur : CONTRIBUTING.md
+
+── (c12)(c13) LES CITATIONS, ET LE COVENANT HORS DE LA TABLE ─────
+  [OK ] (c12) tout `X.md#fragment` designe un titre              10 lien(s) a fragment confronte(s) aux titres ATX
+  [OK ] (c13) THIRD-PARTY.md nomme le Covenant hors table        en prose, hors `## Firmware`
+
+── (c14)(c15)(c16) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c14) chaque controle est vise par >= 1 mutant           16 controle(s) lu(s) a l'AST, 16 cible(s) declaree(s)
+  [OK ] (c15) chaque cible de mutant est un controle REEL        16 cible(s) confrontee(s)
+  [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent             21 mutant(s), 21 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'un inconnu ATTEINT le formulaire
+   prive (le depot est prive, le reglage n'existe que sur un depot public)
+   ni que GitHub ACCEPTE les formulaires — voir AVEUGLEMENT DECLARE en tete.
+
+==============================================================================
+BILAN : 16 OK, 0 KO
+==============================================================================
+   rc=0
+
+── 2. CHAQUE MUTANT : rc, BILAN, et la cible VUE comparee a la cible DECLAREE ──
+mutant  1  rc=1  BILAN : 15 OK, 1 KO  KO vus c3               declares c3               IDENTIQUE
+            [KO ] (c3) bug report : 8 id, leurs types, required x5         ⛔ `windows-version` ABSENT
+mutant  2  rc=1  BILAN : 13 OK, 3 KO  KO vus c1,c2,c4         declares c1,c2,c4         IDENTIQUE
+            [KO ] (c1) les trois YAML existent et SE PARSENT               ⛔ feature_request.yml : while parsing a block collection in "<unicode string>", line 5, column 3: - type: markdown ^ expected <
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+            [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+mutant  3  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ feature_request.yml : `id` DUPLIQUE 'proposal'
+mutant  4  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ feature_request.yml body[3] : type 'longtext' INCONNU
+mutant  5  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ feature_request.yml : `name` 'Req' n'a pas PLUS DE 3 caracteres
+mutant  6  rc=1  BILAN : 15 OK, 1 KO  KO vus c4               declares c4               IDENTIQUE
+            [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ aucun lien vers la section de statut dans un `markdown`
+mutant  7  rc=1  BILAN : 15 OK, 1 KO  KO vus c5               declares c5               IDENTIQUE
+            [KO ] (c5) config.yml : pas de ticket vierge, securite dehors  ⛔ aucun lien vers le formulaire PRIVE de CE depot
+mutant  8  rc=1  BILAN : 15 OK, 1 KO  KO vus c6               declares c6               IDENTIQUE
+            [KO ] (c6) modele de PR present, lie CLA.md qui existe         ⛔ aucun lien vers https://github.com/nasbarok/desknode/blob/main/CLA.md
+mutant  9  rc=1  BILAN : 15 OK, 1 KO  KO vus c9               declares c9               IDENTIQUE
+            [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ SECURITY.md promet « within 48 hours »
+mutant 10  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ promet ENCORE « [insert »
+mutant 11  rc=1  BILAN : 14 OK, 2 KO  KO vus c8,c9            declares c8,c9            IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ promet ENCORE « promptly »
+            [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ CODE_OF_CONDUCT.md promet « promptly »
+mutant 12  rc=1  BILAN : 15 OK, 1 KO  KO vus c9               declares c9               IDENTIQUE
+            [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ SECURITY.md publie une ADRESSE
+mutant 13  rc=1  BILAN : 15 OK, 1 KO  KO vus c11              declares c11              IDENTIQUE
+            [KO ] (c11) « public beta » : UN fichier, DANS la section      ⛔ porteur(s) : ['CONTRIBUTING.md', 'README.md'] · dans la section : True
+mutant 14  rc=1  BILAN : 15 OK, 1 KO  KO vus c10              declares c10              IDENTIQUE
+            [KO ] (c10) la section de statut dit tout, sans promesse       ⛔ « community supported » absent
+mutant 15  rc=1  BILAN : 15 OK, 1 KO  KO vus c12              declares c12              IDENTIQUE
+            [KO ] (c12) tout `X.md#fragment` designe un titre              ⛔ README.md → CONTRIBUTING.md#what-this-project-is : AUCUN titre
+mutant 16  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ attribution au Covenant 2.1 (lien + version) absente
+mutant 17  rc=1  BILAN : 15 OK, 1 KO  KO vus c7               declares c7               IDENTIQUE
+            [KO ] (c7) SECURITY.md : formulaire prive, pas de ticket       ⛔ aucun lien vers le formulaire prive
+mutant 18  rc=1  BILAN : 15 OK, 1 KO  KO vus c13              declares c13              IDENTIQUE
+            [KO ] (c13) THIRD-PARTY.md nomme le Covenant hors table        ⛔ le Covenant est DANS la table `## Firmware` · le Covenant n'est nomme NULLE PART hors de la table
+mutant 19  rc=1  BILAN : 15 OK, 1 KO  KO vus c14              declares c14              IDENTIQUE
+            [KO ] (c14) chaque controle est vise par >= 1 mutant           ⛔ 1 CONTROLE(S) GARDE(S) PAR RIEN : c3
+mutant 20  rc=1  BILAN : 15 OK, 1 KO  KO vus c15              declares c15              IDENTIQUE
+            [KO ] (c15) chaque cible de mutant est un controle REEL        ⛔ 1 CIBLE(S) PERIMEE(S) : c99
+mutant 21  rc=1  BILAN : 15 OK, 1 KO  KO vus c16              declares c16              IDENTIQUE
+            [KO ] (c16) `CIBLES` et `MUTANTS` se correspondent             ⛔ cible(s) SANS mutant : [999] · mutant(s) SANS cible : —
+BILAN TEMOINS : 21 mutant(s), 0 ecart(s) vu/declare
+   rc(temoins)=0
+
+── 3. PyYAML MASQUE (banc : un module `yaml` qui leve ImportError) ────────
+   $ PYTHONPATH=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/66cda4fa-a614-4b40-bb34-55d248fd7da3/scratchpad/dn85/masque-yaml python3 -c 'import yaml'
+   ImportError: PyYAML masque par le banc dn8-5 (CI sans python3-yaml)
+   --- 3a. nominal, PyYAML absent
+==============================================================================
+dn8-5 — LE DEPOT SAIT RECEVOIR
+==============================================================================
+⛔ AVEUGLEMENT DECLARE — cette gate confronte les formulaires aux regles que la documentation GitHub ECRIT. Elle ⛔ ne voit PAS : (1) la validation REELLE de GitHub (mots interdits dans un label, labels « trop proches ») ; (2) le RENDU du selecteur d'issues ; (3) l'EFFET de `validations.required`, qui n'agit que sur un depot PUBLIC ; (4) l'ACTIVATION du signalement prive de failles, reglage d'un depot public. Les quatre attendent la bascule (ledger, porteur `dn8-8`).
+
+⛔ PyYAML ABSENT (PyYAML masque par le banc dn8-5 (CI sans python3-yaml)) — les trois YAML de `.github/ISSUE_TEMPLATE/` ⛔ NE SONT PAS LUS. Ce que la gate ne voit alors PAS : un formulaire que GitHub refuserait, un champ retire, un lien de securite perdu. ⛔ Ce n'est PAS un vert : (c1)(c2)(c3)(c4)(c5) ROUGISSENT, et le trou se referme avec le `python3-yaml` du systeme (present sur le poste de l'auteur ; etaye, ⛔ non mesure, sur le runner — ledger, `dn8-8`).
+
+── (c1)(c2) LES FORMULAIRES, PARSES ET CONFRONTES ────────────────
+  [KO ] (c1) les trois YAML existent et SE PARSENT               ⛔ bug_report.yml YAML NON LU (PyYAML absent) · feature_request.yml YAML NON LU (PyYAML absent) · config.yml YAML NON LU (PyYAML absent)
+  [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ bug_report.yml NON JUGE : YAML NON LU (voir (c1)) · feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+
+── (c3)(c4)(c5) BUG REPORT, FEATURE REQUEST, SELECTEUR ───────────
+  [KO ] (c3) bug report : 8 id, leurs types, required x5         ⛔ bug_report.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c5) config.yml : pas de ticket vierge, securite dehors  ⛔ config.yml NON JUGE : YAML NON LU (voir (c1))
+
+── (c6)(c7)(c8) PR, SECURITE, CONDUITE ───────────────────────────
+  [OK ] (c6) modele de PR present, lie CLA.md qui existe         .github/pull_request_template.md → CLA.md
+  [OK ] (c7) SECURITY.md : formulaire prive, pas de ticket       lien prive · « do not open a public issue » · lie depuis README.md et CONTRIBUTING.md
+  [OK ] (c8) conduite : ni canal invente, ni promesse            Report abuse · pas de canal prive DIT · 2.1 · CC BY 4.0 · modifications
+
+── (c9)(c10)(c11) AUCUNE PROMESSE, UNE SEULE SOURCE ──────────────
+  [OK ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               6 fichier(s) neufs (adresse + delai) · 6 modifies (adresse)
+  [OK ] (c10) la section de statut dit tout, sans promesse       PUBLIC BETA · best effort · community supported · no sla · no date is promised on a feature request
+  [OK ] (c11) « public beta » : UN fichier, DANS la section      23 fichier(s) balayes (racine, .github/, docs/ hors journal) · seul porteur : CONTRIBUTING.md
+
+── (c12)(c13) LES CITATIONS, ET LE COVENANT HORS DE LA TABLE ─────
+  [OK ] (c12) tout `X.md#fragment` designe un titre              10 lien(s) a fragment confronte(s) aux titres ATX
+  [OK ] (c13) THIRD-PARTY.md nomme le Covenant hors table        en prose, hors `## Firmware`
+
+── (c14)(c15)(c16) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c14) chaque controle est vise par >= 1 mutant           16 controle(s) lu(s) a l'AST, 16 cible(s) declaree(s)
+  [OK ] (c15) chaque cible de mutant est un controle REEL        16 cible(s) confrontee(s)
+  [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent             21 mutant(s), 21 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'un inconnu ATTEINT le formulaire
+   prive (le depot est prive, le reglage n'existe que sur un depot public)
+   ni que GitHub ACCEPTE les formulaires — voir AVEUGLEMENT DECLARE en tete.
+
+==============================================================================
+BILAN : 11 OK, 5 KO
+==============================================================================
+   rc=1
+   --- 3b. --mutant 9, PyYAML absent
+⛔ PyYAML ABSENT (PyYAML masque par le banc dn8-5 (CI sans python3-yaml)) — les trois YAML de `.github/ISSUE_TEMPLATE/` ⛔ NE SONT PAS LUS. Ce que la gate ne voit alors PAS : un formulaire que Git
+  [KO ] (c1) les trois YAML existent et SE PARSENT               ⛔ bug_report.yml YAML NON LU (PyYAML absent) · feature_request.yml YAML NON LU (PyYAML absent) · config.yml YAML NON LU (PyYAML abs
+  [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ bug_report.yml NON JUGE : YAML NON LU (voir (c1)) · feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c3) bug report : 8 id, leurs types, required x5         ⛔ bug_report.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c5) config.yml : pas de ticket vierge, securite dehors  ⛔ config.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ SECURITY.md promet « within 48 hours »
+BILAN : 10 OK, 6 KO
+   rc=1
+   --- 3c. --help, PyYAML absent
+usage: verif_reception_dn85.py [-h] [--mutant MUTANT] [--liste-mutants]
+
+dn8-5 — le depot sait recevoir : formulaires, securite, conduite, statut sans
+promesse.
+
+options:
+  -h, --help       show this help message and exit
+  --mutant MUTANT
+  --liste-mutants
+   rc=0
+   --- 3d. --liste-mutants, PyYAML absent
+   1  retire le champ `windows-version` du bug report
+   2  casse l'indentation de la feature request ⇒ un YAML que GitHub ne lit pas
+   3  duplique un `id` dans la feature request
+   4  donne un type INCONNU a un champ de la feature request
+   5  ramene le `name` de la feature request a 3 caracteres ⇒ GitHub ne l'affiche pas
+   6  retire le lien de statut de la feature request
+   7  retire le lien de securite de `config.yml`
+   8  retire le lien vers `CLA.md` du modele de PR
+   9  ajoute « within 48 hours » a `SECURITY.md`
+  10  restaure la case `[INSERT CONTACT METHOD]` du Covenant dans le code de conduite
+  11  restaure « promptly » dans le code de conduite
+  12  ajoute une adresse e-mail a `SECURITY.md`
+  13  recopie « PUBLIC BETA » dans la vitrine ⇒ deux sources
+  14  retire « community supported » de la section de statut
+  15  casse le fragment du lien de statut de la vitrine
+  16  retire l'attribution du Covenant 2.1 du code de conduite
+  17  fait envoyer `SECURITY.md` vers un ticket PUBLIC au lieu du formulaire prive
+  18  deplace le Covenant dans la table `## Firmware` de `THIRD-PARTY.md` ⇒ une ligne que la table epinglee refuse
+  19  vide la cible du mutant 1 ⇒ un controle garde par ZERO mutant
+  20  declare dans `CIBLES` un controle INEXISTANT ⇒ une cible PERIMEE que « N rouges » ne voit pas
+  21  declare une cible pour un mutant qui N'EXISTE PAS
+   rc=0
+
+── 4. MUTANT INCONNU ──────────────────────────────────────────────────────
+⛔ mutant 999 inconnu — `--liste-mutants` les donne.
+   rc=2
+
+── 5. MUTANT SANS EFFET — sur une COPIE JETABLE de l'arbre ─────────────────
+   --- 5a. ANCRE ABSENTE : le titre « ## What happens after you report » retire de SECURITY.md, --mutant 9
+==============================================================================
+dn8-5 — LE DEPOT SAIT RECEVOIR   [MUTANT 9]
+==============================================================================
+⛔ AVEUGLEMENT DECLARE — cette gate confronte les formulaires aux regles que la documentation GitHub ECRIT. Elle ⛔ ne voit PAS : (1) la validation REELLE de GitHub (mots interdits dans un label, labels « trop proches ») ; (2) le RENDU du selecteur d'issues ; (3) l'EFFET de `validations.required`, qui n'agit que sur un depot PUBLIC ; (4) l'ACTIVATION du signalement prive de failles, reglage d'un depot public. Les quatre attendent la bascule (ledger, porteur `dn8-8`).
+
+⛔ MUTANT 9 NON EXERCE : l'ancre '## What happens after you report\n' est ABSENTE
+   ⇒ rc=3 : un mutant qui ne change rien ⛔ ne prouve rien.
+
+==============================================================================
+⛔ SORTIE ANTICIPEE — 0 controle(s) emis sur 16 prevus : mutant 9 sans effet
+BILAN : 0 OK, 0 KO
+==============================================================================
+   rc=3
+   --- 5b. ETAT INCHANGE : copie de la gate dont le mutant 3 remplace un texte PAR LUI-MEME
+==============================================================================
+dn8-5 — LE DEPOT SAIT RECEVOIR   [MUTANT 3]
+==============================================================================
+⛔ AVEUGLEMENT DECLARE — cette gate confronte les formulaires aux regles que la documentation GitHub ECRIT. Elle ⛔ ne voit PAS : (1) la validation REELLE de GitHub (mots interdits dans un label, labels « trop proches ») ; (2) le RENDU du selecteur d'issues ; (3) l'EFFET de `validations.required`, qui n'agit que sur un depot PUBLIC ; (4) l'ACTIVATION du signalement prive de failles, reglage d'un depot public. Les quatre attendent la bascule (ledger, porteur `dn8-8`).
+
+⛔ MUTANT 3 SANS EFFET : aucune copie ne differe.
+   ⇒ rc=3 : un mutant qui ne change rien ⛔ ne prouve rien.
+
+==============================================================================
+⛔ SORTIE ANTICIPEE — 0 controle(s) emis sur 16 prevus : mutant 3 sans effet
+BILAN : 0 OK, 0 KO
+==============================================================================
+   rc=3
+
+── 6. LE DEPOT N'A PAS BOUGE ──────────────────────────────────────────────
+   index apres : 85a86051d6b642ee · git status --porcelain (hors index) :
+     AM SECURITY.md
+=== fin 2026-09-13T12:16:30+02:00
+   ⚠️ ANNOTE APRES LE TIR : « AM SECURITY.md » = la section « What belongs here »
+      ecrite JUSTE AVANT ce tir et pas encore indexee. La gate lit le DISQUE : le
+      tir porte bien sur le texte livre ; le fichier a ete `git add`-e ensuite.
+      Aucun fichier NON prevu par la marche n'apparait.
+
+── ANNEXE A — t2.sh (tel que joue : `rtk proxy bash t2.sh`) ─────────────────
+  | #!/usr/bin/env bash
+  | # dn8-5 / T2 — les temoins de la matrice I/O de verif_reception_dn85.py.
+  | # ⛔ Toute copie mutee vit sous le scratchpad ; le depot n'est JAMAIS ecrit.
+  | set -u
+  | SCR=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/66cda4fa-a614-4b40-bb34-55d248fd7da3/scratchpad/dn85
+  | DN=/home/nasbarok/projects/desknode
+  | G=tools/verif_reception_dn85.py
+  | cd "$DN" || exit 9
+  | idx() { git ls-files -s | sha256sum | cut -c1-16; }
+  | echo "=== dn8-5 / T2 — debut $(date -Iseconds) · HEAD $(git rev-parse HEAD) · index $(idx)"
+  | echo "    python3 $(python3 -c 'import sys;print(sys.version.split()[0])') · PyYAML $(python3 -c 'import yaml;print(yaml.__version__, yaml.__file__)')"
+  | 
+  | echo; echo "── 1. NOMINAL ─────────────────────────────────────────────────────────────"
+  | python3 $G; echo "   rc=$?"
+  | 
+  | echo; echo "── 2. CHAQUE MUTANT : rc, BILAN, et la cible VUE comparee a la cible DECLAREE ──"
+  | python3 "$SCR/temoins.py"; echo "   rc(temoins)=$?"
+  | 
+  | echo; echo "── 3. PyYAML MASQUE (banc : un module \`yaml\` qui leve ImportError) ────────"
+  | MASQUE="$SCR/masque-yaml"; mkdir -p "$MASQUE"
+  | printf 'raise ImportError("PyYAML masque par le banc dn8-5 (CI sans python3-yaml)")\n' > "$MASQUE/yaml.py"
+  | echo "   \$ PYTHONPATH=$MASQUE python3 -c 'import yaml'"
+  | PYTHONPATH="$MASQUE" python3 -c 'import yaml' 2>&1 | tail -1 | sed 's/^/   /'
+  | echo "   --- 3a. nominal, PyYAML absent"
+  | PYTHONPATH="$MASQUE" python3 $G; echo "   rc=$?"
+  | echo "   --- 3b. --mutant 9, PyYAML absent"
+  | PYTHONPATH="$MASQUE" python3 $G --mutant 9 | grep -E '^\s*\[KO \]|^BILAN|PyYAML ABSENT' | cut -c1-200; echo "   rc=${PIPESTATUS[0]}"
+  | echo "   --- 3c. --help, PyYAML absent"
+  | PYTHONPATH="$MASQUE" python3 $G --help; echo "   rc=$?"
+  | echo "   --- 3d. --liste-mutants, PyYAML absent"
+  | PYTHONPATH="$MASQUE" python3 $G --liste-mutants; echo "   rc=$?"
+  | 
+  | echo; echo "── 4. MUTANT INCONNU ──────────────────────────────────────────────────────"
+  | python3 $G --mutant 999; echo "   rc=$?"
+  | 
+  | echo; echo "── 5. MUTANT SANS EFFET — sur une COPIE JETABLE de l'arbre ─────────────────"
+  | COPIE="$SCR/copie-noop"; rm -rf "$COPIE"; mkdir -p "$COPIE"
+  | git ls-files -z | xargs -0 -I{} cp --parents {} "$COPIE/"
+  | ( cd "$COPIE" && git init -q && git add -A >/dev/null 2>&1 )
+  | echo "   --- 5a. ANCRE ABSENTE : le titre « ## What happens after you report » retire de SECURITY.md, --mutant 9"
+  | python3 - "$COPIE/SECURITY.md" <<'EOF'
+  | import sys
+  | p = sys.argv[1]; s = open(p, encoding="utf-8").read()
+  | assert s.count("## What happens after you report\n") == 1
+  | open(p, "w", encoding="utf-8").write(s.replace("## What happens after you report\n", "## After you report\n"))
+  | EOF
+  | ( cd "$COPIE" && python3 $G --mutant 9 ); echo "   rc=$?"
+  | echo "   --- 5b. ETAT INCHANGE : copie de la gate dont le mutant 3 remplace un texte PAR LUI-MEME"
+  | python3 - "$COPIE/$G" <<'EOF'
+  | import sys
+  | p = sys.argv[1]; s = open(p, encoding="utf-8").read()
+  | a = 'remplace(f.get(DEMANDE), "id: alternatives", "id: proposal", 3)'
+  | assert s.count(a) == 1
+  | open(p, "w", encoding="utf-8").write(s.replace(a, 'remplace(f.get(DEMANDE), "id: alternatives", "id: alternatives", 3)'))
+  | EOF
+  | ( cd "$COPIE" && python3 $G --mutant 3 ); echo "   rc=$?"
+  | 
+  | echo; echo "── 6. LE DEPOT N'A PAS BOUGE ──────────────────────────────────────────────"
+  | echo "   index apres : $(idx) · git status --porcelain (hors index) :"
+  | git status --porcelain | grep -v '^[AM] ' | sed 's/^/     /'
+  | echo "=== fin $(date -Iseconds)"
+
+── ANNEXE B — temoins.py ──────────────────────────────────────────────────
+  | #!/usr/bin/env python3
+  | """dn8-5 / T2 — joue chaque mutant de verif_reception_dn85.py et COMPARE la cible vue
+  | (les ids des [KO ]) a la cible DECLAREE (CIBLES) — `verif_campagne_dn56.py` ne le fait pas."""
+  | import os
+  | import re
+  | import subprocess
+  | import sys
+  | 
+  | DN = "/home/nasbarok/projects/desknode"
+  | GATE = os.path.join(DN, "tools", "verif_reception_dn85.py")
+  | sys.path.insert(0, os.path.join(DN, "tools"))
+  | import verif_reception_dn85 as g  # noqa: E402  (import sans effet : main() n'est pas appele)
+  | 
+  | env = dict(os.environ)
+  | if len(sys.argv) > 1 and sys.argv[1] == "--sans-yaml":
+  |     env["PYTHONPATH"] = sys.argv[2]
+  | 
+  | ecarts = 0
+  | for n in sorted(g.MUTANTS):
+  |     r = subprocess.run([sys.executable, GATE, "--mutant", str(n)], cwd=DN, env=env,
+  |                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+  |     out = r.stdout.decode("utf-8", "replace")
+  |     bil = re.findall(r"^BILAN : .*$", out, re.M)
+  |     kos = sorted({m.group(1) for m in re.finditer(r"^\s*\[KO \] \((\w+)\)", out, re.M)},
+  |                  key=lambda x: (len(x), x))
+  |     decl = sorted(set(g.CIBLES[n]), key=lambda x: (len(x), x))
+  |     ok = r.returncode == 1 and bil and kos == decl
+  |     if not ok:
+  |         ecarts += 1
+  |     print("mutant %2d  rc=%d  %-18s  KO vus %-16s declares %-16s %s"
+  |           % (n, r.returncode, bil[0] if bil else "⛔ SANS BILAN", ",".join(kos) or "—",
+  |              ",".join(decl), "IDENTIQUE" if ok else "⛔ ECART"))
+  |     for l in out.split("\n"):
+  |         if l.lstrip().startswith("[KO ]") or l.startswith("⛔ MUTANT") or "NON EXERCE" in l:
+  |             print("            %s" % l.strip()[:190])
+  | print("BILAN TEMOINS : %d mutant(s), %d ecart(s) vu/declare" % (len(g.MUTANTS), ecarts))
+  | sys.exit(1 if ecarts else 0)
+
+==============================================================================
+⚠️ AJOUTE LE 2026-09-13 APRES LA REVUE DU COORDINATEUR — RE-TIR SUR LA GATE
+   CORRIGEE (16 controles, 38 mutants). Tout ce qui precede ⛔ n'est PAS efface :
+   c'est le tir de la gate a 21 mutants.
+==============================================================================
+
+🔴 CE QUE LA REVUE A DEMONTRE, ET CE QUE LE RE-TIR MONTRE :
+   · neuf regles et proprietes n'etaient epinglees par AUCUN mutant ⇒ mutants
+     22 a 38, chacun REPLANTE sa faute ;
+   · 🔴 LE MUTANT 19 EST DEVENU VERT des que 25 et 33 ont vise (c3) aussi : il
+     videait `CIBLES[1]`, et (c3) restait garde. Premier re-tir apres l'ajout des
+     mutants : `mutant 19 rc=0 BILAN : 16 OK, 0 KO … ⛔ ECART`. ⇒ reecrit : il
+     retire (c13) de TOUTES les cibles ;
+   · 🔴 LE RE-TIR SUIVANT A ROUGI (c11) SUR TOUS LES MUTANTS : la phrase qui
+     decrit la portee de (c11) dans CHANGELOG.md et docs/roadmap.md CITAIT les
+     deux mots du statut — le piege de motif que le dossier nomme (« decrire sans
+     reprendre les mots »), commis dans la prose meme qui devait l'expliquer. ⇒
+     phrase reformulee sans les mots ; re-tir ci-dessous.
+   · plusieurs cibles, toujours DEUX mutants seulement : 2 (c1,c2,c4) et 11 (c8,c9).
+
+=== dn8-5 / T2 — debut 2026-09-13T14:24:52+02:00 · HEAD d2e63303956f55d608f5f7d7c19c34002d36061c · index bb8ef5fd335fe3ab
+    python3 3.12.3 · PyYAML 6.0.1 /usr/lib/python3/dist-packages/yaml/__init__.py
+
+── 1. NOMINAL ─────────────────────────────────────────────────────────────
+==============================================================================
+dn8-5 — LE DEPOT SAIT RECEVOIR
+==============================================================================
+⛔ AVEUGLEMENT DECLARE — cette gate confronte les formulaires aux regles que la documentation GitHub ECRIT. Elle ⛔ ne voit PAS : (1) la validation REELLE de GitHub (mots interdits dans un label, labels « trop proches ») ; (2) le RENDU du selecteur d'issues ; (3) l'EFFET de `validations.required`, qui n'agit que sur un depot PUBLIC ; (4) l'ACTIVATION du signalement prive de failles, reglage d'un depot public. Les quatre attendent la bascule (ledger, porteur `dn8-8`).
+
+── (c1)(c2) LES FORMULAIRES, PARSES ET CONFRONTES ────────────────
+  [OK ] (c1) chaque YAML du dossier existe et SE PARSE           yaml.safe_load : bug_report.yml, feature_request.yml, config.yml
+  [OK ] (c2) chaque formulaire suit les regles ECRITES           2 formulaire(s) du dossier · cles, types, id, labels, options, >= 1 saisie
+
+── (c3)(c4)(c5) BUG REPORT, FEATURE REQUEST, SELECTEUR ───────────
+  [OK ] (c3) bug report : 8 id, required x5, lien securite       hardware, gpu, lhm, desknode-version, windows-version, what-happened, steps, logs · required : hardware, desknode-version, windows-version, what-happened, steps · lien SECURITY.md
+  [OK ] (c4) feature request : statut CITE par lien, sans date   lien `…#what-this-project-is-honestly` · « does not come with a delivery date »
+  [OK ] (c5) config.yml : booleen explicite, securite dehors     blank_issues_enabled True · /security/advisories/new · CODE_OF_CONDUCT.md
+
+── (c6)(c7)(c8) PR, SECURITE, CONDUITE ───────────────────────────
+  [OK ] (c6) modele de PR present, lie CLA.md qui existe         .github/pull_request_template.md → CLA.md
+  [OK ] (c7) SECURITY.md : formulaire prive, pas de ticket       lien prive · « do not open a public issue » · lie depuis README.md et CONTRIBUTING.md
+  [OK ] (c8) conduite : ni canal invente, ni promesse            Report abuse · pas de canal prive DIT · 2.1 · CC BY 4.0 · modifications
+
+── (c9)(c10)(c11) AUCUNE PROMESSE, UNE SEULE SOURCE ──────────────
+  [OK ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               6 fichier(s) neufs (adresse + delai) · 6 modifies (adresse)
+  [OK ] (c10) la section de statut dit tout, sans promesse       PUBLIC BETA · best effort · community supported · no sla · no date is promised on a feature request
+  [OK ] (c11) « public beta » : UN fichier, DANS la section      23 fichier(s) balayes (racine, .github/, docs/ hors journal) · seul porteur : CONTRIBUTING.md
+
+── (c12)(c13) LES CITATIONS, ET LE COVENANT HORS DE LA TABLE ─────
+  [OK ] (c12) liens : cible presente, titre present, 0 relatif   33 lien(s) resolu(s) dont 11 a fragment ; 0 relatif dans .github/
+  [OK ] (c13) THIRD-PARTY.md nomme le Covenant hors table        en prose, hors `## Firmware`
+
+── (c14)(c15)(c16) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c14) chaque controle est vise par >= 1 mutant           16 controle(s) lu(s) a l'AST, 16 cible(s) declaree(s)
+  [OK ] (c15) chaque cible de mutant est un controle REEL        16 cible(s) confrontee(s)
+  [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent             38 mutant(s), 38 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'un inconnu ATTEINT le formulaire
+   prive (le depot est prive, le reglage n'existe que sur un depot public)
+   ni que GitHub ACCEPTE les formulaires — voir AVEUGLEMENT DECLARE en tete.
+
+==============================================================================
+BILAN : 16 OK, 0 KO
+==============================================================================
+   rc=0
+
+── 2. CHAQUE MUTANT : rc, BILAN, et la cible VUE comparee a la cible DECLAREE ──
+mutant  1  rc=1  BILAN : 15 OK, 1 KO  KO vus c3               declares c3               IDENTIQUE
+            [KO ] (c3) bug report : 8 id, required x5, lien securite       ⛔ `windows-version` ABSENT
+mutant  2  rc=1  BILAN : 13 OK, 3 KO  KO vus c1,c2,c4         declares c1,c2,c4         IDENTIQUE
+            [KO ] (c1) chaque YAML du dossier existe et SE PARSE           ⛔ feature_request.yml : while parsing a block collection in "<unicode string>", line 5, column 3: - type: markdown ^ expected <
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+            [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+mutant  3  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ feature_request.yml : `id` DUPLIQUE 'proposal'
+mutant  4  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ feature_request.yml body[3] : type 'longtext' INCONNU
+mutant  5  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ feature_request.yml : `name` 'Req' n'a pas PLUS DE 3 caracteres
+mutant  6  rc=1  BILAN : 15 OK, 1 KO  KO vus c4               declares c4               IDENTIQUE
+            [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ aucun lien vers la section de statut dans un `markdown`
+mutant  7  rc=1  BILAN : 15 OK, 1 KO  KO vus c5               declares c5               IDENTIQUE
+            [KO ] (c5) config.yml : booleen explicite, securite dehors     ⛔ aucun lien vers le formulaire PRIVE de CE depot
+mutant  8  rc=1  BILAN : 15 OK, 1 KO  KO vus c6               declares c6               IDENTIQUE
+            [KO ] (c6) modele de PR present, lie CLA.md qui existe         ⛔ aucun lien vers https://github.com/nasbarok/desknode/blob/main/CLA.md
+mutant  9  rc=1  BILAN : 15 OK, 1 KO  KO vus c9               declares c9               IDENTIQUE
+            [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ SECURITY.md promet « within 48 hours »
+mutant 10  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ promet ENCORE « [insert »
+mutant 11  rc=1  BILAN : 14 OK, 2 KO  KO vus c8,c9            declares c8,c9            IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ promet ENCORE « promptly »
+            [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ CODE_OF_CONDUCT.md promet « promptly »
+mutant 12  rc=1  BILAN : 15 OK, 1 KO  KO vus c9               declares c9               IDENTIQUE
+            [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ SECURITY.md publie une ADRESSE
+mutant 13  rc=1  BILAN : 15 OK, 1 KO  KO vus c11              declares c11              IDENTIQUE
+            [KO ] (c11) « public beta » : UN fichier, DANS la section      ⛔ porteur(s) : ['CONTRIBUTING.md', 'README.md'] · dans la section : True
+mutant 14  rc=1  BILAN : 15 OK, 1 KO  KO vus c10              declares c10              IDENTIQUE
+            [KO ] (c10) la section de statut dit tout, sans promesse       ⛔ « community supported » absent
+mutant 15  rc=1  BILAN : 15 OK, 1 KO  KO vus c12              declares c12              IDENTIQUE
+            [KO ] (c12) liens : cible presente, titre present, 0 relatif   ⛔ README.md → CONTRIBUTING.md#what-this-project-is : AUCUN titre
+mutant 16  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ attribution au Covenant 2.1 (lien + version) absente
+mutant 17  rc=1  BILAN : 15 OK, 1 KO  KO vus c7               declares c7               IDENTIQUE
+            [KO ] (c7) SECURITY.md : formulaire prive, pas de ticket       ⛔ aucun lien vers le formulaire prive
+mutant 18  rc=1  BILAN : 15 OK, 1 KO  KO vus c13              declares c13              IDENTIQUE
+            [KO ] (c13) THIRD-PARTY.md nomme le Covenant hors table        ⛔ le Covenant est DANS la table `## Firmware` · le Covenant n'est nomme NULLE PART hors de la table
+mutant 19  rc=1  BILAN : 15 OK, 1 KO  KO vus c14              declares c14              IDENTIQUE
+            [KO ] (c14) chaque controle est vise par >= 1 mutant           ⛔ 1 CONTROLE(S) GARDE(S) PAR RIEN : c13
+mutant 20  rc=1  BILAN : 15 OK, 1 KO  KO vus c15              declares c15              IDENTIQUE
+            [KO ] (c15) chaque cible de mutant est un controle REEL        ⛔ 1 CIBLE(S) PERIMEE(S) : c99
+mutant 21  rc=1  BILAN : 15 OK, 1 KO  KO vus c16              declares c16              IDENTIQUE
+            [KO ] (c16) `CIBLES` et `MUTANTS` se correspondent             ⛔ cible(s) SANS mutant : [999] · mutant(s) SANS cible : —
+mutant 22  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ bug_report.yml body[3] : option NON-CHAINE (booleen YAML ?)
+mutant 23  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ bug_report.yml body[3] : option reservee « None »
+mutant 24  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ bug_report.yml : label DUPLIQUE 'What happened'
+mutant 25  rc=1  BILAN : 15 OK, 1 KO  KO vus c3               declares c3               IDENTIQUE
+            [KO ] (c3) bug report : 8 id, required x5, lien securite       ⛔ `desknode-version` sans `required: true`
+mutant 26  rc=1  BILAN : 15 OK, 1 KO  KO vus c5               declares c5               IDENTIQUE
+            [KO ] (c5) config.yml : booleen explicite, securite dehors     ⛔ `blank_issues_enabled` = 'true', attendu un booleen explicite
+mutant 27  rc=1  BILAN : 15 OK, 1 KO  KO vus c4               declares c4               IDENTIQUE
+            [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ RECOPIE les mots du statut : ['best effort']
+mutant 28  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ l'absence de canal prive n'est pas DITE
+mutant 29  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ *Report abuse* n'est pas nomme
+mutant 30  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ promet ENCORE « private, written warning »
+mutant 31  rc=1  BILAN : 15 OK, 1 KO  KO vus c9               declares c9               IDENTIQUE
+            [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ SECURITY.md promet « within a week »
+mutant 32  rc=1  BILAN : 15 OK, 1 KO  KO vus c10              declares c10              IDENTIQUE
+            [KO ] (c10) la section de statut dit tout, sans promesse       ⛔ la section PROMET « We'll respond »
+mutant 33  rc=1  BILAN : 15 OK, 1 KO  KO vus c3               declares c3               IDENTIQUE
+            [KO ] (c3) bug report : 8 id, required x5, lien securite       ⛔ aucun `markdown` ne lie https://github.com/nasbarok/desknode/blob/main/SECURITY.md
+mutant 34  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ attribution au Covenant 2.1 (lien + version) absente
+mutant 35  rc=1  BILAN : 15 OK, 1 KO  KO vus c8               declares c8               IDENTIQUE
+            [KO ] (c8) conduite : ni canal invente, ni promesse            ⛔ promet ENCORE « official e-mail address »
+mutant 36  rc=1  BILAN : 15 OK, 1 KO  KO vus c2               declares c2               IDENTIQUE
+            [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ question.yml : AUCUN champ de saisie (que du markdown) · `name` NON UNIQUE entre formulaires : ['Bug report', 'Feature reques
+mutant 37  rc=1  BILAN : 15 OK, 1 KO  KO vus c12              declares c12              IDENTIQUE
+            [KO ] (c12) liens : cible presente, titre present, 0 relatif   ⛔ .github/pull_request_template.md → LICENSING-absent.md INTROUVABLE
+mutant 38  rc=1  BILAN : 15 OK, 1 KO  KO vus c12              declares c12              IDENTIQUE
+            [KO ] (c12) liens : cible presente, titre present, 0 relatif   ⛔ .github/pull_request_template.md : lien RELATIF '../CONTRIBUTING.md'
+BILAN TEMOINS : 38 mutant(s), 0 ecart(s) vu/declare
+   rc(temoins)=0
+
+── 3. PyYAML MASQUE (banc : un module `yaml` qui leve ImportError) ────────
+   $ PYTHONPATH=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/66cda4fa-a614-4b40-bb34-55d248fd7da3/scratchpad/dn85/masque-yaml python3 -c 'import yaml'
+   ImportError: PyYAML masque par le banc dn8-5 (CI sans python3-yaml)
+   --- 3a. nominal, PyYAML absent
+==============================================================================
+dn8-5 — LE DEPOT SAIT RECEVOIR
+==============================================================================
+⛔ AVEUGLEMENT DECLARE — cette gate confronte les formulaires aux regles que la documentation GitHub ECRIT. Elle ⛔ ne voit PAS : (1) la validation REELLE de GitHub (mots interdits dans un label, labels « trop proches ») ; (2) le RENDU du selecteur d'issues ; (3) l'EFFET de `validations.required`, qui n'agit que sur un depot PUBLIC ; (4) l'ACTIVATION du signalement prive de failles, reglage d'un depot public. Les quatre attendent la bascule (ledger, porteur `dn8-8`).
+
+⛔ PyYAML ABSENT (PyYAML masque par le banc dn8-5 (CI sans python3-yaml)) — les YAML de `.github/ISSUE_TEMPLATE/` ⛔ NE SONT PAS LUS. Ce que la gate ne voit alors PAS : un formulaire que GitHub refuserait, un champ retire, un lien de securite perdu. ⛔ Ce n'est PAS un vert : (c1)(c2)(c3)(c4)(c5) ROUGISSENT, et le trou se referme avec le `python3-yaml` du systeme (present sur le poste de l'auteur ; etaye, ⛔ non mesure, sur le runner — ledger, `dn8-8`).
+
+── (c1)(c2) LES FORMULAIRES, PARSES ET CONFRONTES ────────────────
+  [KO ] (c1) chaque YAML du dossier existe et SE PARSE           ⛔ bug_report.yml YAML NON LU (PyYAML absent) · feature_request.yml YAML NON LU (PyYAML absent) · config.yml YAML NON LU (PyYAML absent)
+  [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ bug_report.yml NON JUGE : YAML NON LU (voir (c1)) · feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+
+── (c3)(c4)(c5) BUG REPORT, FEATURE REQUEST, SELECTEUR ───────────
+  [KO ] (c3) bug report : 8 id, required x5, lien securite       ⛔ bug_report.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c5) config.yml : booleen explicite, securite dehors     ⛔ config.yml NON JUGE : YAML NON LU (voir (c1))
+
+── (c6)(c7)(c8) PR, SECURITE, CONDUITE ───────────────────────────
+  [OK ] (c6) modele de PR present, lie CLA.md qui existe         .github/pull_request_template.md → CLA.md
+  [OK ] (c7) SECURITY.md : formulaire prive, pas de ticket       lien prive · « do not open a public issue » · lie depuis README.md et CONTRIBUTING.md
+  [OK ] (c8) conduite : ni canal invente, ni promesse            Report abuse · pas de canal prive DIT · 2.1 · CC BY 4.0 · modifications
+
+── (c9)(c10)(c11) AUCUNE PROMESSE, UNE SEULE SOURCE ──────────────
+  [OK ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               6 fichier(s) neufs (adresse + delai) · 6 modifies (adresse)
+  [OK ] (c10) la section de statut dit tout, sans promesse       PUBLIC BETA · best effort · community supported · no sla · no date is promised on a feature request
+  [OK ] (c11) « public beta » : UN fichier, DANS la section      23 fichier(s) balayes (racine, .github/, docs/ hors journal) · seul porteur : CONTRIBUTING.md
+
+── (c12)(c13) LES CITATIONS, ET LE COVENANT HORS DE LA TABLE ─────
+  [OK ] (c12) liens : cible presente, titre present, 0 relatif   33 lien(s) resolu(s) dont 11 a fragment ; 0 relatif dans .github/
+  [OK ] (c13) THIRD-PARTY.md nomme le Covenant hors table        en prose, hors `## Firmware`
+
+── (c14)(c15)(c16) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c14) chaque controle est vise par >= 1 mutant           16 controle(s) lu(s) a l'AST, 16 cible(s) declaree(s)
+  [OK ] (c15) chaque cible de mutant est un controle REEL        16 cible(s) confrontee(s)
+  [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent             38 mutant(s), 38 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : qu'un inconnu ATTEINT le formulaire
+   prive (le depot est prive, le reglage n'existe que sur un depot public)
+   ni que GitHub ACCEPTE les formulaires — voir AVEUGLEMENT DECLARE en tete.
+
+==============================================================================
+BILAN : 11 OK, 5 KO
+==============================================================================
+   rc=1
+   --- 3b. --mutant 9, PyYAML absent
+⛔ PyYAML ABSENT (PyYAML masque par le banc dn8-5 (CI sans python3-yaml)) — les YAML de `.github/ISSUE_TEMPLATE/` ⛔ NE SONT PAS LUS. Ce que la gate ne voit alors PAS : un formulaire que GitHub re
+  [KO ] (c1) chaque YAML du dossier existe et SE PARSE           ⛔ bug_report.yml YAML NON LU (PyYAML absent) · feature_request.yml YAML NON LU (PyYAML absent) · config.yml YAML NON LU (PyYAML abs
+  [KO ] (c2) chaque formulaire suit les regles ECRITES           ⛔ bug_report.yml NON JUGE : YAML NON LU (voir (c1)) · feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c3) bug report : 8 id, required x5, lien securite       ⛔ bug_report.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c4) feature request : statut CITE par lien, sans date   ⛔ feature_request.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c5) config.yml : booleen explicite, securite dehors     ⛔ config.yml NON JUGE : YAML NON LU (voir (c1))
+  [KO ] (c9) ⛔ adresse e-mail, ⛔ promesse de delai               ⛔ SECURITY.md promet « within 48 hours »
+BILAN : 10 OK, 6 KO
+   rc=1
+   --- 3c. --help, PyYAML absent
+usage: verif_reception_dn85.py [-h] [--mutant MUTANT] [--liste-mutants]
+
+dn8-5 — le depot sait recevoir : formulaires, securite, conduite, statut sans
+promesse.
+
+options:
+  -h, --help       show this help message and exit
+  --mutant MUTANT
+  --liste-mutants
+   rc=0
+   --- 3d. --liste-mutants, PyYAML absent
+   1  retire le champ `windows-version` du bug report
+   2  casse l'indentation de la feature request ⇒ un YAML que GitHub ne lit pas
+   3  duplique un `id` dans la feature request
+   4  donne un type INCONNU a un champ de la feature request
+   5  ramene le `name` de la feature request a 3 caracteres ⇒ GitHub ne l'affiche pas
+   6  retire le lien de statut de la feature request
+   7  retire le lien de securite de `config.yml`
+   8  retire le lien vers `CLA.md` du modele de PR
+   9  ajoute « within 48 hours » a `SECURITY.md`
+  10  restaure la case `[INSERT CONTACT METHOD]` du Covenant dans le code de conduite
+  11  restaure « promptly » dans le code de conduite
+  12  ajoute une adresse e-mail a `SECURITY.md`
+  13  recopie « PUBLIC BETA » dans la vitrine ⇒ deux sources
+  14  retire « community supported » de la section de statut
+  15  casse le fragment du lien de statut de la vitrine
+  16  retire l'attribution du Covenant 2.1 du code de conduite
+  17  fait envoyer `SECURITY.md` vers un ticket PUBLIC au lieu du formulaire prive
+  18  deplace le Covenant dans la table `## Firmware` de `THIRD-PARTY.md` ⇒ une ligne que la table epinglee refuse
+  19  retire (c13) de TOUTES les cibles ⇒ un controle garde par ZERO mutant
+  20  declare dans `CIBLES` un controle INEXISTANT ⇒ une cible PERIMEE que « N rouges » ne voit pas
+  21  declare une cible pour un mutant qui N'EXISTE PAS
+  22  une option de dropdown `No` ⇒ un BOOLEEN YAML, ⛔ une chaine
+  23  une option de dropdown « None » ⇒ le mot RESERVE
+  24  duplique un `label` dans le bug report
+  25  retire `required` du champ `desknode-version`
+  26  `blank_issues_enabled` devient une CHAINE, ⛔ un booleen
+  27  recopie « best effort » dans la feature request
+  28  retire la phrase « no private channel » du code de conduite
+  29  retire « Report abuse » du code de conduite
+  30  restaure l'avertissement « private, written warning »
+  31  ajoute « within a week » a `SECURITY.md` (nombre en LETTRES)
+  32  plante une promesse de delai dans la section de statut
+  33  retire le lien vers `SECURITY.md` du bug report ⇒ le lien direct du formulaire contourne la securite
+  34  change « version 2.1 » en « version 3.0 » dans le paragraphe d'attribution (la liste des changements dit encore 2.1)
+  35  restaure « official e-mail address » dans le perimetre
+  36  ajoute en memoire un 3e formulaire INVALIDE (nom duplique, que du markdown)
+  37  fait pointer un lien `blob/main/` du modele de PR sur un fichier ABSENT
+  38  ajoute un lien RELATIF dans le modele de PR
+   rc=0
+
+── 4. MUTANT INCONNU ──────────────────────────────────────────────────────
+⛔ mutant 999 inconnu — `--liste-mutants` les donne.
+   rc=2
+
+── 5. MUTANT SANS EFFET — sur une COPIE JETABLE de l'arbre ─────────────────
+   --- 5a. ANCRE ABSENTE : le titre « ## What happens after you report » retire de SECURITY.md, --mutant 9
+==============================================================================
+dn8-5 — LE DEPOT SAIT RECEVOIR   [MUTANT 9]
+==============================================================================
+⛔ AVEUGLEMENT DECLARE — cette gate confronte les formulaires aux regles que la documentation GitHub ECRIT. Elle ⛔ ne voit PAS : (1) la validation REELLE de GitHub (mots interdits dans un label, labels « trop proches ») ; (2) le RENDU du selecteur d'issues ; (3) l'EFFET de `validations.required`, qui n'agit que sur un depot PUBLIC ; (4) l'ACTIVATION du signalement prive de failles, reglage d'un depot public. Les quatre attendent la bascule (ledger, porteur `dn8-8`).
+
+⛔ MUTANT 9 NON EXERCE : l'ancre '## What happens after you report\n' est ABSENTE
+   ⇒ rc=3 : un mutant qui ne change rien ⛔ ne prouve rien.
+
+==============================================================================
+⛔ SORTIE ANTICIPEE — 0 controle(s) emis sur 16 prevus : mutant 9 sans effet
+BILAN : 0 OK, 0 KO
+==============================================================================
+   rc=3
+   --- 5b. ETAT INCHANGE : copie de la gate dont le mutant 3 remplace un texte PAR LUI-MEME
+==============================================================================
+dn8-5 — LE DEPOT SAIT RECEVOIR   [MUTANT 3]
+==============================================================================
+⛔ AVEUGLEMENT DECLARE — cette gate confronte les formulaires aux regles que la documentation GitHub ECRIT. Elle ⛔ ne voit PAS : (1) la validation REELLE de GitHub (mots interdits dans un label, labels « trop proches ») ; (2) le RENDU du selecteur d'issues ; (3) l'EFFET de `validations.required`, qui n'agit que sur un depot PUBLIC ; (4) l'ACTIVATION du signalement prive de failles, reglage d'un depot public. Les quatre attendent la bascule (ledger, porteur `dn8-8`).
+
+⛔ MUTANT 3 SANS EFFET : aucune copie ne differe.
+   ⇒ rc=3 : un mutant qui ne change rien ⛔ ne prouve rien.
+
+==============================================================================
+⛔ SORTIE ANTICIPEE — 0 controle(s) emis sur 16 prevus : mutant 3 sans effet
+BILAN : 0 OK, 0 KO
+==============================================================================
+   rc=3
+
+── 6. LE DEPOT N'A PAS BOUGE ──────────────────────────────────────────────
+   index apres : bb8ef5fd335fe3ab · git status --porcelain (hors index) :
+=== fin 2026-09-13T14:25:03+02:00

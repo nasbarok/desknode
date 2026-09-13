@@ -22,6 +22,15 @@ root) follows the **GPL-3.0-or-later** of the root `LICENSE`.
 and follow **CC-BY-SA-4.0**, like `docs/`. `LICENSE` itself and `.gitignore` are
 not documentation and stay under the fallback above.
 
+⚠️ *Extended on 2026-09-13 (`dn8-5`), and the list above is kept as it was written:
+`SECURITY.md` and `CODE_OF_CONDUCT.md` joined the repository root that day, and they are
+Markdown prose like the six files named above, so they follow **CC-BY-SA-4.0** too.
+`CODE_OF_CONDUCT.md` is an adaptation of a text published under CC BY 4.0: where it comes
+from and what was changed is written in the file itself and in
+[`THIRD-PARTY.md`](THIRD-PARTY.md). The issue forms and the pull request template added
+under `.github/` on the same day follow the fallback above, like the rest of that
+directory.*
+
 **Every tracked top-level directory is named by one of those two lists**, and that is
 checked mechanically by `tools/verif_licences_dn52.py` — in both directions. A path
 announced here that does not exist fails; a directory that exists in the tree without

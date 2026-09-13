@@ -4,12 +4,23 @@ Thanks for looking. A few things worth knowing before you spend time.
 
 ## What this project is, honestly
 
+**Status: PUBLIC BETA — maintained best effort, community supported.**
+
+⚠️ *Added on 2026-09-13 (`dn8-5`), while this repository is still private: "public" names
+what the first release is heading for (`dn8` — see [`docs/roadmap.md`](docs/roadmap.md)),
+not a state already reached. This section is the one place that status is written: the
+front page, the issue forms and the security policy link here rather than repeat it.*
+
 DeskNode is a **personal project**, published because it is clean and because someone
 else might want to build one. It is maintained **best effort**:
 
 - No SLA, no promised response time, no guaranteed individual support.
 - Important bugs get fixed. Good pull requests get merged.
 - Feature requests go to a backlog, and the backlog is not a promise.
+- **No date is promised on a feature request** — not when it is opened, and not when it
+  is accepted. *(Added on 2026-09-13.)*
+- **Community supported**: help comes from the people who build one — the maintainer
+  among them — and not from a support desk. *(Added on 2026-09-13.)*
 - **Forking is entirely legitimate.** That is what the open license is for.
 
 This is stated up front, before you buy anything or build anything, so nobody is
@@ -136,6 +147,13 @@ file: they move with the next commit. What is stable is which instrument answers
 question, and each command is printed above so you can take your own reading.
 
 ## Reporting a bug
+
+**Use the bug report form**:
+[github.com/nasbarok/desknode/issues/new?template=bug_report.yml](https://github.com/nasbarok/desknode/issues/new?template=bug_report.yml).
+It asks for everything listed below. ⚠️ **A security vulnerability does not go in an
+issue**: an issue is public, so reporting one there publishes it. Follow
+[`SECURITY.md`](SECURITY.md) instead. *(Added on 2026-09-13, `dn8-5`: the form and the
+security policy did not exist before that day, and the list below is kept as it was.)*
 
 Please include:
 
@@ -533,6 +551,14 @@ Contributions are welcome. Two practical points:
    the agent is MIT, documentation is CC-BY-SA-4.0. See
    [`LICENSING.md`](LICENSING.md).
 
+*Added on 2026-09-13 (`dn8-5`).* When you open a pull request, its description starts from
+[`.github/pull_request_template.md`](.github/pull_request_template.md), which asks for the
+two points above and for what you ran to check your change. Everyone taking part — in an
+issue, a pull request or a comment — is expected to follow
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), which also says plainly what it cannot offer:
+there is no private channel to the maintainer for conduct reports (security reports have one,
+see [`SECURITY.md`](SECURITY.md)).
+
 ## Conventions in this repository
 
 - **Measure, never assume.** Claims in this repository are backed by a number or
@@ -841,6 +867,14 @@ Contributions are welcome. Two practical points:
   > `bash tools/run_gates.sh` on every push and every pull request. What made the
   > older sentence possible was that this repository had no remote at all; it has had
   > one since `dn5-1`, and Actions have really run on it since `dn5-2`.
+  >
+  > ⚠️ **Added on 2026-09-13 (`dn8-5`): `bash tools/run_gates.sh` now needs more than the
+  > Python standard library.** The check over the issue forms, `tools/verif_reception_dn85.py`, parses
+  > them with **PyYAML** — the `python3-yaml` package on Debian, Ubuntu and WSL. Without it
+  > that check does not skip: it **fails**, with five failed controls and a message (in
+  > French) saying the YAML files were not read, so the whole run is red. Whether the CI
+  > runner's Python has it is supported by its image's package list, not yet measured on a
+  > run.
   >
   > ⚠️ **What CI can and cannot see, measured rather than assumed.** **Seven** of the
   > twenty-seven gates cannot be exercised where CI runs — two read the private

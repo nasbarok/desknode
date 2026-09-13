@@ -5,6 +5,11 @@ repository** — `managed_components/` is git-ignored and repopulated by
 `idf.py reconfigure` from the versions pinned in
 `firmware/desknode/main/idf_component.yml`, which is the single source of truth.
 
+⚠️ *Annotated on 2026-09-13 (`dn8-5`): "none of them is vendored" was written about the
+software components, and it stays true of them. Since that day one third-party **text** is
+carried in this repository, adapted rather than linked: `CODE_OF_CONDUCT.md`. It is not a
+dependency and has no manifest row; it has its own section below.*
+
 This file exists because that directory is ignored: without it, the licenses of what
 DeskNode actually links against would be recorded nowhere.
 
@@ -71,6 +76,30 @@ downgraded from a promise to a convenience by the owner on 2026-09-08, and the
 vendoring that had been *deduced* from that promise fell with it. A CDN is
 therefore acceptable; what the page still owes the reader is to **say so when it
 does not load**, which `#etat-cdn` does.
+
+## Code of conduct
+
+*Added on 2026-09-13 (`dn8-5`).* [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) is **adapted**
+from the **Contributor Covenant, version 2.1**
+(https://www.contributor-covenant.org/version/2/1/code_of_conduct/). It is a text, not a
+software component: it has no pinned version in any manifest, and it is deliberately **not**
+a row of the firmware table above, which the check below reads row by row.
+
+- **License of the original: CC BY 4.0.** The 2.1 text carries no license notice of its own.
+  The license is the one of its source repository, `EthicalSource/contributor_covenant`,
+  whose `LICENSE.md` was the Creative Commons Attribution 4.0 International license
+  (https://creativecommons.org/licenses/by/4.0/) from
+  2016-10-28 until 2025-07-21; version 2.1 was released on 2021-08-04, inside that window.
+  Read from that repository's history on 2026-09-13.
+- **License of the adaptation: CC-BY-SA-4.0**, like the other Markdown files at the
+  repository root — see [`LICENSING.md`](LICENSING.md).
+- **What was changed, and why**, is listed at the end of `CODE_OF_CONDUCT.md` itself, under
+  *Changes made in this adaptation*, so that the file carries its own attribution wherever
+  it is copied. The largest change: the original assumes a private channel to the people
+  who enforce it, and this repository has none.
+
+`tools/verif_reception_dn85.py` checks that the Covenant is named here, outside the
+firmware table.
 
 ## Keeping this file honest
 

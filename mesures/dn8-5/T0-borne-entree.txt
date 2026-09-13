@@ -1,0 +1,261 @@
+==============================================================================
+dn8-5 / T0 — LA BORNE D'ENTREE, RELEVEE AVANT TOUTE MODIFICATION
+  Passe jouee le 2026-09-13 de 11:37:19 a 11:55:28 (+02:00), sorties sous le
+  scratchpad de session (⛔ jamais dans l'arbre pendant la passe), versees ici
+  APRES la passe. Script : passe.sh (verse en § 4).
+==============================================================================
+
+── 1. LA QUIESCENCE, VERIFIEE AVANT DE LANCER (2026-09-13T11:36:24+02:00) ──
+  git status --porcelain desknode = VIDE ;
+  cockpit = seul le dossier de la marche (dn8-5-…md), non suivi ;
+  `find -mmin -30` : aucun fichier du depot desknode modifie ; dans le cockpit,
+  le dossier de la marche et le fichier de resultat du cadrage (commit 4541c23).
+  Aucun `verif_*`, `run_gates` ni `idf.py` en cours (`ps aux`).
+  ⚠️ PENDANT LA PASSE, l'agent a lu (⛔ ecrit) les deux depots et a joue des
+     lectures reseau (`curl` de la documentation GitHub, `gh api` en lecture) :
+     ⛔ aucune ecriture dans un arbre — empreintes AVANT = APRES ci-dessous —,
+     mais une CHARGE legere pendant `verif_campagne_dn56.py` (763.75 s ici contre
+     733.79 s au T0 de dn8-4) : la duree est une borne, ⛔ pas une mesure a
+     vide.
+
+── 2. LE RELEVE BRUT ────────────────────────────────────────────────────────
+  ⇒ BASE = d2e63303956f55d608f5f7d7c19c34002d36061c (le HEAD du cadrage :
+    l'arbre n'a PAS bouge entre le cadrage et l'implementation).
+  ⇒ empreinte (contenu) = sha256 de « git ls-files -z | xargs -0 sha256sum »,
+    empreinte (index) = sha256 de « git ls-files -s », [:16].
+
+  === dn8-5 / passe T0 — debut 2026-09-13T11:37:19+02:00 ===
+  HEAD desknode : d2e63303956f55d608f5f7d7c19c34002d36061c
+  HEAD cockpit  : 4541c23c89895989b276f113837e0f4814d447b1
+  git status --porcelain desknode :
+  git status --porcelain cockpit (implementation-artifacts) :
+    ?? _bmad-output/implementation-artifacts/dn8-5-le-depot-sait-recevoir-gabarits-securite-conduite-statut-sans-promesse.md
+  EMPREINTE desknode AVANT (contenu, git ls-files | sha256sum) : fe8f410124f4b678
+  EMPREINTE desknode AVANT (index, git ls-files -s | sha256sum) : 0a21f91955ff42c6
+  EMPREINTE cockpit  AVANT : 87373bdb64bb5f4c
+  sha256 AC8.5.6 :
+    a32e2944977d8009c98f98a8ffd6c73f474313569af3f9b133944ae7ab73e581  .github/workflows/cla.yml
+    00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  .github/workflows/gates.yml
+    a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  .github/cla-signatures.json
+  ls -la .github .github/workflows :
+    .github:
+    total 16
+    drwxr-xr-x  3 nasbarok nasbarok 4096 Sep  4 20:11 .
+    drwxr-xr-x 13 nasbarok nasbarok 4096 Sep 13 01:47 ..
+    -rw-r--r--  1 nasbarok nasbarok   31 Sep  2 14:43 cla-signatures.json
+    drwxr-xr-x  2 nasbarok nasbarok 4096 Sep 11 23:55 workflows
+    
+    .github/workflows:
+    total 36
+    drwxr-xr-x 2 nasbarok nasbarok  4096 Sep 11 23:55 .
+    drwxr-xr-x 3 nasbarok nasbarok  4096 Sep  4 20:11 ..
+    -rw-r--r-- 1 nasbarok nasbarok  6131 Sep  4 23:55 cla.yml
+    -rw-r--r-- 1 nasbarok nasbarok 17771 Sep 12 00:34 gates.yml
+  
+  === LE COMPTE DE CHAQUE GATE (tir isole, timeout 900 s) ===
+  verif_affiliation_dn65.py          rc=0       1.74 s  BILAN : 23 OK, 0 KO 
+  verif_banc_langue_dn73.py          rc=0       2.49 s  BILAN : 81 OK, 0 KO 
+  verif_bme680_retard_dn45.py        rc=0       0.04 s  BILAN : 15 OK, 0 KO 
+  verif_boitier_dn64.py --cockpit    rc=0       0.91 s  BILAN : 29 OK, 0 KO 
+  verif_bom_dn61.py                  rc=0       0.08 s  BILAN : 24 OK, 0 KO 
+  verif_cablage_dn62.py              rc=0       0.08 s  BILAN : 37 OK, 0 KO 
+  verif_campagne_dn440.py --cockpit  rc=0     142.66 s  BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien BILAN : 62 OK, 0 KO 
+  verif_campagne_dn56.py             rc=0     763.75 s  BILAN : 8 OK, 0 KO 
+  verif_courbe_dn413.py              rc=0      11.10 s  ⛔ aucune ligne BILAN
+  verif_cumul_ambient_dn45.py        rc=0       1.35 s  BILAN : 23 OK, 0 KO 
+  verif_d4_nvs_dn45.py               rc=0       0.38 s  BILAN : 6 OK, 0 KO 
+  verif_decoupe_horloge_dn418.py     rc=0       6.78 s  ⛔ aucune ligne BILAN
+  verif_demarrage_dn443.py           rc=0       0.84 s  BILAN : 58 OK, 0 KO 
+  verif_dossier_d5_dn45.py --cockpit rc=0       1.21 s  BILAN : 12 OK, 0 KO 
+  verif_dossier_dn415.py --cockpit   rc=1       8.74 s  BILAN : 23 OK, 10 KO 
+  verif_entree_dn82.py               rc=0       0.26 s  BILAN : 45 OK, 0 KO 
+  verif_flash_dn72.py                rc=0       0.30 s  BILAN : 30 OK, 0 KO 
+  verif_harnais_dn413.py             rc=0       9.65 s  ⛔ aucune ligne BILAN
+  verif_harnais_dn81.py --cockpit    rc=0       5.03 s  BILAN : 28 OK, 0 KO 
+  verif_hist_dn413.py                rc=0       3.98 s  ⛔ aucune ligne BILAN
+  verif_installeur_dn71.py           rc=0       0.27 s  BILAN : 28 OK, 0 KO 
+  verif_instruments_dn423.py         rc=0       0.66 s  BILAN : 163 OK, 0 KO 
+  verif_journal_soak_dn45.py         rc=0       0.10 s  BILAN : 26 OK, 0 KO 
+  verif_langue_dalle_dn73.py         rc=0       0.14 s  BILAN : 61 OK, 0 KO 
+  verif_langues_dn442.py             rc=0       0.89 s  BILAN : 31 OK, 0 KO 
+  verif_ledger_dn416.py --cockpit    rc=0       0.98 s  BILAN : 36 OK, 0 KO 
+  verif_lhm_ps_dn83.py               rc=0      17.94 s  BILAN : 26 OK, 0 KO 
+  verif_licences_dn52.py             rc=0       0.92 s  BILAN : 34 OK, 0 KO 
+  verif_lissage_dn45.py              rc=0       0.22 s  BILAN : 21 OK, 0 KO 
+  verif_miroir_horloge_dn418.py      rc=0       0.07 s  ⛔ aucune ligne BILAN
+  verif_page_dn722.py                rc=0       0.13 s  BILAN : 56 OK, 0 KO 
+  verif_paliers_dn441.py             rc=0       0.19 s  BILAN : 42 OK, 0 KO 
+  verif_photos_dn63.py               rc=0       0.35 s  BILAN : 28 OK, 0 KO 
+  verif_placement_dn74.py            rc=0       0.08 s  BILAN : 42 OK, 0 KO 
+  verif_polices_dn440.py             rc=0       0.03 s  BILAN : 11 OK, 0 KO 
+  verif_preconditions_dn76.py        rc=0       0.21 s  BILAN : 55 OK, 0 KO 
+  verif_prerequis_dn75.py            rc=0       0.23 s  BILAN : 51 OK, 0 KO 
+  verif_rebouclage_dn45.py           rc=0       2.62 s  BILAN : 30 OK, 0 KO 
+  verif_reprise_horloge_dn418.py     rc=0       0.10 s  ⛔ aucune ligne BILAN
+  verif_selection_dn49.py            rc=0       0.06 s  ⛔ aucune ligne BILAN
+  verif_serie_dn412.py               rc=0       1.53 s  BILAN : 50 OK / 0 KO 
+  verif_source_lhm_dn48.py           rc=0       4.00 s  ⛔ aucune ligne BILAN
+  verif_sr03.py                      rc=2       0.04 s  ⛔ aucune ligne BILAN
+  verif_temoin_filtre_dn447.py       rc=0       1.81 s  BILAN : 5 OK, 0 KO 
+  verif_veille_dn33.py               rc=0       6.87 s  BILAN : 267 OK · 0 KO 
+  verif_verrou_lvgl_dn413.py         rc=0      16.37 s  ⛔ aucune ligne BILAN
+  verif_vitrine_dn84.py              rc=0       0.08 s  BILAN : 16 OK, 0 KO 
+  verif_xip_dn422.py                 rc=0       0.04 s  BILAN : 10 OK / 0 KO 
+  
+  === LES OUTILS QUI NE SONT PAS DES GATES ===
+  --- node tools/banc_langue_dalle_dn73.mjs : rc=0  0.75 s
+        BANC : 39 OK, 0 KO
+  --- node tools/banc_couverture_dn82.mjs : rc=0  0.92 s
+        COUVERTURE dn8-2 — LE SCRIPT DE LA PAGE, MESURE PENDANT QU'IL S'EXECUTE
+        COUVERTURE : 96/100 fonctions, 131/190 blocs — les deux seuils sont tenus.
+  --- python3 tools/inventaire_motif_dn53.py : rc=0  0.32 s
+        18:  [OK ] classe 1 : le defaut de `--csv` est LOCALISE par AST     ancre semantique, ⛔ pas verbatim
+        19:  [OK ] classe 1 : l'arbre du jour est SOLDE                     0 fait
+        20:  [OK ] classe 1 : faute REPLANTEE ⇒ elle REMONTE                ≥1 fait
+        23:  1. dependance FONCTIONNELLE  (le seul defaut)      0 fichiers      0 sites
+        24:  2. exemple d'usage          (declare au site)     23 fichiers     58 sites
+        25:  3. trace de generation      (polices — INTACTES)    5 fichiers      5 sites
+        26:  4. registre de preuves      (mesures/ — INTACT)  224 fichiers   1982 sites
+        27:  5. le motif est le SUJET    (EXCLUSION DECLAREE)    4 fichiers     20 sites
+        28:       TOTAL                                       256 fichiers   2065 sites
+        55:     STABLE, c'est la classe 1 : plus aucun outil ne depend d'une
+  --- python3 tools/campagne_ctrl_dn440.py --cockpit /home/nasbarok/projects/compagnon_project : rc=0  63.20 s
+        BILAN TRI : 15 cas au tableau — dont 11 SITE(S) VIVANT(S) et 4 FICHE(S) de remede — 6 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 5 BRANCHE(S), 0 echec(s)
+  --- python3 tools/verif_ledger_dn416.py --cockpit /home/nasbarok/projects/compagnon_project --manifeste : rc=0  0.82 s
+  --- python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres WORKTREE : rc=0  0.12 s
+           couverture : 13 lien(s) local(aux) dans la base, 13 rebasage(s)
+        IDENTIQUE — le corps du journal est T(README@baf4265a292a), octet pour octet.
+  --- python3 tools/stub_lhm_dn48.py --port 8085 : rc=1  0.09 s
+  --- python3 -m py_compile tools/dn_console.py tools/gen_font_dn.py tools/dn_gates.py : rc=0  0.08 s
+  --- bash -n tools/rendre-port.sh : rc=0  0.00 s
+  --- gh api repos/nasbarok/desknode/community/profile : rc=0  0.65 s
+        {"health_percentage":57,"description":"Physical desktop dashboard on ESP32-S3 — PC telemetry and room ambience on a 2.8\" touchscreen. Flashes from the browser.","documentation":"https://github.com/nasbarok/desknode/tree/master/docs","files":{"code_of_conduct":null,"code_of_conduct_file":null,"contributing":{"url":"https://api.github.com/repos/nasbarok/desknode/contents/CONTRIBUTING.md","html_url":"https://github.com/nasbarok/desknode/blob/main/CONTRIBUTING.md"},"issue_template":null,"pull_request_template":null,"license":{"key":"gpl-3.0","name":"GNU General Public License v3.0","spdx_id":"GPL-3.0","url":"https://api.github.com/licenses/gpl-3.0","node_id":"MDc6TGljZW5zZTk=","html_url":"https://github.com/nasbarok/desknode/blob/main/LICENSE"},"readme":{"url":"https://api.github.com/repos/nasbarok/desknode/contents/README.md","html_url":"https://github.com/nasbarok/desknode/blob/main/README.md"}},"updated_at":null}
+  EMPREINTE desknode APRES (contenu) : fe8f410124f4b678
+  EMPREINTE desknode APRES (index)   : 0a21f91955ff42c6
+  EMPREINTE cockpit  APRES : 87373bdb64bb5f4c
+  sha256 AC8.5.6 (apres) :
+    a32e2944977d8009c98f98a8ffd6c73f474313569af3f9b133944ae7ab73e581  .github/workflows/cla.yml
+    00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  .github/workflows/gates.yml
+    a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  .github/cla-signatures.json
+  git status --porcelain desknode (apres) :
+  === fin 2026-09-13T11:55:28+02:00 ===
+
+  ⚠️ 10 gates n'impriment AUCUNE ligne BILAN : leur compte est lu dans leur
+     propre forme de fin, relue dans leur sortie capturee (meme methode que
+     mesures/dn8-4/T0-borne-entree.txt) :
+     verif_courbe_dn413                 ✅ 58 contrôles passent, 0 échec.
+     verif_decoupe_horloge_dn418        ✅ lignes 7 · ❌ lignes 0 · derniere : ✅ TOUT TIENT.
+     verif_harnais_dn413                ✅ 22 contrôles passent, 0 échec.
+     verif_hist_dn413                   ✅ 56 contrôles passent, 0 échec.
+     verif_miroir_horloge_dn418         ✅ lignes 18 · ❌ lignes 0 · derniere : ✅ LE MIROIR TIENT.
+     verif_reprise_horloge_dn418        ✅ lignes 50 · ❌ lignes 0 · derniere : ✅ LES 12 SCENES TIENNENT.
+     verif_selection_dn49               ✅ 70 controles passent, 0 echec.
+     verif_source_lhm_dn48              ✅ tous les controles passent. (46 lignes [OK ], 0 [KO)
+     verif_sr03                         rc=2 — temoin absent (tools/fixtures/AN4545.pdf), NON-JOUABLE declaree
+     verif_verrou_lvgl_dn413            ✅ 60 contrôles passent, 0 échec.
+  ⚠️ `verif_reprise_horloge_dn418` : 50 lignes ✅ ici, 44 au T0 de dn8-4 — les
+     deux relevés comptent des LIGNES (`grep -c`), ⛔ des controles ; l'ecart est
+     anterieur a cette marche (base differente : baf4265 ⇒ d2e6330) et la
+     comparaison de dn8-5 se fait contre CE releve-ci, meme methode.
+
+  ⇒ 48 gates au glob (47 + verif_vitrine_dn84.py, ajoutee par dn8-4).
+  ⇒ verif_dossier_dn415.py : 23 OK / 10 KO PRE-EXISTANT, identique au dossier.
+  ⇒ ⛔ `bash tools/run_gates.sh` N'A PAS ETE JOUE a T0 : le compte de chaque
+     gate est releve en tir isole (ci-dessus), et c'est lui la borne de
+     `AC8.5.6`. Motif : la passe du runner double la duree (~17 min de plus),
+     et le dossier dn8-4 a paye trois tirs longs tues par le harnais de session.
+  ⇒ profil communautaire : `code_of_conduct`, `issue_template`,
+     `pull_request_template` = null · health_percentage 57 — la mesure
+     d'entree du decoupage est CONFIRMEE le jour meme.
+
+── 3. LES SHA256 DE `AC8.5.6` (a comparer a l'arrivee) ──────────────────────
+  a32e2944977d8009c98f98a8ffd6c73f474313569af3f9b133944ae7ab73e581  .github/workflows/cla.yml
+  00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  .github/workflows/gates.yml
+  a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  .github/cla-signatures.json
+
+── 4. LE SCRIPT DE LA PASSE (tel que joue : `rtk proxy bash passe.sh T0`) ───
+  | #!/usr/bin/env bash
+  | # dn8-5 — passe de mesure : COMPTE de chaque gate (tir isole), non-gates, empreinte avant/apres,
+  | # sha256 des trois fichiers de AC8.5.6, profil communautaire brut.
+  | # Usage : passe.sh <etiquette>   (sorties sous $SCR/<etiquette>/ — ⛔ jamais dans l'arbre)
+  | # Reprend mesures/dn8-4/T0-borne-entree.txt §4, avec les ajouts de dn8-5 (sha256 AC8.5.6,
+  | # empreinte de l'index `git ls-files -s`, profil communautaire, preuve de scission dn84).
+  | set -u
+  | SCR=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/66cda4fa-a614-4b40-bb34-55d248fd7da3/scratchpad/dn85
+  | ET="$1"; OUT="$SCR/$ET"; mkdir -p "$OUT/gates"
+  | DN=/home/nasbarok/projects/desknode
+  | CK=/home/nasbarok/projects/compagnon_project
+  | cd "$DN" || exit 9
+  | emp() {
+  |   ( cd "$DN" && git ls-files -z | xargs -0 sha256sum ) | sha256sum | cut -c1-16
+  | }
+  | empidx() {
+  |   ( cd "$DN" && git ls-files -s ) | sha256sum | cut -c1-16
+  | }
+  | empck() {
+  |   ( cd "$CK" && git ls-files -z -- _bmad-output/implementation-artifacts | xargs -0 sha256sum ) | sha256sum | cut -c1-16
+  | }
+  | R="$OUT/resume.txt"
+  | {
+  | echo "=== dn8-5 / passe $ET — debut $(date -Iseconds) ==="
+  | echo "HEAD desknode : $(git -C "$DN" rev-parse HEAD)"
+  | echo "HEAD cockpit  : $(git -C "$CK" rev-parse HEAD)"
+  | echo "git status --porcelain desknode :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  | echo "git status --porcelain cockpit (implementation-artifacts) :"; git -C "$CK" status --porcelain -- _bmad-output/implementation-artifacts | sed 's/^/  /'
+  | echo "EMPREINTE desknode AVANT (contenu, git ls-files | sha256sum) : $(emp)"
+  | echo "EMPREINTE desknode AVANT (index, git ls-files -s | sha256sum) : $(empidx)"
+  | echo "EMPREINTE cockpit  AVANT : $(empck)"
+  | echo "sha256 AC8.5.6 :"; sha256sum .github/workflows/cla.yml .github/workflows/gates.yml .github/cla-signatures.json | sed 's/^/  /'
+  | echo "ls -la .github .github/workflows :"; ls -la .github .github/workflows | sed 's/^/  /'
+  | echo
+  | echo "=== LE COMPTE DE CHAQUE GATE (tir isole, timeout 900 s) ==="
+  | } > "$R"
+  | for g in tools/verif_*.py; do
+  |   n=$(basename "$g" .py)
+  |   args=()
+  |   grep -q -- 'add_argument("--cockpit"' "$g" && args=(--cockpit "$CK")
+  |   t0=$(date +%s.%N)
+  |   timeout 900 python3 "$g" "${args[@]}" > "$OUT/gates/$n.txt" 2>&1; rc=$?
+  |   t1=$(date +%s.%N)
+  |   d=$(python3 -c "print(f'{$t1-$t0:.2f}')")
+  |   b=$(grep -E '^BILAN' "$OUT/gates/$n.txt" | tr '\n' ' ' )
+  |   printf '%-34s rc=%-3s %8s s  %s\n' "$n.py${args:+ --cockpit}" "$rc" "$d" "${b:-⛔ aucune ligne BILAN}" >> "$R"
+  | done
+  | {
+  | echo
+  | echo "=== LES OUTILS QUI NE SONT PAS DES GATES ==="
+  | } >> "$R"
+  | nongate() {  # $1 = etiquette, reste = commande
+  |   local e="$1"; shift
+  |   local t0 t1 rc
+  |   t0=$(date +%s.%N)
+  |   "$@" > "$OUT/nongate-$e.txt" 2>&1; rc=$?
+  |   t1=$(date +%s.%N)
+  |   printf -- '--- %s : rc=%s  %s s\n' "$*" "$rc" "$(python3 -c "print(f'{$t1-$t0:.2f}')")" >> "$R"
+  | }
+  | nongate banc_langue node tools/banc_langue_dalle_dn73.mjs
+  | grep -E '^BANC :' "$OUT/nongate-banc_langue.txt" | sed 's/^/      /' >> "$R"
+  | nongate banc_couverture node tools/banc_couverture_dn82.mjs
+  | grep -E '^COUVERTURE' "$OUT/nongate-banc_couverture.txt" | sed 's/^/      /' >> "$R"
+  | nongate inventaire_motif python3 tools/inventaire_motif_dn53.py
+  | grep -nE 'population|fichiers|sites|VERDICT|classe' "$OUT/nongate-inventaire_motif.txt" | head -30 | sed 's/^/      /' >> "$R"
+  | nongate campagne_ctrl python3 tools/campagne_ctrl_dn440.py --cockpit "$CK"
+  | grep -E 'BILAN|\[KO\]' "$OUT/nongate-campagne_ctrl.txt" | head -10 | sed 's/^/      /' >> "$R"
+  | nongate ledger_manifeste python3 tools/verif_ledger_dn416.py --cockpit "$CK" --manifeste
+  | grep -E '^BILAN' "$OUT/nongate-ledger_manifeste.txt" | sed 's/^/      /' >> "$R"
+  | nongate scission_dn84 python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres WORKTREE
+  | grep -E 'IDENTIQUE|DIFFERENT|rebasage' "$OUT/nongate-scission_dn84.txt" | head -3 | sed 's/^/      /' >> "$R"
+  | nongate stub8085 python3 tools/stub_lhm_dn48.py --port 8085
+  | nongate compile_outils python3 -m py_compile tools/dn_console.py tools/gen_font_dn.py tools/dn_gates.py
+  | nongate bash_n_rendre_port bash -n tools/rendre-port.sh
+  | nongate profil_communautaire gh api repos/nasbarok/desknode/community/profile
+  | sed 's/^/      /' "$OUT/nongate-profil_communautaire.txt" >> "$R"
+  | {
+  | echo
+  | echo "EMPREINTE desknode APRES (contenu) : $(emp)"
+  | echo "EMPREINTE desknode APRES (index)   : $(empidx)"
+  | echo "EMPREINTE cockpit  APRES : $(empck)"
+  | echo "sha256 AC8.5.6 (apres) :"; sha256sum .github/workflows/cla.yml .github/workflows/gates.yml .github/cla-signatures.json | sed 's/^/  /'
+  | echo "git status --porcelain desknode (apres) :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  | echo "=== fin $(date -Iseconds) ==="
+  | } >> "$R"

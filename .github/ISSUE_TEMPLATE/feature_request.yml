@@ -1,0 +1,27 @@
+name: Feature request
+description: Something DeskNode does not do yet.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before you write one, read [what this project is, honestly](https://github.com/nasbarok/desknode/blob/main/CONTRIBUTING.md#what-this-project-is-honestly). A request is read and may be kept for later, but it does not come with a delivery date — and forking to build it yourself is entirely legitimate.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: What DeskNode would do. A sketch or a photo of the screen helps.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Other ways around the problem, including the ones you rejected, and why.

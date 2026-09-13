@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/nasbarok/desknode/security/advisories/new
+    about: Privately, through GitHub — never in a public issue. SECURITY.md says how.
+  - name: Code of conduct
+    url: https://github.com/nasbarok/desknode/blob/main/CODE_OF_CONDUCT.md
+    about: What is expected here, and what a maintainer can and cannot do when it is not respected.

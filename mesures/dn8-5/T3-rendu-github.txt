@@ -1,0 +1,401 @@
+==============================================================================
+dn8-5 / T3 — LE RENDU DE GITHUB : les ancres visees par (c12), relevees dans le
+  HTML que GitHub produit, ⛔ rien n'est pousse (le depot reste PRIVE).
+  Joue le 2026-09-13 (rejoue apres l'ajout de « What belongs here » a
+  SECURITY.md ; horodatage en tete du corps) sur l'arbre de la marche indexe.
+  Script de banc verse en fin de fichier (`t3.py`).
+==============================================================================
+
+🔴 CE QUE LA MESURE A CORRIGE DANS LE DOSSIER, ⛔ SANS L'EFFACER : le dossier
+   prescrivait `gh api -X POST /markdown -f mode=gfm …` et d'y relever les
+   `id="user-content-…"`. MESURE : `mode=gfm` N'EMET AUCUNE ANCRE (§ 0, 0 id sur
+   les quatre fichiers) — c'est le rendu d'un COMMENTAIRE. Le rendu d'une PAGE
+   de fichier est `mode=markdown`, qui pose `<a id="user-content-…"
+   class="anchor">` ; et ce format est RECOUPE par l'API contents
+   (`Accept: application/vnd.github.html`) sur la version deja poussee de
+   `CONTRIBUTING.md`, qui rend les memes ancres. ⇒ le tir de `gfm` est GARDE
+   (§ 0), et les ancres sont relevees en `mode=markdown` (§ 1).
+⚠️ ANNOTE LE 2026-09-13 APRES REVUE : la docstring de `t3.py` versee en annexe
+   dit « mode gfm » alors que le script rend par defaut `mode=markdown` (gfm n'est
+   joue qu'au § 0). La docstring de l'annexe ⛔ n'est pas reecrite ; le script
+   rejoue en fin de fichier porte la docstring corrigee.
+⚠️ CE QUE CE RELEVE NE DIT PAS : que les formulaires YAML s'affichent (le rendu
+   du selecteur n'a pas d'API de previsualisation, et le depot est prive) ; que
+   la page de fichier POUSSEE rendra exactement ceci (le remote a du retard).
+
+=== dn8-5 / T3 — rendu GitHub, 2026-09-13T12:16:30+02:00
+    commande : gh api -X POST /markdown -f mode=<gfm|markdown> -f context=nasbarok/desknode -F text=@<fichier>
+
+── 0. LE MODE PRESCRIT PAR LE DOSSIER (gfm) N'EMET AUCUNE ANCRE — mesure, pas supposition ──
+   mode=gfm      CONTRIBUTING.md       87336 o de HTML · 0 id="user-content-…"
+   mode=gfm      SECURITY.md            3786 o de HTML · 0 id="user-content-…"
+   mode=gfm      CODE_OF_CONDUCT.md    12777 o de HTML · 0 id="user-content-…"
+   mode=gfm      README.md              8840 o de HTML · 0 id="user-content-…"
+   ⇒ `gfm` est le rendu des COMMENTAIRES (titres nus `<h2 dir="auto">`) ; le rendu d'une PAGE de
+     fichier est `mode=markdown`, qui pose `<a id="user-content-…" class="anchor">`. Recoupe
+     ci-dessous par l'API contents (Accept: application/vnd.github.html) sur la version DEJA
+     POUSSEE de CONTRIBUTING.md (origin/main, anterieure a la marche).
+   contents html CONTRIBUTING.md (pousse) : 7 id="user-content-…" : contributing-to-desknode, what-this-project-is-honestly, reporting-a-bug, building-the-firmware, pull-requests, conventions-in-this-repository, commercial-use
+
+── 1. mode=markdown — LES ANCRES QU'UNE PAGE DE FICHIER PORTE ──
+
+── CONTRIBUTING.md — 78974 o de HTML, 9 ancre(s) de titre rendue(s)
+   ancres rendues == ancres MODELISEES par la gate (g.ancres) : OUI
+   id="user-content-what-this-project-is-honestly"
+   id="user-content-reporting-a-bug"
+   lien rendu : #contributing-to-desknode
+   lien rendu : #what-this-project-is-honestly
+   lien rendu : docs/roadmap.md
+   lien rendu : #what-cloning-this-costs
+   lien rendu : docs/roadmap.md
+   lien rendu : docs/roadmap.md
+   lien rendu : #reporting-a-bug
+   lien rendu : https://github.com/nasbarok/desknode/issues/new?template=bug_report.yml
+   lien rendu : SECURITY.md
+   lien rendu : docs/journal-de-bord.md
+   lien rendu : docs/roadmap.md
+   lien rendu : docs/roadmap.md
+   lien rendu : #building-the-firmware
+   lien rendu : #when-a-starting-condition-is-not-met--what-the-failure-looks-like
+   lien rendu : #pull-requests
+   lien rendu : CLA.md
+   lien rendu : docs/roadmap.md
+   lien rendu : LICENSING.md
+   lien rendu : .github/pull_request_template.md
+   lien rendu : CODE_OF_CONDUCT.md
+   lien rendu : #conventions-in-this-repository
+   lien rendu : docs/roadmap.md
+   lien rendu : docs/cablage/PHOTOS.md
+   lien rendu : docs/dn5-1-ecart-promesses.md
+   lien rendu : docs/roadmap.md
+   lien rendu : #commercial-use
+
+── SECURITY.md — 5293 o de HTML, 7 ancre(s) de titre rendue(s)
+   ancres rendues == ancres MODELISEES par la gate (g.ancres) : OUI
+   lien rendu : #security-policy
+   lien rendu : #do-not-open-a-public-issue
+   lien rendu : #what-belongs-here
+   lien rendu : https://github.com/nasbarok/desknode/issues/new?template=bug_report.yml
+   lien rendu : #report-it-privately-through-github
+   lien rendu : https://github.com/nasbarok/desknode/security/advisories/new
+   lien rendu : docs/roadmap.md
+   lien rendu : #what-to-include
+   lien rendu : CONTRIBUTING.md#reporting-a-bug
+   lien rendu : THIRD-PARTY.md
+   lien rendu : #which-version-is-covered
+   lien rendu : #what-happens-after-you-report
+   lien rendu : CONTRIBUTING.md#what-this-project-is-honestly
+
+── CODE_OF_CONDUCT.md — 15843 o de HTML, 16 ancre(s) de titre rendue(s)
+   ancres rendues == ancres MODELISEES par la gate (g.ancres) : OUI
+   id="user-content-reporting"
+   id="user-content-enforcement"
+   id="user-content-attribution"
+   id="user-content-changes-made-in-this-adaptation"
+   lien rendu : #code-of-conduct
+   lien rendu : #changes-made-in-this-adaptation
+   lien rendu : #our-pledge
+   lien rendu : #our-standards
+   lien rendu : #enforcement-responsibilities
+   lien rendu : #scope
+   lien rendu : #reporting
+   lien rendu : #enforcement
+   lien rendu : #enforcement-guidelines
+   lien rendu : #1-correction
+   lien rendu : #2-warning
+   lien rendu : #3-temporary-restriction
+   lien rendu : #4-permanent-ban
+   lien rendu : #attribution
+   lien rendu : #license-of-the-original
+   lien rendu : #license-of-this-adaptation
+   lien rendu : LICENSING.md
+   lien rendu : #changes-made-in-this-adaptation
+
+── README.md — 9970 o de HTML, 8 ancre(s) de titre rendue(s)
+   ancres rendues == ancres MODELISEES par la gate (g.ancres) : OUI
+   id="user-content-two-hardware-tiers"
+   id="user-content-known-issues"
+   id="user-content-status-and-help"
+   lien rendu : #desknode
+   lien rendu : LICENSING.md
+   lien rendu : #what-it-shows
+   lien rendu : #two-hardware-tiers
+   lien rendu : docs/bom.md
+   lien rendu : docs/cablage.md
+   lien rendu : docs/boitier.md
+   lien rendu : #install
+   lien rendu : CONTRIBUTING.md
+   lien rendu : #language
+   lien rendu : #known-issues
+   lien rendu : #status-and-help
+   lien rendu : CONTRIBUTING.md#what-this-project-is-honestly
+   lien rendu : https://github.com/nasbarok/desknode/issues/new?template=bug_report.yml
+   lien rendu : SECURITY.md
+   lien rendu : CODE_OF_CONDUCT.md
+   lien rendu : #more
+   lien rendu : CONTRIBUTING.md
+   lien rendu : CHANGELOG.md
+   lien rendu : THIRD-PARTY.md
+   lien rendu : docs/roadmap.md
+   lien rendu : docs/journal-de-bord.md
+
+── LES LIENS A FRAGMENT DE (c12), CONFRONTES AU HTML RENDU DE LEUR CIBLE ──
+   .github/ISSUE_TEMPLATE/bug_report.yml        → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+   .github/ISSUE_TEMPLATE/bug_report.yml        → README.md              #known-issues                       RENDUE
+   .github/ISSUE_TEMPLATE/bug_report.yml        → README.md              #two-hardware-tiers                 RENDUE
+   .github/ISSUE_TEMPLATE/bug_report.yml        → CONTRIBUTING.md        #reporting-a-bug                    RENDUE
+   .github/ISSUE_TEMPLATE/feature_request.yml   → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+   .github/pull_request_template.md             → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+   SECURITY.md                                  → CONTRIBUTING.md        #reporting-a-bug                    RENDUE
+   SECURITY.md                                  → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+   CODE_OF_CONDUCT.md                           → CODE_OF_CONDUCT.md     #changes-made-in-this-adaptation    RENDUE
+   README.md                                    → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+BILAN T3 : 0 ecart(s)
+
+── ANNEXE — t3.py ─────────────────────────────────────────────────────────
+  | #!/usr/bin/env python3
+  | """dn8-5 / T3 — le RENDU de GitHub (`POST /markdown`, mode gfm, contexte du depot), ⛔ rien n'est pousse.
+  | Pour chaque fichier : les ancres `id="user-content-…"` des titres, et, pour chaque lien a fragment
+  | que la gate (c12) confronte, si l'ancre visee EXISTE dans le HTML rendu de sa cible."""
+  | import html.parser
+  | import os
+  | import re
+  | import subprocess
+  | import sys
+  | 
+  | DN = "/home/nasbarok/projects/desknode"
+  | SCR = os.path.dirname(os.path.abspath(__file__))
+  | sys.path.insert(0, os.path.join(DN, "tools"))
+  | import verif_reception_dn85 as g  # noqa: E402
+  | 
+  | RENDUS = ("CONTRIBUTING.md", "SECURITY.md", "CODE_OF_CONDUCT.md", "README.md")
+  | 
+  | 
+  | class Ancres(html.parser.HTMLParser):
+  |     def __init__(self):
+  |         super().__init__()
+  |         self.ids, self.liens = [], []
+  | 
+  |     def handle_starttag(self, tag, attrs):
+  |         a = dict(attrs)
+  |         if a.get("id", "").startswith("user-content-"):
+  |             self.ids.append(a["id"][len("user-content-"):])
+  |         if tag == "a" and "href" in a:
+  |             self.liens.append(a["href"])
+  | 
+  | 
+  | def rend(rel, mode="markdown"):
+  |     r = subprocess.run(["gh", "api", "-X", "POST", "/markdown", "-f", "mode=" + mode,
+  |                         "-f", "context=nasbarok/desknode", "-F",
+  |                         "text=@" + os.path.join(DN, rel)],
+  |                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  |     if r.returncode != 0:
+  |         return None, r.stderr.decode("utf-8", "replace")
+  |     return r.stdout.decode("utf-8", "replace"), ""
+  | 
+  | 
+  | print("=== dn8-5 / T3 — rendu GitHub, %s" % subprocess.run(
+  |     ["date", "-Iseconds"], stdout=subprocess.PIPE).stdout.decode().strip())
+  | print("    commande : gh api -X POST /markdown -f mode=<gfm|markdown> -f context=nasbarok/desknode -F text=@<fichier>")
+  | print("\n── 0. LE MODE PRESCRIT PAR LE DOSSIER (gfm) N'EMET AUCUNE ANCRE — mesure, pas supposition ──")
+  | for rel in RENDUS:
+  |     h, err = rend(rel, "gfm")
+  |     p0 = Ancres()
+  |     p0.feed(h or "")
+  |     print("   mode=gfm      %-20s %6d o de HTML · %d id=\"user-content-…\"" % (rel, len(h or ""), len(p0.ids)))
+  | print("   ⇒ `gfm` est le rendu des COMMENTAIRES (titres nus `<h2 dir=\"auto\">`) ; le rendu d'une PAGE de")
+  | print("     fichier est `mode=markdown`, qui pose `<a id=\"user-content-…\" class=\"anchor\">`. Recoupe")
+  | print("     ci-dessous par l'API contents (Accept: application/vnd.github.html) sur la version DEJA")
+  | print("     POUSSEE de CONTRIBUTING.md (origin/main, anterieure a la marche).")
+  | r = subprocess.run(["gh", "api", "-H", "Accept: application/vnd.github.html",
+  |                     "repos/nasbarok/desknode/contents/CONTRIBUTING.md"], stdout=subprocess.PIPE)
+  | hp = r.stdout.decode("utf-8", "replace")
+  | print("   contents html CONTRIBUTING.md (pousse) : %d id=\"user-content-…\" : %s"
+  |       % (len(re.findall(r'id="user-content-', hp)), ", ".join(re.findall(r'id="user-content-([^"]*)"', hp)[:8])))
+  | print("\n── 1. mode=markdown — LES ANCRES QU'UNE PAGE DE FICHIER PORTE ──")
+  | ancres_rendues = {}
+  | for rel in RENDUS:
+  |     h, err = rend(rel)
+  |     if h is None:
+  |         print("\n── %s : ⛔ RENDU EN ECHEC : %s" % (rel, err.strip()))
+  |         continue
+  |     open(os.path.join(SCR, "rendu-" + rel.replace("/", "_") + ".html"), "w",
+  |          encoding="utf-8").write(h)
+  |     p = Ancres()
+  |     p.feed(h)
+  |     ancres_rendues[rel] = set(p.ids)
+  |     modele = g.ancres(open(os.path.join(DN, rel), encoding="utf-8").read())
+  |     print("\n── %s — %d o de HTML, %d ancre(s) de titre rendue(s)" % (rel, len(h), len(p.ids)))
+  |     print("   ancres rendues == ancres MODELISEES par la gate (g.ancres) : %s"
+  |           % ("OUI" if set(p.ids) == modele else "⛔ NON — rendues seules : %s · modelisees seules : %s"
+  |              % (sorted(set(p.ids) - modele)[:6], sorted(modele - set(p.ids))[:6])))
+  |     for x in p.ids:
+  |         if x in ("what-this-project-is-honestly", "reporting-a-bug", "known-issues",
+  |                  "two-hardware-tiers", "changes-made-in-this-adaptation", "status-and-help",
+  |                  "attribution", "reporting", "enforcement"):
+  |             print("   id=\"user-content-%s\"" % x)
+  |     externes = [l for l in p.liens if l.startswith("https://github.com/nasbarok/desknode")
+  |                 or l.endswith(".md") or ".md#" in l or l.startswith("#")]
+  |     for l in externes:
+  |         print("   lien rendu : %s" % l)
+  | 
+  | print("\n── LES LIENS A FRAGMENT DE (c12), CONFRONTES AU HTML RENDU DE LEUR CIBLE ──")
+  | ecarts = 0
+  | for rel in g.NEUFS + (g.VITRINE,):
+  |     txt = open(os.path.join(DN, rel), encoding="utf-8").read()
+  |     for cible in g.cibles_de_liens(txt):
+  |         if "#" not in cible:
+  |             continue
+  |         chemin, frag = cible.split("#", 1)
+  |         if cible.startswith(g.BLOB):
+  |             visee = chemin[len(g.BLOB):]
+  |         elif cible.startswith(("http:", "https:")):
+  |             continue
+  |         elif not chemin:
+  |             visee = rel
+  |         else:
+  |             visee = os.path.normpath(os.path.join(os.path.dirname(rel), chemin))
+  |         ok = frag in ancres_rendues.get(visee, set())
+  |         ecarts += 0 if ok else 1
+  |         print("   %-44s → %-22s #%-34s %s" % (rel, visee, frag,
+  |                                               "RENDUE" if ok else "⛔ ABSENTE du HTML rendu"))
+  | print("BILAN T3 : %d ecart(s)" % ecarts)
+
+==============================================================================
+⚠️ AJOUTE LE 2026-09-13 APRES LA REVUE DU COORDINATEUR — RE-TIR sur les fichiers
+   corriges (le modele de PR lie desormais `CONTRIBUTING.md#pull-requests`).
+   Tout ce qui precede ⛔ n'est PAS efface.
+==============================================================================
+
+=== dn8-5 / T3 — rendu GitHub, 2026-09-13T14:25:03+02:00
+    commande : gh api -X POST /markdown -f mode=<gfm|markdown> -f context=nasbarok/desknode -F text=@<fichier>
+
+── 0. LE MODE PRESCRIT PAR LE DOSSIER (gfm) N'EMET AUCUNE ANCRE — mesure, pas supposition ──
+   mode=gfm      CONTRIBUTING.md       88254 o de HTML · 0 id="user-content-…"
+   mode=gfm      SECURITY.md            3774 o de HTML · 0 id="user-content-…"
+   mode=gfm      CODE_OF_CONDUCT.md    15474 o de HTML · 0 id="user-content-…"
+   mode=gfm      README.md              8840 o de HTML · 0 id="user-content-…"
+   ⇒ `gfm` est le rendu des COMMENTAIRES (titres nus `<h2 dir="auto">`) ; le rendu d'une PAGE de
+     fichier est `mode=markdown`, qui pose `<a id="user-content-…" class="anchor">`. Recoupe
+     ci-dessous par l'API contents (Accept: application/vnd.github.html) sur la version DEJA
+     POUSSEE de CONTRIBUTING.md (origin/main, anterieure a la marche).
+   contents html CONTRIBUTING.md (pousse) : 7 id="user-content-…" : contributing-to-desknode, what-this-project-is-honestly, reporting-a-bug, building-the-firmware, pull-requests, conventions-in-this-repository, commercial-use
+
+── 1. mode=markdown — LES ANCRES QU'UNE PAGE DE FICHIER PORTE ──
+
+── CONTRIBUTING.md — 79753 o de HTML, 9 ancre(s) de titre rendue(s)
+   ancres rendues == ancres MODELISEES par la gate (g.ancres) : OUI
+   id="user-content-what-this-project-is-honestly"
+   id="user-content-reporting-a-bug"
+   lien rendu : #contributing-to-desknode
+   lien rendu : #what-this-project-is-honestly
+   lien rendu : docs/roadmap.md
+   lien rendu : #what-cloning-this-costs
+   lien rendu : docs/roadmap.md
+   lien rendu : docs/roadmap.md
+   lien rendu : #reporting-a-bug
+   lien rendu : https://github.com/nasbarok/desknode/issues/new?template=bug_report.yml
+   lien rendu : SECURITY.md
+   lien rendu : docs/journal-de-bord.md
+   lien rendu : docs/roadmap.md
+   lien rendu : docs/roadmap.md
+   lien rendu : #building-the-firmware
+   lien rendu : #when-a-starting-condition-is-not-met--what-the-failure-looks-like
+   lien rendu : #pull-requests
+   lien rendu : CLA.md
+   lien rendu : docs/roadmap.md
+   lien rendu : LICENSING.md
+   lien rendu : .github/pull_request_template.md
+   lien rendu : CODE_OF_CONDUCT.md
+   lien rendu : SECURITY.md
+   lien rendu : #conventions-in-this-repository
+   lien rendu : docs/roadmap.md
+   lien rendu : docs/cablage/PHOTOS.md
+   lien rendu : docs/dn5-1-ecart-promesses.md
+   lien rendu : docs/roadmap.md
+   lien rendu : #commercial-use
+
+── SECURITY.md — 5281 o de HTML, 7 ancre(s) de titre rendue(s)
+   ancres rendues == ancres MODELISEES par la gate (g.ancres) : OUI
+   lien rendu : #security-policy
+   lien rendu : #do-not-open-a-public-issue
+   lien rendu : #what-belongs-here
+   lien rendu : https://github.com/nasbarok/desknode/issues/new?template=bug_report.yml
+   lien rendu : #report-it-privately-through-github
+   lien rendu : https://github.com/nasbarok/desknode/security/advisories/new
+   lien rendu : docs/roadmap.md
+   lien rendu : #what-to-include
+   lien rendu : CONTRIBUTING.md#reporting-a-bug
+   lien rendu : THIRD-PARTY.md
+   lien rendu : #which-version-is-covered
+   lien rendu : #what-happens-after-you-report
+   lien rendu : CONTRIBUTING.md#what-this-project-is-honestly
+
+── CODE_OF_CONDUCT.md — 18461 o de HTML, 16 ancre(s) de titre rendue(s)
+   ancres rendues == ancres MODELISEES par la gate (g.ancres) : OUI
+   id="user-content-reporting"
+   id="user-content-enforcement"
+   id="user-content-attribution"
+   id="user-content-changes-made-in-this-adaptation"
+   lien rendu : #code-of-conduct
+   lien rendu : #changes-made-in-this-adaptation
+   lien rendu : SECURITY.md
+   lien rendu : #our-pledge
+   lien rendu : #our-standards
+   lien rendu : #enforcement-responsibilities
+   lien rendu : #scope
+   lien rendu : #reporting
+   lien rendu : SECURITY.md
+   lien rendu : #enforcement
+   lien rendu : #enforcement-guidelines
+   lien rendu : #1-correction
+   lien rendu : #2-warning
+   lien rendu : #3-temporary-restriction
+   lien rendu : #4-permanent-ban
+   lien rendu : #attribution
+   lien rendu : #license-of-the-original
+   lien rendu : #license-of-this-adaptation
+   lien rendu : LICENSING.md
+   lien rendu : #changes-made-in-this-adaptation
+
+── README.md — 9970 o de HTML, 8 ancre(s) de titre rendue(s)
+   ancres rendues == ancres MODELISEES par la gate (g.ancres) : OUI
+   id="user-content-two-hardware-tiers"
+   id="user-content-known-issues"
+   id="user-content-status-and-help"
+   lien rendu : #desknode
+   lien rendu : LICENSING.md
+   lien rendu : #what-it-shows
+   lien rendu : #two-hardware-tiers
+   lien rendu : docs/bom.md
+   lien rendu : docs/cablage.md
+   lien rendu : docs/boitier.md
+   lien rendu : #install
+   lien rendu : CONTRIBUTING.md
+   lien rendu : #language
+   lien rendu : #known-issues
+   lien rendu : #status-and-help
+   lien rendu : CONTRIBUTING.md#what-this-project-is-honestly
+   lien rendu : https://github.com/nasbarok/desknode/issues/new?template=bug_report.yml
+   lien rendu : SECURITY.md
+   lien rendu : CODE_OF_CONDUCT.md
+   lien rendu : #more
+   lien rendu : CONTRIBUTING.md
+   lien rendu : CHANGELOG.md
+   lien rendu : THIRD-PARTY.md
+   lien rendu : docs/roadmap.md
+   lien rendu : docs/journal-de-bord.md
+
+── LES LIENS A FRAGMENT DE (c12), CONFRONTES AU HTML RENDU DE LEUR CIBLE ──
+   .github/ISSUE_TEMPLATE/bug_report.yml        → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+   .github/ISSUE_TEMPLATE/bug_report.yml        → README.md              #known-issues                       RENDUE
+   .github/ISSUE_TEMPLATE/bug_report.yml        → README.md              #two-hardware-tiers                 RENDUE
+   .github/ISSUE_TEMPLATE/bug_report.yml        → CONTRIBUTING.md        #reporting-a-bug                    RENDUE
+   .github/ISSUE_TEMPLATE/feature_request.yml   → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+   .github/pull_request_template.md             → CONTRIBUTING.md        #pull-requests                      RENDUE
+   .github/pull_request_template.md             → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+   SECURITY.md                                  → CONTRIBUTING.md        #reporting-a-bug                    RENDUE
+   SECURITY.md                                  → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+   CODE_OF_CONDUCT.md                           → CODE_OF_CONDUCT.md     #changes-made-in-this-adaptation    RENDUE
+   README.md                                    → CONTRIBUTING.md        #what-this-project-is-honestly      RENDUE
+BILAN T3 : 0 ecart(s)

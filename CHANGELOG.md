@@ -10,6 +10,49 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Added
 
+- 🆕 **The repository can now receive what comes back: issue forms, a security policy, a code of
+  conduct, and a status line that promises nothing** (`dn8-5`, 2026-09-13). Measured that morning:
+  `.github/` held only the CLA signature store and two workflows, and GitHub's community profile
+  returned `null` for the code of conduct, the issue template and the pull request template — a
+  stranger had to guess how to report a bug, and a security researcher had **nowhere** to send a
+  vulnerability except a public issue, which publishes it.
+  What exists now. (1) `.github/ISSUE_TEMPLATE/bug_report.yml` asks for the hardware tier, the GPU,
+  LibreHardwareMonitor, the firmware SHA from the boot banner, the Windows version, what happened,
+  the steps and the logs; `feature_request.yml` links the status instead of repeating it; and
+  `config.yml` keeps **blank issues available** (GitHub's default, and the only generic route left
+  for a question: Discussions are off and there is no question form), sends security reports **out
+  of the issues**, and links the code of conduct from the template chooser. (2) `.github/pull_request_template.md` points at the CLA, the license of the area
+  touched, and what was run to check the change. (3) `SECURITY.md` sends vulnerabilities to
+  GitHub's **private vulnerability reporting** — ⛔ no e-mail address, by owner decision. (4)
+  `CODE_OF_CONDUCT.md` adapts the **Contributor Covenant 2.1** (CC BY 4.0), published under
+  CC-BY-SA-4.0 with its changes listed, and credited in `THIRD-PARTY.md`. (5) The status is written
+  **once**, in `CONTRIBUTING.md` § *What this project is, honestly*, completed in place: every other
+  page links to it.
+  🔴 **The route chosen for conduct reports, and its cost, written rather than smoothed over.**
+  The original Covenant assumes a private channel to the people who enforce it. GitHub offers one —
+  *reported content* — **only to repositories owned by an organization**, and this one belongs to a
+  personal account. Among four options (no private channel and say so; misuse the security form;
+  a dedicated address; moving the repository under an organization), the owner chose the first on
+  2026-09-13. ⇒ the code of conduct **says there is no private channel to the maintainer**, sends
+  anything serious to *Report abuse* (read by GitHub Support, not by the maintainer), names only the
+  moderation tools a personal repository really has, and drops the three promises the original
+  makes that nothing here could keep: a contact address, a quick review of every complaint, and a
+  warning sent privately. ⚠️ **The cost**: someone harassed here **cannot alert the maintainer
+  privately**. The text is weaker than the original, and it says so.
+  A new check, `tools/verif_reception_dn85.py` (run by `tools/run_gates.sh`), **parses** the three
+  YAML files with a real YAML parser, confronts the forms with the rules GitHub's documentation
+  writes down, keeps delay promises and addresses out of the new files, and fails if the two-word
+  status label that `CONTRIBUTING.md` carries (case and emphasis ignored) appears in any other file
+  among
+  the Markdown files at the root, everything under `.github/` and the top-level Markdown files of
+  `docs/` (the French engineering log excepted), or if a link points at a file or a heading that
+  does not exist: **16 controls, 38 mutants**, each seen red on the control it declares. ⚠️ Without PyYAML it
+  fails closed rather than passing on files it did not read; PyYAML on the CI runner is supported by
+  the runner image's package list, ⛔ not yet measured on a run.
+  ⛔ **What waits for the switch to public** (`dn8`): whether GitHub accepts and renders the forms,
+  whether `required` takes effect (it only does on public repositories), and whether the private
+  reporting form reaches a stranger — that setting only exists once the repository is public, and
+  turning it on belongs to the switch.
 - 🆕 **The LHM probe's polarity is now replayed inside a real PowerShell, and the LHM port
   travels end to end** (`dn8-3`, 2026-09-12). 🔬 **The blocker was refuted by measurement, ⛔ not
   argued away.** Five ledger entries carried the same cause, word for word — *"there is ⛔ no

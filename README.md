@@ -62,6 +62,13 @@ The screen starts in **English**. **French** can be selected on the install page
   - **Intel Arc** and integrated GPUs: **untested**;
   - the whole stack has been proven on **one board**, the development one. If you build one, you are among the first: tell us what you see.
 
+## Status and help
+
+- What to expect from this project — maintenance, support, feature requests: [What this project is, honestly](CONTRIBUTING.md#what-this-project-is-honestly)
+- Something wrong? [Open a bug report](https://github.com/nasbarok/desknode/issues/new?template=bug_report.yml) — the form asks for what helps.
+- A **security vulnerability**? **Not in an issue**, which is public: follow [`SECURITY.md`](SECURITY.md).
+- How people are expected to behave here, and what can and cannot be done when they do not: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+
 ## More
 
 - Building, reporting a bug, contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md)
