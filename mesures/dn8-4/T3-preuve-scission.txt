@@ -1,0 +1,234 @@
+==============================================================================
+dn8-4 / T3 — LA SCISSION EST UNE SEPARATION, ET ELLE SE PROUVE OCTET POUR OCTET
+  AC8.4.2. Trois garde-fous, parce qu'un instrument qui se verifie lui-meme ne
+  prouve rien seul (`--ecrire` et `--verifier` partagent T) :
+    1. l'outil : IDENTIQUE, et ses 13 rebasages appliques CHACUN UNE FOIS ;
+    2. deux temoins negatifs sur copies jetables ⇒ rc=1 chacun, la faute NOMMEE ;
+    3. un diff BRUT, sans une ligne de l'outil, qui tombe sur les lignes de T ET
+       RIEN D'AUTRE — et verif_licences_dn52.py (c1) qui resout chaque lien depuis
+       docs/ (releve-comptes.md : 34 OK, 0 KO, « 209 lien(s) local(aux), 17
+       fichier(s) », journal compris).
+  Plus le cas « pas d'historique » (rc=4), reconstruit dans une copie jetable.
+  ⚠️ L'arbre du depot n'est ⛔ PAS mute par ce tir : les copies vivent sous le
+     scratchpad ; seuls des `git show`/`git diff`/lectures touchent le depot.
+==============================================================================
+
+=== dn8-4 / T3 — LA PREUVE DE LA SCISSION — 2026-09-13T01:55:06+02:00 ===
+depot : /home/nasbarok/projects/desknode · HEAD baf4265a292a7db1ae9f6bc8673779f2e743d45b · BASE baf4265a292a7db1ae9f6bc8673779f2e743d45b
+
+━━ 1. NOMINAL : --verifier --avant BASE --apres WORKTREE (arbre de travail du depot) ━━
+$ python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres WORKTREE
+base   : baf4265a292a7db1ae9f6bc8673779f2e743d45b
+avant  : README.md@baf4265a292a — 257192 o · sha256 71b4018bc7786da98ef65d1fb24f1e1c6d39ebeb27197f396ae6d1610b6f3002
+apres  : arbre de travail : docs/journal-de-bord.md — 259763 o · sha256 14246b9e119eb5d102d7a265f153bb2e95925a1447b6084de5dd5c7b5c967a53
+
+── LES 13 REBASAGES (chacun EXACTEMENT une fois, a sa ligne) ──
+   l.5     ](LICENSING.md)  →  ](../LICENSING.md)
+   l.6     ](THIRD-PARTY.md)  →  ](../THIRD-PARTY.md)
+   l.7     ](CONTRIBUTING.md)  →  ](../CONTRIBUTING.md)
+   l.7     ](CHANGELOG.md)  →  ](../CHANGELOG.md)
+   l.40    ](docs/bom.md)  →  ](bom.md)
+   l.44    ](docs/cablage.md)  →  ](cablage.md)
+   l.46    ](docs/boitier.md)  →  ](boitier.md)
+   l.1058  ](docs/roadmap.md)  →  ](roadmap.md)
+   l.1064  ](installeur/charge/)  →  ](../installeur/charge/)
+   l.1081  ](docs/roadmap.md)  →  ](roadmap.md)
+   l.1082  ](installeur/charge/PROVENANCE.md)  →  ](../installeur/charge/PROVENANCE.md)
+   l.1214  ](installeur/IDENTITE.md)  →  ](../installeur/IDENTITE.md)
+   l.1951  ](hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)  →  ](../hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)
+   couverture : 13 lien(s) local(aux) dans la base, 13 rebasage(s)
+
+en-tete : 38 ligne(s) — 2572 o · sha256 d7e969114b3be6a3e4255e5485714d6846b6da054ead75d0e7d9479d0767251e
+corps   : 257191 o · sha256 d5189c6bb937b7f36a1bc00ba5ec14f4f4c7059251a73079648113c1df762af3
+T(base) : 257191 o · sha256 d5189c6bb937b7f36a1bc00ba5ec14f4f4c7059251a73079648113c1df762af3
+
+IDENTIQUE — le corps du journal est T(README@baf4265a292a), octet pour octet.
+rc=0
+
+━━ 2. TEMOIN NEGATIF (i) : UN octet du corps altere, sur une copie jetable ━━
+copie : jet-octet.md — octet 3166 du journal : b'M' -> b'm' (hors en-tete)
+$ python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres <copie>
+base   : baf4265a292a7db1ae9f6bc8673779f2e743d45b
+avant  : README.md@baf4265a292a — 257192 o · sha256 71b4018bc7786da98ef65d1fb24f1e1c6d39ebeb27197f396ae6d1610b6f3002
+apres  : fichier : /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fa43b17d-0ae4-4a4a-aed8-63dda6131c04/scratchpad/dn84/T3/jet-octet.md — 259763 o · sha256 211d9ee40195fefb5909452e25e625ee4e2e57812508ca03c96af4044b06cc58
+
+── LES 13 REBASAGES (chacun EXACTEMENT une fois, a sa ligne) ──
+   l.5     ](LICENSING.md)  →  ](../LICENSING.md)
+   l.6     ](THIRD-PARTY.md)  →  ](../THIRD-PARTY.md)
+   l.7     ](CONTRIBUTING.md)  →  ](../CONTRIBUTING.md)
+   l.7     ](CHANGELOG.md)  →  ](../CHANGELOG.md)
+   l.40    ](docs/bom.md)  →  ](bom.md)
+   l.44    ](docs/cablage.md)  →  ](cablage.md)
+   l.46    ](docs/boitier.md)  →  ](boitier.md)
+   l.1058  ](docs/roadmap.md)  →  ](roadmap.md)
+   l.1064  ](installeur/charge/)  →  ](../installeur/charge/)
+   l.1081  ](docs/roadmap.md)  →  ](roadmap.md)
+   l.1082  ](installeur/charge/PROVENANCE.md)  →  ](../installeur/charge/PROVENANCE.md)
+   l.1214  ](installeur/IDENTITE.md)  →  ](../installeur/IDENTITE.md)
+   l.1951  ](hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)  →  ](../hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)
+   couverture : 13 lien(s) local(aux) dans la base, 13 rebasage(s)
+
+en-tete : 38 ligne(s) — 2572 o · sha256 d7e969114b3be6a3e4255e5485714d6846b6da054ead75d0e7d9479d0767251e
+corps   : 257191 o · sha256 6012fcd4a994f1f7059f26727457ea75c003e916703e233aee3fe0ddb7d2c898
+T(base) : 257191 o · sha256 d5189c6bb937b7f36a1bc00ba5ec14f4f4c7059251a73079648113c1df762af3
+
+DIFFERENT — premiere divergence a l'octet 594 du corps (octet 3166 du journal), ligne 13 de la base
+   attendu : b'urte restera ici.\n\n\nMini-display tactile 2,8" (Waveshare **E'
+   trouve  : b'urte restera ici.\n\n\nmini-display tactile 2,8" (Waveshare **E'
+rc=1
+
+━━ 3. TEMOIN NEGATIF (ii) : UN lien NON rebase, sur une copie jetable ━━
+copie : jet-lien.md — `](bom.md)` present 1 fois, le 1er remis a `](docs/bom.md)`
+$ python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres <copie>
+base   : baf4265a292a7db1ae9f6bc8673779f2e743d45b
+avant  : README.md@baf4265a292a — 257192 o · sha256 71b4018bc7786da98ef65d1fb24f1e1c6d39ebeb27197f396ae6d1610b6f3002
+apres  : fichier : /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fa43b17d-0ae4-4a4a-aed8-63dda6131c04/scratchpad/dn84/T3/jet-lien.md — 259768 o · sha256 0753fdceabc4a034fcd4ee56eb5b369927e9377d325f943174b06f7190e3c17a
+
+── LES 13 REBASAGES (chacun EXACTEMENT une fois, a sa ligne) ──
+   l.5     ](LICENSING.md)  →  ](../LICENSING.md)
+   l.6     ](THIRD-PARTY.md)  →  ](../THIRD-PARTY.md)
+   l.7     ](CONTRIBUTING.md)  →  ](../CONTRIBUTING.md)
+   l.7     ](CHANGELOG.md)  →  ](../CHANGELOG.md)
+   l.40    ](docs/bom.md)  →  ](bom.md)
+   l.44    ](docs/cablage.md)  →  ](cablage.md)
+   l.46    ](docs/boitier.md)  →  ](boitier.md)
+   l.1058  ](docs/roadmap.md)  →  ](roadmap.md)
+   l.1064  ](installeur/charge/)  →  ](../installeur/charge/)
+   l.1081  ](docs/roadmap.md)  →  ](roadmap.md)
+   l.1082  ](installeur/charge/PROVENANCE.md)  →  ](../installeur/charge/PROVENANCE.md)
+   l.1214  ](installeur/IDENTITE.md)  →  ](../installeur/IDENTITE.md)
+   l.1951  ](hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)  →  ](../hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)
+   couverture : 13 lien(s) local(aux) dans la base, 13 rebasage(s)
+
+en-tete : 38 ligne(s) — 2572 o · sha256 d7e969114b3be6a3e4255e5485714d6846b6da054ead75d0e7d9479d0767251e
+corps   : 257196 o · sha256 dafecea327d690a1d0754f82cdabd743fb90d5fb68f6798d68fd35d6302318c6
+T(base) : 257191 o · sha256 d5189c6bb937b7f36a1bc00ba5ec14f4f4c7059251a73079648113c1df762af3
+
+DIFFERENT — premiere divergence a l'octet 2475 du corps (octet 5047 du journal), ligne 40 de la base
+   attendu : b"qu'il faut acheter](bom.md).** Cette page\ndit aussi **quelle"
+   trouve  : b"qu'il faut acheter](docs/bom.md).** Cette page\ndit aussi **q"
+   ⛔ REBASAGE NON APPLIQUE dans le journal : l.40 `](docs/bom.md)` y est reste (attendu `](bom.md)`)
+rc=1
+
+━━ 4. LE SECOND INSTRUMENT, INDEPENDANT : diff brut base ⇄ corps du journal ━━
+   (le corps = tout ce qui SUIT la ligne-marqueur ; ⛔ aucun code de l'outil n'intervient)
+$ diff <(git show BASE:README.md) <(corps du journal)
+rc(diff)=1
+5,7c5,7
+< > Détail et ce que ça implique pour toi : [`LICENSING.md`](LICENSING.md).
+< > Composants tiers : [`THIRD-PARTY.md`](THIRD-PARTY.md) · Contribuer :
+< > [`CONTRIBUTING.md`](CONTRIBUTING.md) · Journal : [`CHANGELOG.md`](CHANGELOG.md).
+---
+> > Détail et ce que ça implique pour toi : [`LICENSING.md`](../LICENSING.md).
+> > Composants tiers : [`THIRD-PARTY.md`](../THIRD-PARTY.md) · Contribuer :
+> > [`CONTRIBUTING.md`](../CONTRIBUTING.md) · Journal : [`CHANGELOG.md`](../CHANGELOG.md).
+40c40
+< 📦 **Références exactes, quantités et prix datés : [ce qu'il faut acheter](docs/bom.md).** Cette page
+---
+> 📦 **Références exactes, quantités et prix datés : [ce qu'il faut acheter](bom.md).** Cette page
+44c44
+< 🔌 **Où brancher, et comment vérifier que le bus répond : [câbler un DeskNode](docs/cablage.md).** Cette page donne les deux points d'accès au bus I²C **avec leur piège**, et dit **quoi conclure** de ce que le scan répond — un scan à une seule passe fabrique des faux positifs.
+---
+> 🔌 **Où brancher, et comment vérifier que le bus répond : [câbler un DeskNode](cablage.md).** Cette page donne les deux points d'accès au bus I²C **avec leur piège**, et dit **quoi conclure** de ce que le scan répond — un scan à une seule passe fabrique des faux positifs.
+46c46
+< 📦🖨️ **Et le boîtier ? [sa place, son format et sa notice](docs/boitier.md).** ⚠️ Aucun boîtier n'est obligatoire, et **aucun plan n'est encore déposé** : cette page dit où ils iront, sous quelle licence, et pourquoi ses **quatre** paramètres d'impression sortent **non mesurés**.
+---
+> 📦🖨️ **Et le boîtier ? [sa place, son format et sa notice](boitier.md).** ⚠️ Aucun boîtier n'est obligatoire, et **aucun plan n'est encore déposé** : cette page dit où ils iront, sous quelle licence, et pourquoi ses **quatre** paramètres d'impression sortent **non mesurés**.
+1058c1058
+< [`docs/roadmap.md`](docs/roadmap.md)). ⛔ Un *« ça marche chez moi depuis le dépôt »* ne la
+---
+> [`docs/roadmap.md`](roadmap.md)). ⛔ Un *« ça marche chez moi depuis le dépôt »* ne la
+1064c1064
+< [`installeur/charge/`](installeur/charge/), plus le manifeste qui dit où chacune se pose.
+---
+> [`installeur/charge/`](../installeur/charge/), plus le manifeste qui dit où chacune se pose.
+1081,1082c1081,1082
+<   [`docs/roadmap.md`](docs/roadmap.md)) ; les binaires ont été produits **à la main**, et
+<   [`installeur/charge/PROVENANCE.md`](installeur/charge/PROVENANCE.md) le dit, avec la
+---
+>   [`docs/roadmap.md`](roadmap.md)) ; les binaires ont été produits **à la main**, et
+>   [`installeur/charge/PROVENANCE.md`](../installeur/charge/PROVENANCE.md) le dit, avec la
+1214c1214
+< écrites dans [`installeur/IDENTITE.md`](installeur/IDENTITE.md).
+---
+> écrites dans [`installeur/IDENTITE.md`](../installeur/IDENTITE.md).
+1951c1951
+< sont dans **[`hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`](hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)**.
+---
+> sont dans **[`hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`](../hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)**.
+lignes de diff (entetes NcN) : 7 · lignes '<' : 12 · lignes '>' : 12
+⚠️ annote apres coup : ce motif ne compte que les en-tetes a UNE ligne (7) ; les deux plages 5,7c5,7 et 1081,1082c1081,1082 font 9 blocs en tout.
+numeros de ligne touches : 5,7 40 44 46 1058 1064 1081,1082 1214 1951
+attendu (table T)        : 5 6 7 40 44 46 1058 1064 1081 1082 1214 1951
+tailles : base 257192 o · corps (awk) 257191 o
+
+━━ 5. PAS D'HISTORIQUE : clone --depth 1 d'un depot OU LA SCISSION EST COMMITEE ━━
+   ⚠️ la scission n'est PAS commitee dans le depot (consigne : ⛔ aucun commit sans demande).
+      ⇒ le couple (BASE, commit de scission) est RECONSTRUIT dans une copie jetable :
+      clone local du depot + le diff de l'arbre de travail applique + UN commit, puis --depth 1.
+commit jetable : bf09786527959fb289529fc7d2f12c9b5f798593
+   empreinte du journal : depot 14246b9e119eb5d1 · copie 14246b9e119eb5d1
+$ (copie complete) --verifier --avant BASE --apres HEAD
+T(base) : 257191 o · sha256 d5189c6bb937b7f36a1bc00ba5ec14f4f4c7059251a73079648113c1df762af3
+
+IDENTIQUE — le corps du journal est T(README@baf4265a292a), octet pour octet.
+rc=0
+clone --depth 1 : HEAD bf09786527959fb289529fc7d2f12c9b5f798593 · commits visibles : 1
+$ (clone --depth 1) --verifier --avant BASE --apres WORKTREE
+⛔ revision de base absente : `baf4265a292a7db1ae9f6bc8673779f2e743d45b` ne resout vers aucun commit de ce clone (clone sans historique ?)
+   ⇒ rc=4 : la preuve exige l'historique. ⛔ Aucun bilan n'est rendu sur une base qu'on ne peut pas lire.
+rc=4
+
+=== fin 2026-09-13T01:55:10+02:00 ===
+
+── LECTURE ────────────────────────────────────────────────────────────────────
+  1. NOMINAL : IDENTIQUE, rc=0, 13 rebasages, couverture 13/13 ; corps 257 191 o
+     = T(base) 257 191 o, sha256 d5189c6b… des deux cotes (T retire 1 octet net :
+     4 × « ../ » (+12) · 3 × « docs/ » retire (−15) · 2 × roadmap (−10) · 3 ×
+     installeur (+9) · 1 × hardware (+3) = −1).
+  2. OCTET ALTERE : DIFFERENT, rc=1, position 594 du corps / 3 166 du journal.
+  3. LIEN NON REBASE : DIFFERENT, rc=1, et le rebasage manquant NOMME (l.40).
+  4. DIFF BRUT : 12 lignes de chaque cote, en 9 blocs (5-7 · 40 · 44 · 46 · 1058 ·
+     1064 · 1081-1082 · 1214 · 1951) = EXACTEMENT les 12 lignes de la table T
+     (13 rebasages, dont 2 sur la l.7) — ⛔ AUCUNE autre ligne. La taille du corps
+     extrait par awk (257 191 o) est celle que l'outil calcule, sans son code.
+  5. PAS D'HISTORIQUE : dans un clone --depth 1 d'un depot ou la scission est
+     commitee, la base est ABSENTE ⇒ rc=4 et le motif « revision de base absente »,
+     ⛔ aucun bilan. ⚠️ Le commit de scission est JETABLE (reconstruit) : ⛔ aucun
+     commit n'a ete fait dans le depot, et le couple qui fera foi sera (BASE, le
+     commit que l'owner posera) — la preuve se rejouera alors avec `--apres <rev>`.
+
+━━ 6. AJOUTE LE 2026-09-13 APRES REVUE — LES DEUX GARDES « ECHOUE FERMEE » DE transforme(), VUES ECHOUER ━━
+   ⚠️ POURQUOI CE PARAGRAPHE EXISTE : les temoins (i) et (ii) ci-dessus alterent le JOURNAL ;
+      ils atteignent la comparaison OCTET, ⛔ jamais les deux gardes de T (un rebasage qui
+      ne s'applique pas EXACTEMENT une fois ; un lien local de la base NON COUVERT par la
+      table). Ces gardes n'avaient donc jamais ete vues rougir.
+   methode : un clone local du depot sous le scratchpad (la base y existe), dans lequel
+      tools/scission_readme_dn84.py est remplace par une COPIE MUTEE ; --apres vise le
+      VRAI journal de l'arbre de travail. ⛔ Le depot n'est pas touche.
+   outil de reference : sha256 82ec19685c379ad3 (arbre de travail, 2026-09-13T04:18:29+02:00)
+   copie mutee (iii) : la ligne `(40, "docs/bom.md", "bom.md")` RETIREE de REBASAGES
+$ (copie mutee iii) python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres <journal reel>
+   | base   : baf4265a292a7db1ae9f6bc8673779f2e743d45b
+   | avant  : README.md@baf4265a292a — 257192 o · sha256 71b4018bc7786da98ef65d1fb24f1e1c6d39ebeb27197f396ae6d1610b6f3002
+   | apres  : fichier : /home/nasbarok/projects/desknode/docs/journal-de-bord.md — 259763 o · sha256 14246b9e119eb5d102d7a265f153bb2e95925a1447b6084de5dd5c7b5c967a53
+   | ⛔ ECHEC NOMME : T ne s'applique pas — l.40 : lien local `docs/bom.md` NON COUVERT par la table (1 dans la base, 0 rebasage(s))
+   rc=1
+   copie mutee (iv) : le rebasage `installeur/IDENTITE.md` DECALE de l.1214 a l.1215
+$ (copie mutee iv) python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres <journal reel>
+   | base   : baf4265a292a7db1ae9f6bc8673779f2e743d45b
+   | avant  : README.md@baf4265a292a — 257192 o · sha256 71b4018bc7786da98ef65d1fb24f1e1c6d39ebeb27197f396ae6d1610b6f3002
+   | apres  : fichier : /home/nasbarok/projects/desknode/docs/journal-de-bord.md — 259763 o · sha256 14246b9e119eb5d102d7a265f153bb2e95925a1447b6084de5dd5c7b5c967a53
+   | ⛔ ECHEC NOMME : T ne s'applique pas — l.1215 : `](installeur/IDENTITE.md)` s'y trouve 0 fois (attendu EXACTEMENT 1) · l.1214 : lien local `installeur/IDENTITE.md` NON COUVERT par la table (1 dans la base, 0 rebasage(s))
+   rc=1
+   ⇒ (iii) rc=1, faute NOMMEE « lien local `docs/bom.md` NON COUVERT » ; (iv) rc=1, faute NOMMEE
+     « s'y trouve 0 fois » ET « NON COUVERT » — ⛔ aucune des deux n'atteint la comparaison :
+     T echoue FERMEE avant d'avoir produit un octet.
+
+━━ 7. AJOUTE LE 2026-09-13 APRES REVUE — --apres MAL ORTHOGRAPHIE, et --ecrire SUR UN JOURNAL EXISTANT ━━
+$ python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres docs/journal-de-bord-typo.md
+   | ⛔ ECHEC NOMME : journal introuvable : `docs/journal-de-bord-typo.md` a la forme d'un chemin et n'existe pas
+   rc=1  (avant la revue : rc=4 « revision de base absente », le MAUVAIS diagnostic)
+$ python3 tools/scission_readme_dn84.py --ecrire --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --entete <en-tete>   (journal PRESENT)
+   | ⛔ ECHEC NOMME : `docs/journal-de-bord.md` EXISTE DEJA — `--ecrire` refuse de l'ecraser : il porterait la perte de toute annotation posee depuis la scission. Pour la preuve, c'est `--verifier`.
+   rc=1 · sha256[:16] du journal avant 14246b9e119eb5d1 · apres 14246b9e119eb5d1  (avant la revue : ecrasement SILENCIEUX)

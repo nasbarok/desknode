@@ -1,0 +1,36 @@
+==============================================================================
+dn8-4 / T4 — LA VITRINE TELLE QUE GITHUB LA REND (AC8.4.3)
+  2026-09-13T01:55:57+02:00 · `gh api -X POST /markdown -f mode=gfm -f context=nasbarok/desknode
+  -F text=@README.md` · rc=0 · ⛔ rien n'est pousse : l'API rend du HTML a partir
+  du texte envoye, ⛔ rien n'est ecrit sur le depot distant.
+  README.md envoye : 5336 o · sha256 87021136a452a1ba32625f2fd90f04f0a17f97deb9c5566029deb66463d5385a
+  HTML rendu       : 7900 o · sha256 9e7ead60599ae14962802fd325400cbd5957d8f8da99a056a92c93b5c84bf10b
+==============================================================================
+
+── L'ORDRE DES ELEMENTS DE PREMIER NIVEAU DANS LE HTML RENDU ────────────────
+   1. <h1> DeskNode
+   2. <p> <img src=docs/photos/2026-08-30-1804-desknode-etat-actif-gros-plan.jpg>
+   3. <p> DeskNode is a physical desktop dashboard: a small touchscreen that sits next to your PC and shows, at a glance
+   4. <p> Open source — firmware GPL-3.0-or-later · Windows agent MIT · docs and hardware CC-BY-SA-4.0. What that means
+   5. <p> Built on an ESP32-S3 board with a 2.8-inch touchscreen (Waveshare ESP32-S3-Touch-LCD-2.8B, 480×640 IPS), fed P
+   6. <h2> What it shows
+   7. <p> Six cells: CPU · GPU · RAM · NETWORK · DISK · AMBIENT (room temperature and humidity). The screen has two stat
+   8. <p> <img src=docs/photos/2026-08-30-1818-desknode-ambient-sur-la-tour.jpg>
+   9. <p> About these photos (2026-08-30). What you see is the prototype: bare wiring, a sensor breakout above the scree
+  10. <h2> Two hardware tiers
+  11. <table> tier what you buy what it adds DeskNode the Waveshare ESP32-S3-Touch-LCD-2.8B board, alone nothing to solder D
+  12. <p> The board alone is not a degraded mode: the firmware knows it has no sensor, says so, and turns off what has n
+  … (37 elements de premier niveau en tout)
+
+── LE VERDICT D'ORDRE (UX-DR8.1) ─────────────────────────────────────────────
+  [OK ] 1er  : <h1> DeskNode
+  [OK ] 2e   : la photo ACTIVE, seule dans son paragraphe
+  [OK ] 3e   : la phrase « physical desktop dashboard »
+  [OK ] 4e   : les trois licences + LICENSING.md
+  [OK ] 5e   : ESP32-S3 + touchscreen + telemetry + sensors
+  [OK ] ⛔ « CPU monitor » absent du HTML rendu
+  images rendues, dans l'ordre : docs/photos/2026-08-30-1804-desknode-etat-actif-gros-plan.jpg · docs/photos/2026-08-30-1818-desknode-ambient-sur-la-tour.jpg
+
+⛔ CE QUE CE RELEVE NE DIT PAS : que l'image S'AFFICHE sur github.com (le depot est
+   prive et l'API ne resout pas les chemins relatifs contre un arbre pousse — et le
+   remote a 50 commits de retard, cf. T1 (d)) ; ni qu'un inconnu comprend en 15 s.

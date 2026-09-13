@@ -456,6 +456,78 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Changed
 
+- 🆕 **The root `README.md` is split: a short front page in English says what DeskNode is, and
+  the French engineering log moves to `docs/journal-de-bord.md`** (`dn8-4`, 2026-09-13).
+  🔬 **Measured the same day, ⛔ not taken from planning**: the root `README.md` had become a
+  French engineering log of **257 192 bytes / 2 550 lines** at `baf4265` — its own opening line
+  still announced *"168 Ko"*. **It is moved, ⛔ not rewritten**: the body of
+  `docs/journal-de-bord.md` is that file **byte for byte**, except **13 relative links** rebased
+  so they still resolve from `docs/`. That transformation is a piece of data, it **fails
+  closed** (each rebase must apply exactly once, and every local link of the base must be
+  covered), and it is proven three ways: a comparison tool kept in the tree and replayable at
+  any time, `tools/scission_readme_dn84.py` (⛔ not a check: CI clones without history, and the
+  log will keep being annotated), which reports `IDENTIQUE` and goes red on a one-byte change,
+  on one link left un-rebased, and — seen on mutated copies of the tool — on a rebase that does
+  not apply or a base link the table does not cover; a raw `diff` between the base and the log's
+  body that shows **the 12 lines carrying those 13 links, and nothing else**; and
+  `tools/verif_licences_dn52.py` resolving every link from `docs/`. ⚠️ **The licence check is ⛔
+  not fully independent of the tool**: both read links with the same expression. What that
+  expression cannot see was measured in the base — **0** reference-style link definitions and
+  **0** HTML links outside code blocks, plus one external `https://` autolink that rebasing does
+  not concern. A dated header in front of the body says where the file came from, and that the
+  paths written in `code` still read from the repository root. ⛔ **Not split into several
+  files**: each extra file is one more place where a check that reads **text** can be green on
+  something false.
+  **The front page** follows the reading order the epic set — the name, **a photo**, **one
+  sentence** (*a physical desktop dashboard*), **the licences**, then the hardware — and carries
+  the known issues **as measured** (below). ⛔ No logo exists in the repository, and none was
+  invented. 📷 **The media is an owner decision of 2026-09-13, written rather than left open**:
+  two photos of the **bare-wired prototype** taken on 2026-08-30 (`DSC04915` in the Active
+  state, `DSC04919` in context on the tower) are **assumed** for this first version rather than
+  reshot, **and so is the French interface they show** — a freshly flashed board starts in
+  English, and the caption says so. The two JPEGs were reduced to 1 600 px, orientation applied
+  **before** stripping every EXIF segment, **171 807** and **206 956 bytes** (the camera files
+  weighed 10.4 and 11.3 MB); they live under `docs/photos/`, so `docs/`'s **CC-BY-SA-4.0**
+  applies. ⚠️ **Their names are not the ones first planned, and the reason is measured**:
+  `2026-08-30_1804-…jpg` matches the naming convention of `tools/verif_photos_dn63.py`, which
+  treats any such name cited in any tracked Markdown file as a wiring photo — the first draft
+  turned that check red (`27 OK, 1 KO`). The date and time are kept, separated by a hyphen.
+  **What guards what, and the price is written.** The seven checks that read the log at the
+  root (`verif_installeur_dn71`, `verif_prerequis_dn75`, `verif_paliers_dn441`,
+  `verif_demarrage_dn443`, `verif_langues_dn442`, `verif_veille_dn33`, `verif_flash_dn72`) are
+  **re-pointed** at `docs/journal-de-bord.md`, each with a dated comment, ⛔ not rewritten: they
+  guard exact French sentences, with mutants anchored on them, and every count is unchanged.
+  ⇒ **they no longer guard what a newcomer reads first.** A new check,
+  `tools/verif_vitrine_dn84.py`, does: the reading order, the absence of *"CPU monitor"*, the
+  size, every local image the page cites read **marker by marker** (⛔ no Pillow on the runner)
+  for its pixels (long edge ≤ 1 600) and for any segment other than `APP0 JFIF`, the caption that
+  assumes the prototype, the tiers, the entry point (named **and** present), English by default,
+  the install command read from the local server's own `GESTE_DEPENDANCES`, and the known issues — `~40 s`, `335.8 ms` against `300 ms`, AMD only, and
+  **NVIDIA with *not implemented* on the same line**. It reads headings and images outside code
+  blocks, **states in its own output that it does not read raw HTML, setext headings or
+  reference links**, and goes red if the page contains any. **16 controls, 16 mutants**, each
+  mutant seen red on the control it targets, and a mutant that changes nothing exits `3`; three
+  of the controls check that every control is targeted by a mutant and every target is real.
+  ⚠️ Several controls bundle several properties, and a mutant proves **one** of them, ⛔ not
+  all.
+  `tools/verif_dossier_d5_dn45.py` gains the log **next to** the README, so its coverage does not
+  shrink in silence, and the six manifest rows of `docs/dn4-15-arbitrage.md` that were keyed on
+  `README.md` are re-targeted with a dated note — `23 OK, 10 KO`, exactly as before.
+  ⛔ **What is not measured, and cannot be here**: whether a stranger understands DeskNode in
+  fifteen seconds. That verdict needs a stranger, and there is none while the repository is
+  private.
+  **The build's starting conditions now have their failure written down**, measured on
+  2026-09-13 outside any working tree and published in `CONTRIBUTING.md` under *When a
+  starting condition is not met*: an ESP-IDF outside `~5.5.0` is refused with exit code **2**
+  by a message that never names the version it found (provoked through
+  `CI_TESTING_IDF_VERSION`, which plays **only** the component manager's check); an inherited
+  `sdkconfig` wins **silently** even while the tool announces it is loading
+  `sdkconfig.defaults`; the disk budget is **summed** for the first time — **8.16 GiB**
+  allocated for ESP-IDF, toolchains, one build and its components, **8.34 GiB** with the
+  component cache — and the **4.30 GiB** published for `~/.espressif` turns out to count 81
+  hard-linked toolchain files more than once (**3.80 GiB** on disk); an HTTPS clone was
+  measured, and SSH was not.
+
 - ⚠️ **Five `📍` anchors of the planning ledger pointed at nothing, and they were re-routed
   in place** (`dn8-1`, 2026-09-11). Measured over the **94** targets carried by **86** anchor
   lines: one named a capture file that never existed, two named patterns that had been

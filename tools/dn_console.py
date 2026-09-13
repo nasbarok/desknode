@@ -795,7 +795,11 @@ def reveiller(ser):
             "le port s'ouvre mais la console ne rend pas l'invite en 3 s.\n"
             "  C'est le symptôme « carte muette » : l'application ne tourne pas,\n"
             "  la carte est probablement restée en mode download.\n"
-            "  ⇒ recette du README § « La carte est muette ? » — et ATTENTION,\n"
+            # ⚠️ dn8-4 (2026-09-13) — RE-CIBLE : ce message renvoyait au README ;
+            #    le journal qui porte la recette est parti, octet pour octet, dans
+            #    `docs/journal-de-bord.md`. La racine porte une vitrine anglaise.
+            "  ⇒ recette du journal de bord (docs/journal-de-bord.md, l'ancien\n"
+            "    README) § « La carte est muette ? » — et ATTENTION,\n"
             "    `--after hard_reset` NE SUFFIT PAS, il faut `watchdog_reset`.")
 
 

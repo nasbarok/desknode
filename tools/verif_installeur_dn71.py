@@ -64,7 +64,13 @@ PY = "installeur/dn_installeur.py"
 PAGE = "installeur/index.html"
 IDENT = "installeur/IDENTITE.md"
 LIC = "LICENSING.md"
-LISEZMOI = "README.md"
+# ⚠️ dn8-4 (2026-09-13) — REPOINTE. Ce chemin valait `README.md` a la racine.
+#    Le journal francais que cette gate garde y est parti OCTET POUR OCTET
+#    (13 liens rebases, preuve : `tools/scission_readme_dn84.py --verifier`) ;
+#    la racine porte desormais une VITRINE anglaise, gardee par
+#    `tools/verif_vitrine_dn84.py`. ⛔ Aucune ancre ni aucun mutant touche : la
+#    gate garde le JOURNAL, ⛔ plus ce qu'un inconnu lit en premier.
+LISEZMOI = "docs/journal-de-bord.md"
 ROADMAP = "docs/roadmap.md"
 OUTIL = "tools/dn_agent_tour.ps1"
 ATTRIBUTS = ".gitattributes"

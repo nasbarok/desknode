@@ -72,7 +72,13 @@ F_CMAKE = os.path.join(MAIN, "CMakeLists.txt")
 # 🔴 REVUE DU 2026-09-01 — la geometrie de la dalle se RELIT ici, ⛔ elle ne
 #    s'ecrit plus en dur dans la gate.
 F_PINS_H = os.path.join(MAIN, "dn_pins.h")
-F_README = os.path.join(RACINE, "README.md")
+# ⚠️ dn8-4 (2026-09-13) — REPOINTE. Ce chemin valait `README.md` a la racine.
+#    Le journal francais que cette gate garde y est parti OCTET POUR OCTET
+#    (13 liens rebases, preuve : `tools/scission_readme_dn84.py --verifier`) ;
+#    la racine porte desormais une VITRINE anglaise, gardee par
+#    `tools/verif_vitrine_dn84.py`. ⛔ Aucune ancre ni aucun mutant touche : la
+#    gate garde le JOURNAL, ⛔ plus ce qu'un inconnu lit en premier.
+F_README = os.path.join(RACINE, "docs", "journal-de-bord.md")
 
 # Les cinq cles que cette story ajoute a la table. ⚠️ RELUES du bloc de
 # `dn_ui.c`, ⛔ pas recitees ici — voir `cles_de_l_ecran()`.

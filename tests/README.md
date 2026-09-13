@@ -53,7 +53,7 @@ Elle a besoin de **la carte**, et la carte n'est pas automatisable depuis ce pos
 >
 > **1. « le flash passe par Windows » — la moitié qui compte pour cette page tient, la
 > moitié sur le flash, non.** ⛔ *Faux tel quel* : la boucle de travail **retenue** du
-> `README.md` § *Toolchain / build & flash* flashe **depuis WSL**
+> `docs/journal-de-bord.md` § *Toolchain / build & flash* flashe **depuis WSL**
 > (`idf.py -p /dev/ttyACM0 flash monitor`) ; la voie qui flashe depuis Windows y est
 > nommée **« secours, et cap à terme »**. ✅ *Vrai, et c'est ce qui fonde ce paragraphe* :
 > **le BUILD, lui, est bien Linux/WSL sur les deux voies**, et `IDF_PATH` n'existe
@@ -61,6 +61,9 @@ Elle a besoin de **la carte**, et la carte n'est pas automatisable depuis ce pos
 > aurait échoué**. La plateforme de build supportée est désormais **déclarée** dans
 > [`CONTRIBUTING.md`](../CONTRIBUTING.md) § *Building the firmware* ; c'est là qu'elle
 > fait foi, et cette page ⛔ ne la redouble pas.
+> *(Re-ciblé le 2026-09-13, `dn8-4` : le renvoi « § Toolchain / build & flash » de ce
+> point nommait le README de la racine, parti octet pour octet dans
+> `docs/journal-de-bord.md` ce jour-là ; la section y est inchangée.)*
 >
 > **2. « `dn4-5` en tient un sur plusieurs jours » — ⛔ IL N'Y A PLUS DE SOAK.** Mesuré
 > par `dn5-1` le 2026-09-02, **sans ouvrir le port** : le dernier soak est **mort depuis
@@ -81,7 +84,8 @@ par habitude est une garde morte qui a l'air vivante.
 Deux conditions, et **elles sont mesurables** :
 
 1. **un flash pilotable sans geste humain** depuis un runner (aujourd'hui : non — voir
-   `README.md` § *Toolchain / build & flash*, voies A et C) ;
+   `docs/journal-de-bord.md` § *Toolchain / build & flash*, voies A et C — re-ciblé le
+   2026-09-13, `dn8-4` : ce renvoi nommait le README de la racine) ;
 2. **une carte dédiée à la vérification**, distincte de celle qui porte l'usage réel.
    ⚠️ *(Reformulé le 2026-09-04 : cette ligne disait « celle qui porte **les soaks** », au
    présent, douze lignes sous l'annotation qui vient d'établir qu'il n'y en a plus. Ce qui

@@ -1,0 +1,180 @@
+==============================================================================
+dn8-4 / T7 — LA VERIFICATION REJOUEE PAR L'ORCHESTRATEUR, ⛔ PAS REPRISE DU RAPPORT
+  2026-09-13 · desknode `main` @ baf4265a292a7db1ae9f6bc8673779f2e743d45b + la marche INDEXEE
+  (non committee au moment des tirs) · cockpit @ 967bfb142d9b8af78b370579e9c415d239ab41b9
+==============================================================================
+
+── 0. POURQUOI CE FICHIER EXISTE ──────────────────────────────────────────────
+  La revue a releve que `releve-comptes.md` compare des passes dont les sorties
+  brutes (T5, T6) sont restees sous un scratchpad de session. Ce fichier verse les
+  sorties de la verification de l'orchestrateur, jouee DE SA MAIN, deux fois :
+  apres l'implementation (passe 1), puis apres les correctifs de revue (passe 2).
+
+── 1. 🔴 LA PASSE `run_gates.sh` N'A PAS PU TOURNER EN ARRIERE-PLAN ────────────
+  Trois tirs longs lances en arriere-plan par le harnais de session ont ete
+  ARRETES « faute de memoire » : deux fois `run_gates.sh`, au demarrage de
+  `verif_campagne_dn440.py`, puis `verif_campagne_dn56.py` seul. ⛔ La memoire du
+  systeme n'etait PAS en cause, et c'est mesure : echantillonnee toutes les 15 s
+  puis chaque seconde, elle est restee sous 1,3 Go utilises (14,6 Go disponibles),
+  et `verif_campagne_dn440.py` jouee seule au premier plan a un pic de 64 Mo.
+  ⇒ la cause est une propriete du HARNAIS de session, ⛔ pas du depot.
+  ⇒ la meme verification a ete jouee AU PREMIER PLAN, sans le runner :
+    · chaque `tools/verif_*.py`, un par un, `--cockpit` quand la gate l'accepte ;
+    · `verif_campagne_dn440.py` seule ;
+    · le CONTRAT de `verif_campagne_dn56.py` rejoue par lots de moins de 600 s
+      (memes cibles lues a l'AST, meme regle : rc==1 + BILAN + au moins un [KO ],
+      meme exception a double sens (dn442, 17)) — ⛔ ce n'est PAS la gate elle-meme.
+  ⚠️ CE QUE CA NE COUVRE PAS : les gardes propres a `run_gates.sh` (table
+  NON_JOUABLES, garde du puits) — elles ont passe au debut de la passe arretee
+  (les gates y etaient deja jouees), ⛔ pas rejouees jusqu'au bout.
+  Empreinte de l'index (`git ls-files -s | sha256sum`) identique avant et apres
+  CHAQUE tir, et 0 fichier hors index : ⛔ aucun tir arrete n'a laisse de mutant.
+
+── 2. PASSE 1 — APRES L'IMPLEMENTATION ─────────────────────────────────────────
+  preuve de scission (--verifier, WORKTREE) : rc=0 · IDENTIQUE · 13 liens / 13 rebasages
+  temoins de la matrice (copies jetables) :
+    1 octet du journal altere            : rc=1 · DIFFERENT, 1re divergence nommee
+    lien `](bom.md)` laisse non rebase   : rc=1 · « REBASAGE NON APPLIQUE … l.40 »
+    revision de base inconnue            : rc=4 · « revision de base absente »
+    vitrine avec un titre setext         : rc=1 · [KO ] (c3)
+    vitrine avec un lien de reference    : rc=1 · [KO ] (c3)
+    mutant 2 dont l'ancre est absente    : rc=3 · « NON EXERCE »
+  verif_vitrine_dn84.py : 12 OK, 0 KO · 12 mutants rc=1, 1 KO chacun sur SA cible · mutant 99 rc=2
+  verif_campagne_dn440.py (seule) : 62 OK, 0 KO · 39 mutants, 0 echec · 143 s · pic 64 Mo
+  contrat de dn56, passe 1 :
+  verif_affiliation_dn65.py         38 mutant(s)   72.4 s  fautes=0 
+  verif_banc_langue_dn73.py         63 mutant(s)  157.6 s  fautes=0 
+  verif_boitier_dn64.py             35 mutant(s)   13.6 s  fautes=0 
+  verif_bom_dn61.py                 31 mutant(s)    1.8 s  fautes=0 
+  verif_cablage_dn62.py             40 mutant(s)    3.9 s  fautes=0 
+  verif_demarrage_dn443.py          48 mutant(s)   31.8 s  fautes=0 
+  verif_dossier_d5_dn45.py           3 mutant(s)    3.6 s  fautes=0 
+  verif_entree_dn82.py              24 mutant(s)    4.4 s  fautes=0 
+  verif_flash_dn72.py               41 mutant(s)   10.1 s  fautes=0 
+  verif_harnais_dn81.py             15 mutant(s)   73.8 s  fautes=0 
+  verif_installeur_dn71.py          40 mutant(s)    9.7 s  fautes=0 
+  verif_langue_dalle_dn73.py        34 mutant(s)    4.6 s  fautes=0 
+  verif_langues_dn442.py            25 mutant(s)   19.0 s  fautes=0 #17 utilisee
+  verif_lhm_ps_dn83.py              15 mutant(s)  259.0 s  fautes=0 
+  verif_licences_dn52.py            40 mutant(s)   38.6 s  fautes=0 
+  verif_page_dn722.py               32 mutant(s)    4.9 s  fautes=0 
+  verif_photos_dn63.py              32 mutant(s)   12.9 s  fautes=0 
+  verif_placement_dn74.py           25 mutant(s)    2.4 s  fautes=0 
+  verif_preconditions_dn76.py       32 mutant(s)    6.6 s  fautes=0 
+  verif_prerequis_dn75.py           31 mutant(s)    7.6 s  fautes=0 
+  verif_temoin_filtre_dn447.py       9 mutant(s)    4.8 s  fautes=0 
+  verif_vitrine_dn84.py             12 mutant(s)    0.8 s  fautes=0 
+  CUMUL : 22 cible(s), 665 mutant(s), 0 faute(s), duree cumulee 743.9 s
+
+── 3. PASSE 2 — APRES LES CORRECTIFS DE REVUE (sortie du script, libelles tronques) ──
+  preuve rc=0 IDENTIQUE — le corps du journal est T(
+  apres absent rc=1 ⛔ ECHEC NOMME : journal introuvable : `docs/nexiste-pas.md` a la for
+  ecrire sur journal existant rc=1 ⛔ ECHEC NOMME : l'en-tete doit finir par un retour a la ligne · journal inchange: oui
+  help rc=0
+  vitrine rc=0 BILAN : 16 OK, 0 KO
+  mutants listes : 16
+    m1  rc=1 KO=1 [KO ] (c1) nom → photo → phrase |
+    m2  rc=1 KO=1 [KO ] (c2) ⛔ « CPU monitor » — l|
+    m3  rc=1 KO=1 [KO ] (c3) ⛔ HTML brut, setext, lien|
+    m4  rc=1 KO=1 [KO ] (c4) la vitrine tient sous 16000|
+    m5  rc=1 KO=1 [KO ] (c5) JPEG lisibles, APP0 JFIF se|
+    m6  rc=1 KO=1 [KO ] (c6) toute image citee existe, <|
+    m7  rc=1 KO=1 [KO ] (c7) contexte apres la photo act|
+    m8  rc=1 KO=1 [KO ] (c8) deux paliers, point d'entre|
+    m9  rc=1 KO=1 [KO ] (c9) ~40 s · 335.8/300 ms · AM|
+    m10 rc=1 KO=1 [KO ] (c10) NVIDIA porte « not implem|
+    m11 rc=1 KO=1 [KO ] (c11) le lien vers le journal ex|
+    m12 rc=1 KO=1 [KO ] (c12) ⛔ aucun motif de verif_d|
+    m13 rc=1 KO=1 [KO ] (c13) `## Install` porte GESTE_D|
+    m14 rc=1 KO=1 [KO ] (c14) chaque controle est vise p|
+    m15 rc=1 KO=1 [KO ] (c15) chaque cible de mutant est|
+    m16 rc=1 KO=1 [KO ] (c16) `CIBLES` et `MUTANTS` se c|
+    m99 rc=2
+  == toutes les gates sauf dn56/dn440
+  verif_affiliation_dn65           rc=0  BILAN : 23 OK, 0 KO
+  verif_banc_langue_dn73           rc=0  BILAN : 81 OK, 0 KO
+  verif_bme680_retard_dn45         rc=0  BILAN : 15 OK, 0 KO
+  verif_boitier_dn64               rc=0  BILAN : 29 OK, 0 KO
+  verif_bom_dn61                   rc=0  BILAN : 24 OK, 0 KO
+  verif_cablage_dn62               rc=0  BILAN : 37 OK, 0 KO
+  verif_courbe_dn413               rc=0  
+  verif_cumul_ambient_dn45         rc=0  BILAN : 23 OK, 0 KO
+  verif_d4_nvs_dn45                rc=0  BILAN : 6 OK, 0 KO
+  verif_decoupe_horloge_dn418      rc=0  
+  verif_demarrage_dn443            rc=0  BILAN : 58 OK, 0 KO
+  verif_dossier_d5_dn45            rc=0  BILAN : 12 OK, 0 KO
+  verif_dossier_dn415              rc=1  BILAN : 23 OK, 10 KO
+  verif_entree_dn82                rc=0  BILAN : 45 OK, 0 KO
+  verif_flash_dn72                 rc=0  BILAN : 30 OK, 0 KO
+  verif_harnais_dn413              rc=0  
+  verif_harnais_dn81               rc=0  BILAN : 28 OK, 0 KO
+  verif_hist_dn413                 rc=0  
+  verif_installeur_dn71            rc=0  BILAN : 28 OK, 0 KO
+  verif_instruments_dn423          rc=0  BILAN : 163 OK, 0 KO
+  verif_journal_soak_dn45          rc=0  BILAN : 26 OK, 0 KO
+  verif_langue_dalle_dn73          rc=0  BILAN : 61 OK, 0 KO
+  verif_langues_dn442              rc=0  BILAN : 31 OK, 0 KO
+  verif_ledger_dn416               rc=0  BILAN : 36 OK, 0 KO
+  verif_lhm_ps_dn83                rc=0  BILAN : 26 OK, 0 KO
+  verif_licences_dn52              rc=0  BILAN : 34 OK, 0 KO
+  verif_lissage_dn45               rc=0  BILAN : 21 OK, 0 KO
+  verif_miroir_horloge_dn418       rc=0  
+  verif_page_dn722                 rc=0  BILAN : 56 OK, 0 KO
+  verif_paliers_dn441              rc=0  BILAN : 42 OK, 0 KO
+  verif_photos_dn63                rc=0  BILAN : 28 OK, 0 KO
+  verif_placement_dn74             rc=0  BILAN : 42 OK, 0 KO
+  verif_polices_dn440              rc=0  BILAN : 11 OK, 0 KO
+  verif_preconditions_dn76         rc=0  BILAN : 55 OK, 0 KO
+  verif_prerequis_dn75             rc=0  BILAN : 51 OK, 0 KO
+  verif_rebouclage_dn45            rc=0  BILAN : 30 OK, 0 KO
+  verif_reprise_horloge_dn418      rc=0  
+  verif_selection_dn49             rc=0  
+  verif_serie_dn412                rc=0  BILAN : 50 OK / 0 KO
+  verif_source_lhm_dn48            rc=0  
+  verif_sr03                       rc=2  
+  verif_temoin_filtre_dn447        rc=0  BILAN : 5 OK, 0 KO
+  verif_veille_dn33                rc=0  BILAN : 267 OK · 0 KO
+  verif_verrou_lvgl_dn413          rc=0  
+  verif_vitrine_dn84               rc=0  BILAN : 16 OK, 0 KO
+  verif_xip_dn422                  rc=0  BILAN : 10 OK / 0 KO
+  manifeste: genere 390 lignes / fichier 390 · diff: identique
+  tracker parse OK 102 review
+  dn_lhm_tour.ps1 ASCII pur
+  rendre-port.sh syntaxe OK
+  index e58621be97693c04 -> e58621be97693c04 · hors index : 0
+  ⚠️ temoin `--ecrire` : le tir ci-dessus a passe `--entete /dev/null`, qui echoue
+     sur « l'en-tete doit finir par un retour a la ligne » AVANT le controle
+     d'existence — il ⛔ ne prouvait pas le refus d'ecraser. Rejoue avec un en-tete
+     valide : rc=1 · « `docs/journal-de-bord.md` EXISTE DEJA — `--ecrire` refuse de
+     l'ecraser » · journal inchange (sha256 identique).
+  verif_campagne_dn440.py (seule) : 62 OK, 0 KO · 39 mutants, 0 echec · 141.14 s
+  contrat de dn56, passe 2 (22 cibles — la vitrine passe de 12 a 16 mutants) :
+  verif_affiliation_dn65.py         38 mutant(s)   70.8 s  fautes=0 
+  verif_banc_langue_dn73.py         63 mutant(s)  156.8 s  fautes=0 
+  verif_boitier_dn64.py             35 mutant(s)   13.2 s  fautes=0 
+  verif_bom_dn61.py                 31 mutant(s)    1.7 s  fautes=0 
+  verif_cablage_dn62.py             40 mutant(s)    3.6 s  fautes=0 
+  verif_demarrage_dn443.py          48 mutant(s)   30.5 s  fautes=0 
+  verif_dossier_d5_dn45.py           3 mutant(s)    3.5 s  fautes=0 
+  verif_entree_dn82.py              24 mutant(s)    4.5 s  fautes=0 
+  verif_flash_dn72.py               41 mutant(s)   10.1 s  fautes=0 
+  verif_harnais_dn81.py             15 mutant(s)   78.5 s  fautes=0 
+  verif_installeur_dn71.py          40 mutant(s)    9.6 s  fautes=0 
+  verif_langue_dalle_dn73.py        34 mutant(s)    4.8 s  fautes=0 
+  verif_langues_dn442.py            25 mutant(s)   19.0 s  fautes=0 #17 utilisee
+  verif_lhm_ps_dn83.py              15 mutant(s)  258.6 s  fautes=0 
+  verif_licences_dn52.py            40 mutant(s)   39.0 s  fautes=0 
+  verif_page_dn722.py               32 mutant(s)    4.8 s  fautes=0 
+  verif_photos_dn63.py              32 mutant(s)   12.6 s  fautes=0 
+  verif_placement_dn74.py           25 mutant(s)    2.3 s  fautes=0 
+  verif_preconditions_dn76.py       32 mutant(s)    6.6 s  fautes=0 
+  verif_prerequis_dn75.py           31 mutant(s)    7.6 s  fautes=0 
+  verif_temoin_filtre_dn447.py       9 mutant(s)    4.8 s  fautes=0 
+  verif_vitrine_dn84.py             16 mutant(s)    1.6 s  fautes=0 
+  CUMUL : 22 cible(s), 669 mutant(s), 0 faute(s), duree cumulee 744.5 s
+
+── 4. CE QUE CE RELEVE NE DIT PAS ──────────────────────────────────────────────
+  · ⛔ la duree de `verif_campagne_dn56.py` ELLE-MEME : le cumul ci-dessus est la
+    somme des tirs de mutants, sans le cout propre de la gate (liste, AST, (c4)).
+  · ⛔ le chemin CI : aucun tir n'a ete joue dans un clone de profondeur 1.
+  · ⛔ qu'un inconnu comprend DeskNode en quinze secondes (ledger, porteur dn8-8).

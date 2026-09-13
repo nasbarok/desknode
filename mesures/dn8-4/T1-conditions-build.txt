@@ -1,0 +1,282 @@
+==============================================================================
+dn8-4 / T1 — LES QUATRE CONDITIONS DE DEPART, MESUREES HORS DE L'ARBRE (AC8.4.5)
+  2026-09-13, 01:47:00 → 01:50:24 (+02:00). Tout s'est execute sous le scratchpad
+  de session : deux copies jetables `git archive HEAD` (A et B) du depot a
+  baf4265a292a7db1ae9f6bc8673779f2e743d45b, ⛔ aucune commande dans l'arbre du depot.
+  ⛔ AUCUNE seconde ESP-IDF installee : le refus est PROVOQUE (voir (a)).
+  Le script joue est verse en fin de fichier ; les sorties brutes completes
+  (a1, a2, a0, b1, b2, c0, d1, d2) sont citees ici par leurs lignes utiles.
+==============================================================================
+
+── RELEVE BRUT (T1-brut.txt, tel qu'imprime) ─────────────────────────────────
+=== dn8-4 / T1 — debut 2026-09-13T01:47:00+02:00 ===
+HEAD desknode : baf4265a292a7db1ae9f6bc8673779f2e743d45b
+ESP-IDF :  · idf-component-manager : 2.5.0
+copies A et B : git archive HEAD — sdkconfig absent ? oui · managed_components absent ? oui · dependencies.lock absent ? oui
+export.sh source : IDF_PATH=/home/nasbarok/esp/esp-idf · idf.py --version : ESP-IDF v5.5.5
+
+── (a) ESP-IDF HORS ~5.5.0 — le refus PROVOQUE par CI_TESTING_IDF_VERSION
+
+$ env CI_TESTING_IDF_VERSION=5.4.0 idf.py reconfigure
+  ⇒ rc=2 · duree 15.2 s · sortie : a1-idf-5.4.0.txt (42 lignes)
+
+$ env CI_TESTING_IDF_VERSION=6.0.0 idf.py reconfigure
+  ⇒ rc=2 · duree 12.4 s · sortie : a2-idf-6.0.0.txt (42 lignes)
+  temoin POSITIF (meme copie neuve, SANS la variable) :
+  ⚠️ CORRIGE LE 2026-09-13 (revue) — « meme copie neuve » est FAUX, et la ligne n'est pas effacee :
+     le script joue ce temoin dans la copie B (`cd "$SCR/B/firmware/desknode"`), une SECONDE copie
+     neuve ; et 6.0.0 a tourne dans la copie A APRES l'echec du reconfigure 5.4.0.
+
+$ idf.py reconfigure
+  ⇒ rc=0 · duree 28.4 s · sortie : a0-temoin-sans-variable.txt (84 lignes)
+
+── (b) LE sdkconfig HERITE L'EMPORTE — EN SILENCE
+  sdkconfig.defaults : CONFIG_FREERTOS_HZ=1000
+  sdkconfig produit  : CONFIG_FREERTOS_HZ=1000
+  sdkconfig RENDU DIVERGENT a la main : CONFIG_FREERTOS_HZ=100
+
+$ idf.py reconfigure
+  ⇒ rc=0 · duree 11.0 s · sortie : b1-reconfigure-herite.txt (60 lignes)
+  apres reconfigure  : CONFIG_FREERTOS_HZ=100
+  lignes de la sortie qui citent FREERTOS_HZ ou sdkconfig.defaults : 1
+  lignes WARNING/avertissement : 0
+
+$ idf.py reconfigure
+  ⇒ rc=0 · duree 10.9 s · sortie : b2-reconfigure-sans-sdkconfig.txt (60 lignes)
+  apres rm sdkconfig && reconfigure : CONFIG_FREERTOS_HZ=1000
+
+── (c) LE DISQUE — build complet dans la copie B, puis du, DEUX methodes
+
+$ idf.py build
+  ⇒ rc=0 · duree 55.4 s · sortie : c0-build.txt (2124 lignes)
+  build/desknode.bin : 1266752 o
+  /home/nasbarok/esp/esp-idf                                               apparent(du -sb)    4128366960 o · alloue(du -s --block-size=1)    4226371584 o ·  28740 fichiers
+  /home/nasbarok/.espressif                                                apparent(du -sb)    4077331040 o · alloue(du -s --block-size=1)    4116037632 o ·  14188 fichiers
+  /home/nasbarok/.espressif/tools                                          apparent(du -sb)    3467998708 o · alloue(du -s --block-size=1)    3491729408 o ·   8933 fichiers
+  /home/nasbarok/.espressif/python_env                                     apparent(du -sb)      80392799 o · alloue(du -s --block-size=1)      95330304 o ·   5247 fichiers
+  /home/nasbarok/.espressif/dist                                           apparent(du -sb)     528935879 o · alloue(du -s --block-size=1)     528965632 o ·      6 fichiers
+  /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fa43b17d-0ae4-4a4a-aed8-63dda6131c04/scratchpad/dn84/T1/B/firmware/desknode/build apparent(du -sb)     211144901 o · alloue(du -s --block-size=1)     219947008 o ·   2320 fichiers
+  /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fa43b17d-0ae4-4a4a-aed8-63dda6131c04/scratchpad/dn84/T1/B/firmware/desknode/managed_components apparent(du -sb)     180834152 o · alloue(du -s --block-size=1)     194641920 o ·   5079 fichiers
+  /home/nasbarok/.cache/Espressif/ComponentManager                         apparent(du -sb)     180833448 o · alloue(du -s --block-size=1)     194588672 o ·   5068 fichiers
+
+── (d) LE TRANSPORT DU CLONE
+  credential.helper global :
+
+$ env GIT_TERMINAL_PROMPT=0 git clone https://github.com/nasbarok/desknode.git d-https
+  ⇒ rc=0 · duree 3.2 s · sortie : d1-clone-https.txt (1 lignes)
+  HEAD du clone HTTPS : 7246f5248d1625a2a351bbb374c03f0585a008c3 · du -sb : 79848261 o
+count: 0
+size: 0 bytes
+in-pack: 3875
+packs: 1
+size-pack: 32.04 MiB
+prune-packable: 0
+garbage: 0
+size-garbage: 0 bytes
+
+$ ssh -T -o BatchMode=yes -o ConnectTimeout=15 git@github.com
+  ⇒ rc=255 · duree 0.5 s · sortie : d2-ssh-T.txt (1 lignes)
+
+=== fin 2026-09-13T01:49:27+02:00 ===
+
+── (a) ESP-IDF HORS ~5.5.0 — LE MESSAGE ET LE rc, EXTRAITS DE a1-idf-5.4.0.txt ──
+  ⚠️ MECANISME, lu dans le code de l'outil qui refuse :
+     ~/.espressif/python_env/idf5.5_py3.12_env/lib/python3.12/site-packages/
+     idf_component_tools/build_system_tools.py, _get_idf_version() :
+         ci_test_idf_version = os.getenv('CI_TESTING_IDF_VERSION')  → rendu TEL QUEL
+         puis IDF_VERSION, puis seulement `idf.py --version`
+     (idf-component-manager 2.5.0). ⇒ le gestionnaire de composants CROIT etre
+     sous 5.4.0 (ou 6.0.0) alors que les outils sont ceux de la 5.5.5.
+  | NOTICE: Dependencies lock doesn't exist, solving dependencies.
+  | ....................HINT: Please check manifest file of the following component(s): main
+  | CMake Error at /home/nasbarok/esp/esp-idf/tools/cmake/build.cmake:633 (message):
+  |   ERROR: Version solving failed:
+  |
+  |       - no versions of idf match ~5.5.0
+  |       - project depends on idf (~5.5.0)
+  |
+  |   Result: Because project depends on idf (~5.5.0) which doesn't match any
+  |   versions, version solving failed.
+  |
+  | Call Stack (most recent call first):
+  |   /home/nasbarok/esp/esp-idf/tools/cmake/project.cmake:752 (idf_build_process)
+  |   CMakeLists.txt:10 (project)
+  |
+  |
+  | -- Configuring incomplete, errors occurred!
+  | … (la ligne suivante renvoie aux journaux build/log/ de la copie)
+  rc de idf.py : 2 (5.4.0) · 2 (6.0.0) · temoin SANS la variable, meme copie neuve : 0
+  ⚠️ CORRIGE LE 2026-09-13 (revue) — « meme copie neuve » est FAUX, et la ligne n'est pas effacee :
+     le script joue ce temoin dans la copie B (`cd "$SCR/B/firmware/desknode"`), une SECONDE copie
+     neuve ; et 6.0.0 a tourne dans la copie A APRES l'echec du reconfigure 5.4.0.
+  la sortie 6.0.0 porte le MEME bloc d'erreur : 1 occurrence de « no versions of idf match ~5.5.0 »
+  🔴 CE QUE LE MESSAGE NE DIT PAS : il nomme la contrainte (~5.5.0) mais ⛔ JAMAIS la
+     version trouvee (5.4.0 / 6.0.0). Un lecteur voit « no versions of idf match »,
+     ⛔ pas « tu as la 5.4.0 ».
+  ⚠️ LIMITE, ECRITE AVEC LA MESURE : ce tir joue le contrôle de version DU GESTIONNAIRE
+     DE COMPOSANTS, et rien d'autre. Ce qu'une VRAIE 5.4 ou 6.0 casserait par ailleurs
+     (API, Kconfig, toolchain) ⛔ n'est PAS mesure.
+  ⚠️ Les copies sont des `git archive`, ⛔ pas des clones : `git describe` echoue
+     (« Could not use 'git describe' to determine PROJECT_VER ») — sans effet sur le
+     refus, qui a lieu a la resolution des dependances.
+
+── (b) LE sdkconfig HERITE — LE SILENCE, MONTRE ───────────────────────────────
+  sequence (copie B, apres un reconfigure reussi) :
+    1. sdkconfig.defaults porte CONFIG_FREERTOS_HZ=1000, le sdkconfig produit aussi ;
+    2. le sdkconfig est rendu DIVERGENT a la main : CONFIG_FREERTOS_HZ=100 ;
+    3. `idf.py reconfigure` ⇒ rc=0, et la cle vaut TOUJOURS 100 ;
+    4. `rm sdkconfig && idf.py reconfigure` ⇒ la cle revient a 1000.
+  la seule ligne de la sortie de l'etape 3 qui cite FREERTOS_HZ ou sdkconfig.defaults :
+  | Loading defaults file /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fa43b17d-0ae4-4a4a-aed8-63dda6131c04/scratchpad/dn84/T1/B/firmware/desknode/sdkconfig.defaults...
+  lignes « warning » dans cette sortie : 0
+  🔴 LE SILENCE EST PIRE QU'UNE ABSENCE DE MESSAGE : l'outil ANNONCE qu'il charge
+     sdkconfig.defaults, rend 0, et la valeur des defaults ⛔ n'est PAS appliquee.
+
+── (c) LE DISQUE — DEUX METHODES `du`, PLUS LA SOMME QUE LE DEPOT PUBLIAIT ─────
+  ⚠️ PRECISE LE 2026-09-13 (revue) : la copie B n'etait PLUS neuve au moment du build — elle avait
+     porte le temoin de (a) (reconfigure), puis (b) (sdkconfig edite a la main, reconfigure,
+     sdkconfig SUPPRIME et regenere depuis sdkconfig.defaults). Le build part donc de la
+     configuration des defaults, dans une copie deja configuree trois fois.
+  (repertoires releves apres un build COMPLET de la copie B : rc=0, 55,4 s,
+   desknode.bin 1 266 752 o — la taille publiee le 2026-09-04)
+
+  repertoire                         du -sb (apparent)   du -s --block-size=1 (alloue)   fichiers
+  ~/esp/esp-idf                         4 128 366 960 o      4 226 371 584 o                28 740
+  ~/.espressif                          4 077 331 040 o      4 116 037 632 o                14 188
+  build/ (copie B)                        211 144 901 o        219 947 008 o                 2 320
+  managed_components/ (copie B)           180 834 152 o        194 641 920 o                 5 079
+  ─────────────────────────────────────────────────────────────────────────────────────────
+  SOMME des quatre                      8 597 677 053 o      8 756 998 144 o
+                                        = 8,01 GiB           = 8,16 GiB
+  + le cache machine
+    ~/.cache/Espressif/ComponentManager   180 833 448 o        194 588 672 o                 5 068
+  SOMME avec le cache                   8 778 510 501 o      8 951 586 816 o
+                                        = 8,18 GiB           = 8,34 GiB
+
+  🔴 L'ECART AVEC LES CHIFFRES PUBLIES EST EXPLIQUE, ET C'EST UNE PROPRIETE DE LA METHODE :
+     CONTRIBUTING.md publie 3,84 GiB (IDF) + 4,30 GiB (~/.espressif), dont 3,73 GiB pour
+     ~/.espressif/tools. Somme des st_size de CHAQUE entree (python3, lstat), puis la meme
+     en dedoublonnant les inodes :
+  | $ python3 : somme des st_size (lstat) de CHAQUE entree fichier, et la meme en dedoublonnant les inodes
+  |   ~/esp/esp-idf               28756 entrees (16 liens symboliques) · somme brute    4128366960 o = 3.84 GiB · inodes uniques    4128366960 o = 3.84 GiB · 0 entree(s) partageant un inode
+  |   ~/.espressif                14203 entrees (15 liens symboliques) · somme brute    4619079837 o = 4.30 GiB · inodes uniques    4077331037 o = 3.80 GiB · 81 entree(s) partageant un inode
+  |   ~/.espressif/tools           8945 entrees (12 liens symboliques) · somme brute    4009747508 o = 3.73 GiB · inodes uniques    3467998708 o = 3.23 GiB · 81 entree(s) partageant un inode
+  |   ~/.espressif/python_env      5250 entrees (3 liens symboliques) · somme brute      80392796 o = 0.07 GiB · inodes uniques      80392796 o = 0.07 GiB · 0 entree(s) partageant un inode
+  |   ~/.espressif/dist               6 entrees (0 liens symboliques) · somme brute     528935879 o = 0.49 GiB · inodes uniques     528935879 o = 0.49 GiB · 0 entree(s) partageant un inode
+     ⇒ 3,84 GiB (IDF) est EXACT sous les deux lectures (0 lien dur).
+     ⇒ 4,30 GiB et 3,73 GiB sont EXACTS en SOMME BRUTE, et comptent PLUSIEURS FOIS
+       81 entrees de ~/.espressif/tools qui partagent un inode (liens durs de la
+       toolchain). Ce qui est reellement ecrit sur le disque est 3,80 GiB (apparent) /
+       3,83 GiB (alloue). ⛔ Les memes nombres de fichiers (14 188, 8 933) le confirment :
+       rien n'a ete menage depuis le 2026-09-04, c'est la METHODE qui differe.
+     ⇒ le « 4,0 G / 3,9 G » de `du -sh` releve au cadrage (2026-09-12) est la lecture
+       ALLOUEE arrondie : 3,94 GiB et 3,83 GiB.
+     ⇒ la phrase publiee « Budget roughly 8.2 GiB for the IDF and its toolchains » (3,84 +
+       4,30 = 8,14) SURESTIME l'IDF + toolchains d'environ 0,5 GiB, et ⛔ n'inclut PAS
+       build/ ni managed_components/ ni le cache.
+
+── (d) LE TRANSPORT DU CLONE ──────────────────────────────────────────────────
+  HTTPS : `git clone https://github.com/nasbarok/desknode.git` ⇒ rc=0 · 3,2 s ·
+          arbre de travail 79 848 261 o · size-pack 32.04 MiB (3 875 objets).
+          credential helper : `credential.https://github.com.helper = !/usr/bin/gh auth
+          git-credential` (le jeton gh du poste — le depot est PRIVE).
+  🔴 FAIT NEUF, ET IL COMPTE : le clone rend HEAD = 7246f5248d1625a2a351bbb374c03f0585a008c3,
+     = origin/main, pousse le 2026-09-05 00:02:23. La branche main LOCALE est a baf4265,
+     50 COMMITS PLUS LOIN. ⇒ un clone HTTPS du remote ⛔ N'OBTIENT PAS le depot mesure
+     ici : 32.04 MiB de pack contre 82.74 MiB en local. ⛔ Rien n'est pousse (le depot reste
+     PRIVE, la bascule est dn8-8).
+  SSH :   `ssh -T -o BatchMode=yes git@github.com` ⇒ rc=255, « Host key verification failed. »
+          ⚠️ PROPRIETE DE LA METHODE : ~/.ssh/known_hosts ⛔ ne porte AUCUNE entree github.com
+          (`ssh-keygen -F github.com` rc=1). Rejoue avec un known_hosts JETABLE sous le
+          scratchpad (StrictHostKeyChecking=accept-new, ⛔ ~/.ssh non touche) :
+  | $ ssh -T -o BatchMode=yes -o ConnectTimeout=15 -o UserKnownHostsFile=<scratch>/kh -o StrictHostKeyChecking=accept-new git@github.com
+  |   Warning: Permanently added 'github.com' (ED25519) to the list of known hosts.
+  |   git@github.com: Permission denied (publickey).
+  |   rc=255
+  |   empreinte recue : 256 SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU |1|59WXrV6rLUa9LcgWrZjN0mCT04g=|/ewtcplLDSOZGPsutMKSfJBnpQ4= (ED25519)
+          ⇒ ⛔ PAS « SSH impossible » : SUR CE POSTE, aucune cle SSH n'est acceptee par
+            github.com pour ce compte, et le poste ne connaissait pas la cle d'hote. Le
+            transport SSH ⛔ n'a donc PAS ete mesure ; seul HTTPS l'a ete.
+
+── LE SCRIPT (tel que joue, sous le scratchpad) ───────────────────────────────
+  | #!/usr/bin/env bash
+  | # dn8-4 / T1 — les quatre conditions de depart, mesurees HORS de l'arbre du depot.
+  | set -u
+  | SCR=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fa43b17d-0ae4-4a4a-aed8-63dda6131c04/scratchpad/dn84/T1
+  | DN=/home/nasbarok/projects/desknode
+  | rm -rf "$SCR"; mkdir -p "$SCR"; cd "$SCR" || exit 9
+  | O="$SCR/T1-brut.txt"
+  | say() { printf '%s\n' "$*" >> "$O"; }
+  | run() {  # $1 etiquette ; reste = commande (sortie brute dans $SCR/<etiq>.txt)
+  |   local e="$1"; shift; local t0 t1 rc
+  |   say ""; say "\$ $*"; t0=$(date +%s.%N)
+  |   "$@" > "$SCR/$e.txt" 2>&1; rc=$?
+  |   t1=$(date +%s.%N)
+  |   say "  ⇒ rc=$rc · duree $(python3 -c "print(f'{$t1-$t0:.1f}')") s · sortie : $e.txt ($(wc -l < "$SCR/$e.txt") lignes)"
+  |   return $rc
+  | }
+  | say "=== dn8-4 / T1 — debut $(date -Iseconds) ==="
+  | say "HEAD desknode : $(git -C "$DN" rev-parse HEAD)"
+  | say "ESP-IDF : $(cat ~/esp/esp-idf/version.txt 2>/dev/null) · idf-component-manager : $(ls -d ~/.espressif/python_env/idf5.5_py3.12_env/lib/python3.12/site-packages/idf_component_manager-*.dist-info | sed 's/.*manager-//; s/.dist-info//')"
+  |
+  | # ── copies jetables = l'etat d'un clone NEUF (git archive : fichiers suivis seuls)
+  | for c in A B; do
+  |   mkdir -p "$SCR/$c"
+  |   git -C "$DN" archive --format=tar HEAD | tar -x -C "$SCR/$c"
+  | done
+  | say "copies A et B : git archive HEAD — sdkconfig absent ? $([ ! -e A/firmware/desknode/sdkconfig ] && echo oui || echo NON) · managed_components absent ? $([ ! -e A/firmware/desknode/managed_components ] && echo oui || echo NON) · dependencies.lock absent ? $([ ! -e A/firmware/desknode/dependencies.lock ] && echo oui || echo NON)"
+  |
+  | # shellcheck disable=SC1090
+  | . ~/esp/esp-idf/export.sh > "$SCR/export.txt" 2>&1
+  | say "export.sh source : IDF_PATH=$IDF_PATH · idf.py --version : $(idf.py --version 2>&1 | tail -1)"
+  |
+  | say ""; say "── (a) ESP-IDF HORS ~5.5.0 — le refus PROVOQUE par CI_TESTING_IDF_VERSION"
+  | cd "$SCR/A/firmware/desknode"
+  | run a1-idf-5.4.0 env CI_TESTING_IDF_VERSION=5.4.0 idf.py reconfigure
+  | run a2-idf-6.0.0 env CI_TESTING_IDF_VERSION=6.0.0 idf.py reconfigure
+  | cd "$SCR/B/firmware/desknode"
+  | say "  temoin POSITIF (meme copie neuve, SANS la variable) :"
+  | run a0-temoin-sans-variable idf.py reconfigure
+  |
+  | say ""; say "── (b) LE sdkconfig HERITE L'EMPORTE — EN SILENCE"
+  | say "  sdkconfig.defaults : $(grep -E '^CONFIG_FREERTOS_HZ=' sdkconfig.defaults)"
+  | say "  sdkconfig produit  : $(grep -E '^CONFIG_FREERTOS_HZ=' sdkconfig)"
+  | sed -i 's/^CONFIG_FREERTOS_HZ=1000<FIN-DE-LIGNE>/CONFIG_FREERTOS_HZ=100/' sdkconfig
+  |   ⚠️ annote apres la passe T5 : dans le script joue, <FIN-DE-LIGNE> est l'ancre de fin de
+  |      ligne de sed (le signe dollar). Recopie tel quel, « 1000 » suivi de ce signe est lu
+  |      comme un JALON CHIFFRE par verif_affiliation_dn65.py (c15), qui a rougi dessus.
+  | say "  sdkconfig RENDU DIVERGENT a la main : $(grep -E '^CONFIG_FREERTOS_HZ=' sdkconfig)"
+  | run b1-reconfigure-herite idf.py reconfigure
+  | say "  apres reconfigure  : $(grep -E '^CONFIG_FREERTOS_HZ=' sdkconfig)"
+  | say "  lignes de la sortie qui citent FREERTOS_HZ ou sdkconfig.defaults : $(grep -ciE 'FREERTOS_HZ|sdkconfig\.defaults' b1-reconfigure-herite.txt 2>/dev/null || grep -ciE 'FREERTOS_HZ|sdkconfig\.defaults' "$SCR/b1-reconfigure-herite.txt")"
+  | say "  lignes WARNING/avertissement : $(grep -ciE 'warning' "$SCR/b1-reconfigure-herite.txt")"
+  | rm sdkconfig
+  | run b2-reconfigure-sans-sdkconfig idf.py reconfigure
+  | say "  apres rm sdkconfig && reconfigure : $(grep -E '^CONFIG_FREERTOS_HZ=' sdkconfig)"
+  |
+  | say ""; say "── (c) LE DISQUE — build complet dans la copie B, puis du, DEUX methodes"
+  | run c0-build idf.py build
+  | say "  build/desknode.bin : $(stat -c %s build/desknode.bin 2>/dev/null) o"
+  | for d in ~/esp/esp-idf ~/.espressif ~/.espressif/tools ~/.espressif/python_env ~/.espressif/dist "$SCR/B/firmware/desknode/build" "$SCR/B/firmware/desknode/managed_components" ~/.cache/Espressif/ComponentManager; do
+  |   if [ -e "$d" ]; then
+  |     ap=$(du -sb "$d" | cut -f1); al=$(du -s --block-size=1 "$d" | cut -f1); nf=$(find "$d" -type f | wc -l)
+  |     say "$(printf '  %-72s apparent(du -sb) %13s o · alloue(du -s --block-size=1) %13s o · %6s fichiers' "${d/#$HOME/~}" "$ap" "$al" "$nf")"
+  |   else
+  |     say "  ${d/#$HOME/~} : ABSENT"
+  |   fi
+  | done
+  |
+  | say ""; say "── (d) LE TRANSPORT DU CLONE"
+  | cd "$SCR"
+  | say "  credential.helper global : $(git config --global --get-all credential.helper | tr '\n' ' ')"
+  | run d1-clone-https env GIT_TERMINAL_PROMPT=0 git clone https://github.com/nasbarok/desknode.git d-https
+  | if [ -d d-https/.git ]; then
+  |   say "  HEAD du clone HTTPS : $(git -C d-https rev-parse HEAD) · du -sb : $(du -sb d-https | cut -f1) o"
+  |   git -C d-https count-objects -vH >> "$O" 2>&1
+  | fi
+  | run d2-ssh-T ssh -T -o BatchMode=yes -o ConnectTimeout=15 git@github.com
+  | if grep -q "successfully authenticated" "$SCR/d2-ssh-T.txt"; then
+  |   run d3-clone-ssh env GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15" git clone git@github.com:nasbarok/desknode.git d-ssh
+  |   [ -d d-ssh/.git ] && say "  HEAD du clone SSH : $(git -C d-ssh rev-parse HEAD) · du -sb : $(du -sb d-ssh | cut -f1) o"
+  | fi
+  | say ""; say "=== fin $(date -Iseconds) ==="

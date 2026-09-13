@@ -1,0 +1,284 @@
+==============================================================================
+dn8-4 / T0 — LA BORNE D'ENTREE, RELEVEE AVANT TOUTE MODIFICATION
+  Passe jouee le 2026-09-13 de 01:12:24 a 01:46:44 (+02:00), sorties sous le
+  scratchpad de session (⛔ jamais dans l'arbre pendant la passe), versees ici
+  APRES la passe. Script : passe.sh (verse en fin de fichier).
+==============================================================================
+
+── 1. AI-6 — LE README RE-MESURE LE JOUR MEME, ET LA BASE ECRITE EN ENTIER ──
+  quiescence verifiee AVANT de lancer : git status --porcelain desknode = VIDE ;
+  cockpit = seul le dossier de la marche, non suivi ; aucun fichier des deux
+  depots modifie dans les 30 min precedentes (find -mmin -30), hors ce dossier.
+
+  === dn8-4 / passe T0 — debut 2026-09-13T01:12:24+02:00 ===
+  HEAD desknode : baf4265a292a7db1ae9f6bc8673779f2e743d45b
+  HEAD cockpit  : 967bfb142d9b8af78b370579e9c415d239ab41b9
+  git status --porcelain desknode :
+  git status --porcelain cockpit (implementation-artifacts) :
+    ?? _bmad-output/implementation-artifacts/dn8-4-le-readme-se-scinde-la-vitrine-dit-quoi-le-journal-part-dans-docs.md
+  README.md : 257192 o / 2550 lignes
+  EMPREINTE desknode AVANT : 50e51d072d8a5b32
+  EMPREINTE cockpit  AVANT : 0308cdd5cf402fe9
+
+  === LE COMPTE DE CHAQUE GATE (tir isole, timeout 900 s) ===
+
+  ⇒ BASE = baf4265a292a7db1ae9f6bc8673779f2e743d45b (le HEAD de T0 = celui du
+    cadrage : l'arbre n'a PAS bouge entre le cadrage et la scission).
+  ⇒ README.md@BASE = 257 192 o / 2 550 lignes — IDENTIQUE au releve du cadrage
+    (2026-09-12T23:45:18) : aucune marche n'a ecrit au README entre-temps.
+  ⇒ empreinte = sha256 de « git ls-files -z | xargs -0 sha256sum » (desknode) et
+    du meme calcul sur _bmad-output/implementation-artifacts (cockpit), [:16].
+
+── 2. LA TABLE T, RE-DERIVEE SUR README.md@BASE ───────────────────────────
+  instrument : l'expression de verif_licences_dn52.py (c1), appliquee a
+  « git show BASE:README.md », blocs de code COMPRIS (la gate ne les exclut pas) :
+    l.5     LICENSING.md                                     resout depuis la racine : oui · depuis docs/ : non
+    l.6     THIRD-PARTY.md                                   resout depuis la racine : oui · depuis docs/ : non
+    l.7     CONTRIBUTING.md                                  resout depuis la racine : oui · depuis docs/ : non
+    l.7     CHANGELOG.md                                     resout depuis la racine : oui · depuis docs/ : non
+    l.40    docs/bom.md                                      resout depuis la racine : oui · depuis docs/ : non
+    l.44    docs/cablage.md                                  resout depuis la racine : oui · depuis docs/ : non
+    l.46    docs/boitier.md                                  resout depuis la racine : oui · depuis docs/ : non
+    l.1058  docs/roadmap.md                                  resout depuis la racine : oui · depuis docs/ : non
+    l.1064  installeur/charge/                               resout depuis la racine : oui · depuis docs/ : non
+    l.1081  docs/roadmap.md                                  resout depuis la racine : oui · depuis docs/ : non
+    l.1082  installeur/charge/PROVENANCE.md                  resout depuis la racine : oui · depuis docs/ : non
+    l.1214  installeur/IDENTITE.md                           resout depuis la racine : oui · depuis docs/ : non
+    l.1951  hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md    resout depuis la racine : oui · depuis docs/ : non
+  ⇒ 13 lien(s) local(aux), 13 resolvent depuis la racine, 0 depuis docs/.
+  ⇒ IDENTIQUE a la table du dossier (memes 13 liens, memes lignes) : le README
+    n'a pas bouge depuis le cadrage, la table s'applique telle quelle.
+
+── 3. LE COMPTE DE CHAQUE GATE — tir isole, dans l'ordre du glob ─────────
+  === LE COMPTE DE CHAQUE GATE (tir isole, timeout 900 s) ===
+  verif_affiliation_dn65.py          rc=0       1.92 s  BILAN : 23 OK, 0 KO
+  verif_banc_langue_dn73.py          rc=0       2.50 s  BILAN : 81 OK, 0 KO
+  verif_bme680_retard_dn45.py        rc=0       0.04 s  BILAN : 15 OK, 0 KO
+  verif_boitier_dn64.py --cockpit    rc=0       0.80 s  BILAN : 29 OK, 0 KO
+  verif_bom_dn61.py                  rc=0       0.05 s  BILAN : 24 OK, 0 KO
+  verif_cablage_dn62.py              rc=0       0.16 s  BILAN : 37 OK, 0 KO
+  verif_campagne_dn440.py --cockpit  rc=0     142.24 s  BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien BILAN : 62 OK, 0 KO
+  verif_campagne_dn56.py             rc=0     733.79 s  BILAN : 8 OK, 0 KO
+  verif_courbe_dn413.py              rc=0      11.62 s  ⛔ aucune ligne BILAN
+  verif_cumul_ambient_dn45.py        rc=0       1.26 s  BILAN : 23 OK, 0 KO
+  verif_d4_nvs_dn45.py               rc=0       0.43 s  BILAN : 6 OK, 0 KO
+  verif_decoupe_horloge_dn418.py     rc=0       7.21 s  ⛔ aucune ligne BILAN
+  verif_demarrage_dn443.py           rc=0       0.69 s  BILAN : 58 OK, 0 KO
+  verif_dossier_d5_dn45.py --cockpit rc=0       1.16 s  BILAN : 12 OK, 0 KO
+  verif_dossier_dn415.py --cockpit   rc=1       8.23 s  BILAN : 23 OK, 10 KO
+  verif_entree_dn82.py               rc=0       0.17 s  BILAN : 45 OK, 0 KO
+  verif_flash_dn72.py                rc=0       0.21 s  BILAN : 30 OK, 0 KO
+  verif_harnais_dn413.py             rc=0       9.66 s  ⛔ aucune ligne BILAN
+  verif_harnais_dn81.py --cockpit    rc=0       4.85 s  BILAN : 28 OK, 0 KO
+  verif_hist_dn413.py                rc=0       3.85 s  ⛔ aucune ligne BILAN
+  verif_installeur_dn71.py           rc=0       0.24 s  BILAN : 28 OK, 0 KO
+  verif_instruments_dn423.py         rc=0       0.70 s  BILAN : 163 OK, 0 KO
+  verif_journal_soak_dn45.py         rc=0       0.12 s  BILAN : 26 OK, 0 KO
+  verif_langue_dalle_dn73.py         rc=0       0.13 s  BILAN : 61 OK, 0 KO
+  verif_langues_dn442.py             rc=0       0.80 s  BILAN : 31 OK, 0 KO
+  verif_ledger_dn416.py --cockpit    rc=0       0.92 s  BILAN : 36 OK, 0 KO
+  verif_lhm_ps_dn83.py               rc=0      17.71 s  BILAN : 26 OK, 0 KO
+  verif_licences_dn52.py             rc=0       1.04 s  BILAN : 34 OK, 0 KO
+  verif_lissage_dn45.py              rc=0       0.18 s  BILAN : 21 OK, 0 KO
+  verif_miroir_horloge_dn418.py      rc=0       0.13 s  ⛔ aucune ligne BILAN
+  verif_page_dn722.py                rc=0       0.18 s  BILAN : 56 OK, 0 KO
+  verif_paliers_dn441.py             rc=0       0.18 s  BILAN : 42 OK, 0 KO
+  verif_photos_dn63.py               rc=0       0.45 s  BILAN : 28 OK, 0 KO
+  verif_placement_dn74.py            rc=0       0.08 s  BILAN : 42 OK, 0 KO
+  verif_polices_dn440.py             rc=0       0.03 s  BILAN : 11 OK, 0 KO
+  verif_preconditions_dn76.py        rc=0       0.23 s  BILAN : 55 OK, 0 KO
+  verif_prerequis_dn75.py            rc=0       0.23 s  BILAN : 51 OK, 0 KO
+  verif_rebouclage_dn45.py           rc=0       2.91 s  BILAN : 30 OK, 0 KO
+  verif_reprise_horloge_dn418.py     rc=0       0.10 s  ⛔ aucune ligne BILAN
+  verif_selection_dn49.py            rc=0       0.08 s  ⛔ aucune ligne BILAN
+  verif_serie_dn412.py               rc=0       1.65 s  BILAN : 50 OK / 0 KO
+  verif_source_lhm_dn48.py           rc=0       4.03 s  ⛔ aucune ligne BILAN
+  verif_sr03.py                      rc=2       0.07 s  ⛔ aucune ligne BILAN
+  verif_temoin_filtre_dn447.py       rc=0       1.69 s  BILAN : 5 OK, 0 KO
+  verif_veille_dn33.py               rc=0       7.23 s  BILAN : 267 OK · 0 KO
+  verif_verrou_lvgl_dn413.py         rc=0      16.78 s  ⛔ aucune ligne BILAN
+  verif_xip_dn422.py                 rc=0       0.04 s  BILAN : 10 OK / 0 KO
+
+  ⚠️ 10 gates n'impriment AUCUNE ligne BILAN : leur compte est lu dans leur
+     propre forme de fin, relue dans leur sortie capturee :
+     verif_courbe_dn413                 ✅ 58 contrôles passent, 0 échec.
+     verif_decoupe_horloge_dn418        ✅ lignes 7 · ❌ lignes 0 · derniere : ✅ TOUT TIENT.
+     verif_harnais_dn413                ✅ 22 contrôles passent, 0 échec.
+     verif_hist_dn413                   ✅ 56 contrôles passent, 0 échec.
+     verif_miroir_horloge_dn418         ✅ lignes 18 · ❌ lignes 0 · derniere : ✅ LE MIROIR TIENT.
+     verif_reprise_horloge_dn418        ✅ lignes 44 · ❌ lignes 0 · derniere : ✅ LES 12 SCENES TIENNENT.
+     verif_selection_dn49               ✅ 70 controles passent, 0 echec.
+     verif_source_lhm_dn48              ✅ tous les controles passent.
+     verif_sr03                         ✅ lignes 0 · ❌ lignes 0 · derniere : TLS aboutit puis le flux HTTP/2 casse (INTERNAL_ERROR).
+     verif_verrou_lvgl_dn413            ✅ 60 contrôles passent, 0 échec.
+     (verif_source_lhm_dn48 : 46 lignes [OK], 0 [KO])
+
+  === LES OUTILS QUI NE SONT PAS DES GATES ===
+  --- node tools/banc_langue_dalle_dn73.mjs : rc=0  0.76 s
+        BANC : 39 OK, 0 KO
+  --- node tools/banc_couverture_dn82.mjs : rc=0  1.02 s
+        COUVERTURE dn8-2 — LE SCRIPT DE LA PAGE, MESURE PENDANT QU'IL S'EXECUTE
+        COUVERTURE : 96/100 fonctions, 131/190 blocs — les deux seuils sont tenus.
+  --- python3 tools/inventaire_motif_dn53.py : rc=0  0.36 s
+        18:  [OK ] classe 1 : le defaut de `--csv` est LOCALISE par AST     ancre semantique, ⛔ pas verbatim
+        19:  [OK ] classe 1 : l'arbre du jour est SOLDE                     0 fait
+        20:  [OK ] classe 1 : faute REPLANTEE ⇒ elle REMONTE                ≥1 fait
+        23:  1. dependance FONCTIONNELLE  (le seul defaut)      0 fichiers      0 sites
+        24:  2. exemple d'usage          (declare au site)     23 fichiers     58 sites
+        25:  3. trace de generation      (polices — INTACTES)    5 fichiers      5 sites
+        26:  4. registre de preuves      (mesures/ — INTACT)  219 fichiers   1952 sites
+        27:  5. le motif est le SUJET    (EXCLUSION DECLAREE)    4 fichiers     20 sites
+        28:       TOTAL                                       251 fichiers   2035 sites
+        55:     STABLE, c'est la classe 1 : plus aucun outil ne depend d'une
+  --- python3 tools/campagne_ctrl_dn440.py --cockpit /home/nasbarok/projects/compagnon_project : rc=0  67.53 s
+                  TROU     = un arbre defaillant ATTEINT le site ;
+          [OK] TROU     les exclusions sont DECLAREES, ⛔ p   REMEDE APPLIQUE — le libelle SURVIT au source hors d'un `ctrl()`
+          [OK] TROU     ⚠️ et la limite de ce calcul est D   REMEDE APPLIQUE — le libelle SURVIT au source hors d'un `ctrl()`
+          [OK] TROU     les archives sont LISTEES, ⛔ pas e   REMEDE APPLIQUE — le libelle SURVIT au source hors d'un `ctrl()`
+        BILAN TRI : 15 cas au tableau — dont 11 SITE(S) VIVANT(S) et 4 FICHE(S) de remede — 6 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 5 BRANCHE(S), 0 echec(s)
+  --- python3 tools/verif_ledger_dn416.py --cockpit /home/nasbarok/projects/compagnon_project --manifeste : rc=0  0.87 s
+  --- python3 tools/stub_lhm_dn48.py --port 8085 : rc=1  0.09 s
+  --- python3 -m py_compile tools/dn_console.py tools/gen_font_dn.py tools/dn_gates.py : rc=0  0.07 s
+  --- bash -n tools/rendre-port.sh : rc=0  0.00 s
+
+  ⚠️ py_compile ecrit tools/__pycache__/ (gitignore, ⛔ hors empreinte suivie).
+
+  === LA PASSE ENTIERE : bash tools/run_gates.sh --cockpit ===
+  [VERTE      ] tools/verif_affiliation_dn65.py        rc=0      2s
+  [VERTE      ] tools/verif_banc_langue_dn73.py        rc=0      2s
+  [VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      0s
+  [VERTE      ] tools/verif_boitier_dn64.py            rc=0      0s
+  [VERTE      ] tools/verif_bom_dn61.py                rc=0      0s
+  [VERTE      ] tools/verif_cablage_dn62.py            rc=0      0s
+  [VERTE      ] tools/verif_campagne_dn440.py          rc=0    141s
+  [VERTE      ] tools/verif_campagne_dn56.py           rc=0    740s
+  [VERTE      ] tools/verif_courbe_dn413.py            rc=0     11s
+  [VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      1s
+  [VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      1s
+  [VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      7s
+  [VERTE      ] tools/verif_demarrage_dn443.py         rc=0      1s
+  [VERTE      ] tools/verif_dossier_d5_dn45.py         rc=0      1s
+  [ROUGE      ] tools/verif_dossier_dn415.py           rc=1      8s
+  [VERTE      ] tools/verif_entree_dn82.py             rc=0      0s
+  [VERTE      ] tools/verif_flash_dn72.py              rc=0      0s
+  [VERTE      ] tools/verif_harnais_dn413.py           rc=0      9s
+  [VERTE      ] tools/verif_harnais_dn81.py            rc=0      4s
+  [VERTE      ] tools/verif_hist_dn413.py              rc=0      4s
+  [VERTE      ] tools/verif_installeur_dn71.py         rc=0      1s
+  [VERTE      ] tools/verif_instruments_dn423.py       rc=0      0s
+  [VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
+  [VERTE      ] tools/verif_langue_dalle_dn73.py       rc=0      1s
+  [VERTE      ] tools/verif_langues_dn442.py           rc=0      0s
+  [VERTE      ] tools/verif_ledger_dn416.py            rc=0      0s
+  [VERTE      ] tools/verif_lhm_ps_dn83.py             rc=0     19s
+  [VERTE      ] tools/verif_licences_dn52.py           rc=0      1s
+  [VERTE      ] tools/verif_lissage_dn45.py            rc=0      0s
+  [VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
+  [VERTE      ] tools/verif_page_dn722.py              rc=0      0s
+  [VERTE      ] tools/verif_paliers_dn441.py           rc=0      0s
+  [VERTE      ] tools/verif_photos_dn63.py             rc=0      1s
+  [VERTE      ] tools/verif_placement_dn74.py          rc=0      0s
+  [VERTE      ] tools/verif_polices_dn440.py           rc=0      0s
+  [VERTE      ] tools/verif_preconditions_dn76.py      rc=0      0s
+  [VERTE      ] tools/verif_prerequis_dn75.py          rc=0      0s
+  [VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      3s
+  [VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
+  [VERTE      ] tools/verif_selection_dn49.py          rc=0      0s
+  [VERTE      ] tools/verif_serie_dn412.py             rc=0      2s
+  [VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      4s
+  [NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+  [VERTE      ] tools/verif_temoin_filtre_dn447.py     rc=0      2s
+  [VERTE      ] tools/verif_veille_dn33.py             rc=0      8s
+  [VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     17s
+  [VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+  BILAN : 45 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 47 gates (996s)
+  RC_RUN_GATES=1  duree mur 997 s
+
+  EMPREINTE desknode APRES : 50e51d072d8a5b32
+  EMPREINTE cockpit  APRES : 0308cdd5cf402fe9
+  git status --porcelain desknode (apres) :
+  === fin 2026-09-13T01:46:44+02:00 ===
+  duree de verif_campagne_dn56.py : 733.79 s en tir ISOLE · rc=0 dans la passe — plafond 900 s
+
+── 4. LE SCRIPT DE LA PASSE (tel que joue) ────────────────────────────────
+  | #!/usr/bin/env bash
+  | # dn8-4 — passe de mesure : COMPTE de chaque gate, passe entiere, non-gates, empreinte avant/apres.
+  | # Usage : passe.sh <etiquette>   (sorties sous $SCR/<etiquette>/ — ⛔ jamais dans l'arbre)
+  | set -u
+  | SCR=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fa43b17d-0ae4-4a4a-aed8-63dda6131c04/scratchpad/dn84
+  | ET="$1"; OUT="$SCR/$ET"; mkdir -p "$OUT/gates"
+  | DN=/home/nasbarok/projects/desknode
+  | CK=/home/nasbarok/projects/compagnon_project
+  | cd "$DN" || exit 9
+  | emp() {
+  |   ( cd "$DN" && git ls-files -z | xargs -0 sha256sum ) | sha256sum | cut -c1-16
+  | }
+  | empck() {
+  |   ( cd "$CK" && git ls-files -z -- _bmad-output/implementation-artifacts | xargs -0 sha256sum ) | sha256sum | cut -c1-16
+  | }
+  | R="$OUT/resume.txt"
+  | {
+  | echo "=== dn8-4 / passe $ET — debut $(date -Iseconds) ==="
+  | echo "HEAD desknode : $(git -C "$DN" rev-parse HEAD)"
+  | echo "HEAD cockpit  : $(git -C "$CK" rev-parse HEAD)"
+  | echo "git status --porcelain desknode :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  | echo "git status --porcelain cockpit (implementation-artifacts) :"; git -C "$CK" status --porcelain -- _bmad-output/implementation-artifacts | sed 's/^/  /'
+  | echo "README.md : $(wc -c < README.md) o / $(wc -l < README.md) lignes"
+  | echo "EMPREINTE desknode AVANT : $(emp)"
+  | echo "EMPREINTE cockpit  AVANT : $(empck)"
+  | echo
+  | echo "=== LE COMPTE DE CHAQUE GATE (tir isole, timeout 900 s) ==="
+  | } > "$R"
+  | for g in tools/verif_*.py; do
+  |   n=$(basename "$g" .py)
+  |   args=()
+  |   grep -q -- 'add_argument("--cockpit"' "$g" && args=(--cockpit "$CK")
+  |   t0=$(date +%s.%N)
+  |   timeout 900 python3 "$g" "${args[@]}" > "$OUT/gates/$n.txt" 2>&1; rc=$?
+  |   t1=$(date +%s.%N)
+  |   d=$(python3 -c "print(f'{$t1-$t0:.2f}')")
+  |   b=$(grep -E '^BILAN' "$OUT/gates/$n.txt" | tr '\n' ' ' )
+  |   printf '%-34s rc=%-3s %8s s  %s\n' "$n.py${args:+ --cockpit}" "$rc" "$d" "${b:-⛔ aucune ligne BILAN}" >> "$R"
+  | done
+  | {
+  | echo
+  | echo "=== LES OUTILS QUI NE SONT PAS DES GATES ==="
+  | } >> "$R"
+  | nongate() {  # $1 = etiquette, reste = commande
+  |   local e="$1"; shift
+  |   local t0 t1 rc
+  |   t0=$(date +%s.%N)
+  |   "$@" > "$OUT/nongate-$e.txt" 2>&1; rc=$?
+  |   t1=$(date +%s.%N)
+  |   printf -- '--- %s : rc=%s  %s s\n' "$*" "$rc" "$(python3 -c "print(f'{$t1-$t0:.2f}')")" >> "$R"
+  | }
+  | nongate banc_langue node tools/banc_langue_dalle_dn73.mjs
+  | grep -E '^BANC :' "$OUT/nongate-banc_langue.txt" | sed 's/^/      /' >> "$R"
+  | nongate banc_couverture node tools/banc_couverture_dn82.mjs
+  | grep -E '^COUVERTURE' "$OUT/nongate-banc_couverture.txt" | sed 's/^/      /' >> "$R"
+  | nongate inventaire_motif python3 tools/inventaire_motif_dn53.py
+  | grep -nE 'population|fichiers|sites|VERDICT|classe' "$OUT/nongate-inventaire_motif.txt" | head -30 | sed 's/^/      /' >> "$R"
+  | nongate campagne_ctrl python3 tools/campagne_ctrl_dn440.py --cockpit "$CK"
+  | grep -E 'BILAN|\[KO\]|TROU' "$OUT/nongate-campagne_ctrl.txt" | head -10 | sed 's/^/      /' >> "$R"
+  | nongate ledger_manifeste python3 tools/verif_ledger_dn416.py --cockpit "$CK" --manifeste
+  | grep -E '^BILAN' "$OUT/nongate-ledger_manifeste.txt" | sed 's/^/      /' >> "$R"
+  | nongate stub8085 python3 tools/stub_lhm_dn48.py --port 8085
+  | nongate compile_outils python3 -m py_compile tools/dn_console.py tools/gen_font_dn.py tools/dn_gates.py
+  | nongate bash_n_rendre_port bash -n tools/rendre-port.sh
+  | {
+  | echo
+  | echo "=== LA PASSE ENTIERE : bash tools/run_gates.sh --cockpit ==="
+  | } >> "$R"
+  | t0=$(date +%s)
+  | bash tools/run_gates.sh --cockpit "$CK" > "$OUT/run_gates.txt" 2>&1; rc=$?
+  | t1=$(date +%s)
+  | {
+  | grep -E '^\[(VERTE|ROUGE|NON-JOUABLE)' "$OUT/run_gates.txt"
+  | grep -E '^BILAN' "$OUT/run_gates.txt"
+  | echo "RC_RUN_GATES=$rc  duree mur $((t1-t0)) s"
+  | echo
+  | echo "EMPREINTE desknode APRES : $(emp)"
+  | echo "EMPREINTE cockpit  APRES : $(empck)"
+  | echo "git status --porcelain desknode (apres) :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  | echo "=== fin $(date -Iseconds) ==="
+  | } >> "$R"

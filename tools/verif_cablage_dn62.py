@@ -99,6 +99,13 @@ import sys
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PAGE_REL = "docs/cablage.md"
+# ⚠️ dn8-4 (2026-09-13) — DELIBEREMENT ⛔ PAS REPOINTE. Ce `README.md` n'est plus le
+#    journal francais (parti octet pour octet dans `docs/journal-de-bord.md`) :
+#    c'est la VITRINE anglaise. Cette gate continue de la lire parce que ce
+#    qu'elle garde — les liens `docs/cablage.md` et `docs/bom.md` — est la
+#    decouvrabilite depuis la page d'accueil, et la vitrine porte ce(s) lien(s)
+#    MOT POUR MOT. Repointer sur le journal garderait un lien qu'un inconnu ⛔ ne
+#    lit plus en premier.
 README_REL = "README.md"
 DOSSIER_PHOTOS = "docs/cablage"
 DOSSIER_HW = "hardware"

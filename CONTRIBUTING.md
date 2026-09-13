@@ -141,10 +141,15 @@ Please include:
 
 - Which **tier** you built: board only — called **“DeskNode”** — or board + ambient
   sensors — called **“DeskNode + Ambiance”**. Both are defined in
-  [`README.md`](README.md), section *« Les deux paliers matériels »* (`palier` is the
+  [`docs/journal-de-bord.md`](docs/journal-de-bord.md), section *« Les deux paliers matériels »* (`palier` is the
   French word this repository uses for *tier*; the README is in French, splitting it
   into a short front page and an engineering log is tracked as `dn8` — see
   [`docs/roadmap.md`](docs/roadmap.md)).
+  ⚠️ *Annotated on 2026-09-13: this pointer named the root `README.md`, which was the
+  engineering log until that day. The log moved to `docs/journal-de-bord.md` **byte for
+  byte** (13 links rebased, nothing else), so the section is there, unchanged. The sentence
+  above about splitting it is kept as written — the split is now done: the root `README.md`
+  is a short front page in English, which names both tiers as well.*
 - Whether **LibreHardwareMonitor** is installed (it changes what the CPU and disk
   cells can show).
 - Your **DeskNode version**. ⚠️ There is **no version shown on the display** yet. The
@@ -227,16 +232,16 @@ of the paragraph below, so the sentence above should not have blurred it.
 - **macOS: never tried.** ESP-IDF supports it upstream; this project has no measurement.
 
 ⚠️ **Two lines elsewhere in this tree describe the Windows side and are worth reading
-together rather than one at a time.** `README.md` documents *"Voie A — build WSL, flash
+together rather than one at a time.** `docs/journal-de-bord.md` documents *"Voie A — build WSL, flash
 depuis Windows"* as a fallback, and `tests/README.md` says the flash goes through
-Windows. The **retained** working loop in `README.md` flashes from WSL. Both paths have
+Windows. The **retained** working loop in `docs/journal-de-bord.md` flashes from WSL. Both paths have
 been used; the difference is which one a given session had set up, ⛔ not a
 contradiction about what is possible. What has never varied is the half this section is
 about: **the build is done on Linux/WSL, on every path.**
 
-**The commands live in `README.md`, and this section deliberately does not repeat them.**
+**The commands live in `docs/journal-de-bord.md`, and this section deliberately does not repeat them.**
 Install ESP-IDF once with *Installation — une seule fois*, then use *Toolchain / build &
-flash* for the per-shell sequence. ⚠️ `README.md` is in French; these three lines are what
+flash* for the per-shell sequence. ⚠️ `docs/journal-de-bord.md` is in French; these three lines are what
 you need from it, and they are the part that is easy to get wrong:
 
 ```bash
@@ -244,6 +249,12 @@ you need from it, and they are the part that is easy to get wrong:
 cd firmware/desknode            # ⛔ NOT the repository root: the ESP-IDF project lives here
 idf.py set-target esp32s3 && idf.py build
 ```
+
+⚠️ *Annotated on 2026-09-13: the four pointers in this section, and the one under
+**What you need that the clone does not contain** below, named the root `README.md`. That
+file was the engineering log until that day; it moved **byte for byte** to
+`docs/journal-de-bord.md`, where the sections cited here are unchanged. The root `README.md`
+is now a short front page, and it does not carry these commands.*
 
 ⚠️ **The tree holds two ESP-IDF projects**, and the second one matters when something
 fails: `firmware/desknode` is the firmware, and `firmware/hello-desknode` is a minimal
@@ -294,10 +305,21 @@ of one thing.
    **4.30 GiB** (14 188 files). ⚠️ **4.30 GiB is the figure to provision a disk with**,
    because it is what actually gets written. Budget roughly **8.2 GiB** for the IDF and
    its toolchains together, before this project's own `build/` and components.
+   ⚠️ **Annotated on 2026-09-13 — the two figures above are kept, and one of them is
+   not what the disk holds.** Re-measured with two `du` methods and a per-entry sum
+   ([`mesures/dn8-4/T1-conditions-build.txt`](mesures/dn8-4/T1-conditions-build.txt)):
+   **3.84 GiB** for the IDF checkout is exact for its **apparent** size (`du -sb`, and the
+   same per-entry sum); allocated on disk it is **3.94 GiB**. **4.30 GiB** for
+   `~/.espressif` (and **3.73 GiB** for its `tools/`) is the sum of every file entry's
+   size, which counts **81** hard-linked toolchain files more than once; what is actually
+   written is **3.80 GiB** (`du -sb`, apparent) or **3.83 GiB** (`du -s --block-size=1`,
+   allocated). Same file counts as on 2026-09-04 (14 188 and 8 933): nothing was cleaned
+   up, the **method** differs. The full sum, with `build/` and the components, is under
+   *When a starting condition is not met*, below.
 2. **`IDF_PATH`, set by `export.sh` in every new shell.** Measured: it is unset in a
    fresh shell, and `firmware/desknode/CMakeLists.txt` reads it. Sourcing `export.sh`
    is not optional and is not once-per-machine — it is once per shell.
-3. The Ubuntu packages listed under *Installation* in `README.md`. All sixteen were
+3. The Ubuntu packages listed under *Installation* in `docs/journal-de-bord.md` (the root `README.md` until 2026-09-13). All sixteen were
    verified present on the build machine on 2026-09-04.
 4. **`python3`, and the `tools/` directory intact.** This one is easy to miss:
    `firmware/desknode/CMakeLists.txt` puts `tools/gen_living_pcb.py` in an
@@ -402,6 +424,75 @@ enforces. Everything published in this repository was nonetheless measured on
 they answer different questions: the manifest says what is *allowed*, v5.5.5 says what
 is *known to work*. If you build on anything other than v5.5.5 you are on ground this
 repository has not walked — which is fine, and worth saying if you report a bug.
+
+### When a starting condition is not met — what the failure looks like
+
+Measured on **2026-09-13**, in throwaway copies of the repository taken **outside** any
+working tree, on ESP-IDF v5.5.5. Raw output, commands and exit codes:
+[`mesures/dn8-4/T1-conditions-build.txt`](mesures/dn8-4/T1-conditions-build.txt).
+
+**(a) An ESP-IDF outside `~5.5.0` — refused, with exit code 2, by a message that never
+names your version.** Provoked rather than installed: the ESP-IDF component manager
+(2.5.0) takes the IDF version from `CI_TESTING_IDF_VERSION` **before** asking
+`idf.py --version`, so `CI_TESTING_IDF_VERSION=5.4.0 idf.py reconfigure` on a fresh copy
+plays its version check without a second ESP-IDF on disk. On a fresh copy (*copy A*), it
+exits **2**, after:
+
+```
+ERROR: Version solving failed:
+    - no versions of idf match ~5.5.0
+    - project depends on idf (~5.5.0)
+```
+
+`CI_TESTING_IDF_VERSION=6.0.0`, run next **in the same copy A** (after that failed
+reconfigure), gives the same block and the same exit code; a **second** fresh copy (*copy B*),
+**without** the variable, exits **0**. ⚠️ The message names the constraint and ⛔ **never the version it
+found** — read *"no versions of idf match"* as *"your ESP-IDF is not 5.5.x"*.
+⚠️ **Limit, written with the measurement**: this exercises the component manager's
+version check and nothing else. What a real 5.4 or 6.0 would break beyond it (APIs,
+Kconfig, toolchain) is ⛔ **not** measured.
+
+**(b) An inherited `sdkconfig` wins — silently, for the key that was measured.** In copy B,
+once configured, `CONFIG_FREERTOS_HZ` was set by hand to `100` in `sdkconfig` while
+`sdkconfig.defaults` says `1000`. `idf.py reconfigure` then exited **0**, printed *"Loading
+defaults file …/sdkconfig.defaults..."*, emitted **no** warning — and the key was **still
+`100`**. The one remedy tried — deleting `sdkconfig`, then `idf.py reconfigure` — brought it
+back to `1000`. ⚠️ **Scope**: one key, one sequence; other keys and other ESP-IDF commands
+were not measured. ⇒ if a change to `sdkconfig.defaults` does not seem to take effect, an
+existing `sdkconfig` is the first suspect, and in that run nothing on screen said so.
+⚠️ **Deleting `sdkconfig` also discards every local `menuconfig` change** you made on top
+of the defaults — save what you need first.
+
+**(c) Disk space — the sum, and the method that gives it.** After a complete build of copy
+B (exit code 0, `desknode.bin` 1 266 752 bytes) — a copy that had first been reconfigured
+for (a), had its `sdkconfig` edited by hand for (b), then deleted and regenerated from
+`sdkconfig.defaults` before the build:
+
+| | `du -sb` (apparent) | `du -s --block-size=1` (allocated) |
+|---|---:|---:|
+| `~/esp/esp-idf` | 3.84 GiB | 3.94 GiB |
+| `~/.espressif` | 3.80 GiB | 3.83 GiB |
+| the project's `build/` | 201.4 MiB | 209.8 MiB |
+| the project's `managed_components/` | 172.5 MiB | 185.6 MiB |
+| **total** | **8.01 GiB** | **8.16 GiB** |
+| plus the machine-wide component cache `~/.cache/Espressif/ComponentManager` | 172.5 MiB | 185.6 MiB |
+| **total with the cache** | **8.18 GiB** | **8.34 GiB** |
+
+⇒ provision **about 8.4 GiB** for one ESP-IDF, its toolchains, and one build of this
+project. **Scope of that figure**: it includes the toolchains installed by
+`install.sh esp32s3` and the download archives they came from under `~/.espressif/dist`
+(**0.49 GiB**), and the component cache; it excludes the clone itself (about **80 MB** — see
+*What cloning this costs*). ⚠️ The per-directory figures published earlier on this page were never summed,
+and one of them was not a disk measurement — see the annotation under *What you need that
+the clone does not contain*.
+
+**(d) Getting the clone — HTTPS measured, SSH not.** A full `git clone` over **HTTPS**
+exited **0** in **3.2 s**, on the same `origin/main` (`7246f52`) that *What cloning this
+costs* measured on 2026-09-05, with the same **3 875** objects and the same **79 848 261
+bytes** on disk. ⚠️ **Two instruments, two figures, ⛔ not reconciled here**: that section
+reports what `git clone` printed as **received over the wire** (**31.94 MiB**); this
+measurement read the pack's size afterwards with `git count-objects -vH` (`size-pack`
+**32.04 MiB**). **SSH was not measured.**
 
 ## Pull requests
 

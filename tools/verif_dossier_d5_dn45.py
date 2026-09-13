@@ -160,6 +160,15 @@ AUTORITE = [
     ("DESKNODE", "hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md"),
     ("DESKNODE", "hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md"),
     ("DESKNODE", "README.md"),
+    # ⚠️ dn8-4 (2026-09-13) — AJOUTE, ⛔ le README ci-dessus n'est PAS retire.
+    #    Le journal qui portait ces occurrences est parti OCTET POUR OCTET dans
+    #    `docs/journal-de-bord.md` ; la racine porte une vitrine anglaise. Sans
+    #    cette ligne, la couverture de ce balayage se serait REDUITE EN SILENCE :
+    #    le README aurait sorti « aucune occurrence », et la gate serait restee
+    #    verte sur un fichier qui ne dit plus rien.
+    #    ⚠️ Le « 4 de ces 6 fichiers » ecrit plus haut devient 5 de ces 7 ; il
+    #    n'est PAS reecrit, et le compte qui fait foi est la ligne `somme = N / 7`.
+    ("DESKNODE", "docs/journal-de-bord.md"),
     ("COCKPIT", "_bmad-output/implementation-artifacts/deferred-work.md"),
     ("COCKPIT", "_bmad-output/implementation-artifacts/sprint-status-desknode.yaml"),
 ]

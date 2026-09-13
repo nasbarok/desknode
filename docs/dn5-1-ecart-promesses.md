@@ -91,7 +91,7 @@ sur `HEAD:README.md` sont bien la notion matérielle.
 
 | notion demandée au lecteur | définie dans le clone après `dn5-1` ? | porteur |
 |---|---|---|
-| **tier** (les deux paliers) | ✅ **OUI** — nommée dans `CONTRIBUTING.md`, définie dans `README.md` § *Les deux paliers matériels* | — |
+| **tier** (les deux paliers) | ✅ **OUI** — nommée dans `CONTRIBUTING.md`, définie dans `journal-de-bord.md` § *Les deux paliers matériels* — *re-ciblé le 2026-09-13 (dn8-4) : la cible écrite ici valait le README de la racine, parti octet pour octet dans le journal de bord le jour même* | — |
 | **LibreHardwareMonitor** | ✅ **OUI** — `README.md` et `CHANGELOG.md` des deux côtés | — |
 | **DeskNode version** | ✅ **OUI** — `CONTRIBUTING.md` demande le SHA du bandeau série **et dit comment le lire**. ⚠️ Une version *affichée sur la dalle* n'existe toujours pas | `dn8` (version affichée + tag `v0.1.0-beta`) |
 | **GPU (NVIDIA / AMD / Intel)** | 🔴 **NON** — `CHANGELOG.md` annonce NVIDIA couvert, le code le réfute **[ANNOTÉ LE 2026-09-02 (`dn5-2`) : ✅ **OUI** désormais — les trois fichiers disent que NVIDIA n'est **pas implémenté**, et une gate garde la propriété. ⛔ La ligne se DATE, elle ne se réécrit pas]** | **`dn5-2` / AC2.5** — ✅ soldé |

@@ -17,6 +17,8 @@
 # (`FileNotFoundError`), l'état usbipd peut se bloquer en « Attached »
 # orphelin, et la récupération demande de tuer les veilleurs PUIS un RESET
 # physique. Le réattachement coûte 2,7–3,1 s (mesuré en dn4-3).
+# ⚠️ dn8-4 (2026-09-13) : « le README » est désormais le journal de bord,
+#    docs/journal-de-bord.md — parti octet pour octet ce jour-là.
 #
 # ── TROIS RÈGLES, CHACUNE PAYÉE PAR UNE MESURE ──────────────────────────────
 # 1. 🔴 LE BUSID EST RELU À CHAQUE APPEL, ⛔ JAMAIS EN DUR. Il SUIT LE PORT
@@ -55,7 +57,8 @@ TOUR_WIN="${DN_TOUR_WIN:-H:\\dev\\projets\\desknode}"
 # ⇒ On le VERIFIE avant de s'en servir, et on nomme les deux variables.
 RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Délai de re-vérification du detach. Les veilleurs ressuscitent en ~2 s
-# (README étape 2) : on regarde APRÈS, sinon on regarde avant le problème.
+# (README étape 2 — docs/journal-de-bord.md depuis dn8-4, 2026-09-13) : on
+# regarde APRÈS, sinon on regarde avant le problème.
 DELAI_REVERIF="${DN_DELAI_REVERIF:-4}"
 # 🔴 REVUE DU 2026-08-26 — CETTE VARIABLE D'ENVIRONNEMENT DESARMAIT LA REGLE
 #    N°2 DE L'EN-TETE DE CE SCRIPT. `DN_DELAI_REVERIF=0` (ou une valeur non

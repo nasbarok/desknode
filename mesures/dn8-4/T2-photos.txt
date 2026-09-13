@@ -1,0 +1,125 @@
+=== dn8-4 / T2 — LES PHOTOS, 2026-09-13T01:34:57+02:00 ===
+Pillow 10.2.0 · source /mnt/e/Nassimo/CREATIONS/DeskNode
+
+--- DSC04915.JPG
+  source  : 10397399 o · sha256 8769e42452487300eefb4514f944f1937f8a4f678b15bb419429760140cd0f0d
+  source  : SOF pixels (stockes) 5472 x 3648 · Orientation EXIF 1 · DateTimeOriginal 2026:08:30 18:04:50 · balises GPS 0
+  source  : APP1 Exif 1 segment(s), 43837 o
+  cible   : docs/photos/2026-08-30-1804-desknode-etat-actif-gros-plan.jpg
+  cible   : 171807 o · sha256 ab1d7cd330200482e6a11139bdcadc94ec5a8d1140855179cb17db8670c57ec0
+  cible   : SOF 0xC0 pixels 1600 x 1067 (paysage) · APP1 Exif relus : 0 · marqueurs E0 DB DB C0 C4 C4 C4 C4 DA
+  verdict : < 600 000 o ? True · EXIF absent ? True
+
+--- DSC04919.JPG
+  source  : 11297973 o · sha256 23dbcb5293ebe60a7d73a6fdcf59af1e51ca60c6f42556354c116198211c18f3
+  source  : SOF pixels (stockes) 5472 x 3648 · Orientation EXIF 6 · DateTimeOriginal 2026:08:30 18:18:31 · balises GPS 0
+  source  : APP1 Exif 1 segment(s), 43406 o
+  cible   : docs/photos/2026-08-30-1818-desknode-ambient-sur-la-tour.jpg
+  cible   : 206956 o · sha256 d98de739ad441249399440f823dc5d444aa9f40b5b3d73c8c4f5e6825ca53e01
+  cible   : SOF 0xC0 pixels 1067 x 1600 (portrait) · APP1 Exif relus : 0 · marqueurs E0 DB DB C0 C4 C4 C4 C4 DA
+  verdict : < 600 000 o ? True · EXIF absent ? True
+
+--- RELU DANS L'ARBRE, APRES DEPOT (cmp octet pour octet avec la sortie ci-dessus) : IDENTIQUES
+    et relu par le parseur de marqueurs de la gate neuve (sans Pillow) :
+    docs/photos/2026-08-30-1804-desknode-etat-actif-gros-plan.jpg : 171807 o · pixels (1600, 1067) · segments E0 DB DB C0 C4 C4 C4 C4 DA · APP1 Exif : 0
+    docs/photos/2026-08-30-1818-desknode-ambient-sur-la-tour.jpg : 206956 o · pixels (1067, 1600) · segments E0 DB DB C0 C4 C4 C4 C4 DA · APP1 Exif : 0
+
+--- LU A L'OEIL DE L'AGENT, APRES TRAITEMENT (⛔ pas un verdict owner)
+    · 2026-08-30-1804 (DSC04915) : paysage 1600 x 1067, dalle en etat ACTIF, nette
+      (CPU / GPU / RAM / RESEAU / DISQUE / AMBIANCE, bandeau MENU), fils visibles a droite.
+    · 2026-08-30-1818 (DSC04919) : **DEBOUT** (portrait 1067 x 1600) — l'orientation EXIF 6 a
+      bien ete appliquee AVANT le retrait de l'EXIF ; dalle en etat Ambient, nette, posee sur
+      la tour, breakout BH1750 et nappe de fils visibles au-dessus et a droite.
+    · ⚠️ l'interface des deux photos est en FRANCAIS (DIM. 30 AOUT, RESEAU, DISQUE, AMBIANCE)
+      — ASSUME par l'arbitrage owner du 2026-09-13, et DIT par la legende de la vitrine.
+    · ⚠️ L'HORLOGE DE L'APPAREIL AVAIT 1 h DE RETARD sur la dalle : DateTimeOriginal
+      18:04:50 / 18:18:31, la dalle affiche 19:04 / 19:17. ⛔ ECRIT, ⛔ PAS CORRIGE : les noms
+      de fichier portent l'heure de l'APPAREIL, parce que c'est la seule qui est une donnee
+      du fichier source.
+
+--- 🔴 CONVENTION DE dn63 — LES NOMS PRESCRITS PAR LE DOSSIER ONT ETE CHANGES, ET C'EST MESURE
+    Le dossier prescrivait docs/photos/2026-08-30<SOULIGNE>1804-desknode-etat-actif-gros-plan.jpg
+    (et <SOULIGNE>1818 pour la seconde) : hors de docs/cablage/ pour echapper a la POPULATION
+    de tools/verif_photos_dn63.py. ⛔ Ca ne suffisait pas.
+    Mesure du 2026-09-13, premiere redaction (copie jetable du depot, vitrine citant ces noms) :
+        [KO ] (c3) toute citation de photo RESOUT  ⛔ 2 LIEN(S) MORT(S) : <les deux noms> (cite par README.md)
+        BILAN : 27 OK, 1 KO
+    Mecanisme, lu dans la gate : citations() balaye TOUS les .md suivis (git ls-files), garde
+    tout nom qui satisfait RE_CONVENTION = AAAA-MM-JJ<SOULIGNE>HHMM-slug.jpe?g, et le resout
+    contre docs/cablage/ SEULEMENT. ⇒ la convention est un motif GLOBAL, ⛔ pas un nom de dossier.
+    ⇒ remede retenu, le plus petit : la date et l'heure sont GARDEES, separees par un TIRET
+       (2026-08-30-1804-…). ⛔ La gate de dn63 n'est PAS touchee.
+    Apres renommage : verif_photos_dn63.py rend BILAN : 28 OK, 0 KO (= T0).
+    ⚠️ Les noms prescrits sont ecrits ici avec <SOULIGNE> : ecrits en toutes lettres dans un
+       .md suivi, ils referaient rougir la meme gate (ce fichier est un .txt, que dn63 ne lit
+       pas — la precaution vaut pour qui le recopierait).
+
+--- LE SCRIPT (tel que joue, sous le scratchpad)
+  | """dn8-4 / T2 — les deux photos : orientation APPLIQUEE puis EXIF RETIRE, 1600 px, q85.
+  | Ecrit sous le scratchpad ; ⛔ jamais dans l'arbre du depot."""
+  | import hashlib, io, os, struct, sys, datetime
+  | from PIL import Image, ImageOps, __version__ as PILV
+  |
+  | SRC = "/mnt/e/Nassimo/CREATIONS/DeskNode"
+  | OUT = sys.argv[1]
+  | PAIRES = [("DSC04915.JPG", "2026-08-30-1804-desknode-etat-actif-gros-plan.jpg"),
+  |           ("DSC04919.JPG", "2026-08-30-1818-desknode-ambient-sur-la-tour.jpg")]
+  |
+  | def segments(b):
+  |     """Marqueurs JPEG lus octet par octet jusqu'a SOS."""
+  |     out = []
+  |     assert b[:2] == b"\xff\xd8", "pas un JPEG (SOI absent)"
+  |     i = 2
+  |     while i < len(b):
+  |         if b[i] != 0xFF:
+  |             raise ValueError("marqueur attendu a %d" % i)
+  |         m = b[i + 1]
+  |         if m in (0xD8, 0x01) or 0xD0 <= m <= 0xD7:
+  |             i += 2; continue
+  |         L = struct.unpack(">H", b[i + 2:i + 4])[0]
+  |         out.append((m, i, L, b[i + 4:i + 2 + L]))
+  |         if m == 0xDA:
+  |             break
+  |         i += 2 + L
+  |     return out
+  |
+  | def resume(b):
+  |     segs = segments(b)
+  |     exif = [s for s in segs if s[0] == 0xE1 and s[3].startswith(b"Exif\x00\x00")]
+  |     sof = [s for s in segs if s[0] in (0xC0, 0xC1, 0xC2)]
+  |     h, w = struct.unpack(">HH", sof[0][3][1:5]) if sof else (None, None)
+  |     return {"exif_app1": len(exif), "exif_octets": sum(s[2] for s in exif),
+  |             "sof": ["0x%02X" % s[0] for s in sof], "pixels": (w, h),
+  |             "marqueurs": ["%02X" % s[0] for s in segs]}
+  |
+  | print("=== dn8-4 / T2 — LES PHOTOS, %s ===" % datetime.datetime.now().astimezone().isoformat(timespec="seconds"))
+  | print("Pillow %s · source %s" % (PILV, SRC))
+  | for src, cible in PAIRES:
+  |     p = os.path.join(SRC, src)
+  |     brut = open(p, "rb").read()
+  |     im = Image.open(io.BytesIO(brut))
+  |     ex = im.getexif()
+  |     ori = ex.get(0x0112)
+  |     dto = ex.get_ifd(0x8769).get(0x9003)
+  |     gps = ex.get_ifd(0x8825)
+  |     r0 = resume(brut)
+  |     print("\n--- %s" % src)
+  |     print("  source  : %d o · sha256 %s" % (len(brut), hashlib.sha256(brut).hexdigest()))
+  |     print("  source  : SOF pixels (stockes) %s x %s · Orientation EXIF %s · DateTimeOriginal %s · balises GPS %d"
+  |           % (r0["pixels"][0], r0["pixels"][1], ori, dto, len(gps)))
+  |     print("  source  : APP1 Exif %d segment(s), %d o" % (r0["exif_app1"], r0["exif_octets"]))
+  |     im = ImageOps.exif_transpose(im)          # ⚠️ l'orientation AVANT de retirer l'EXIF
+  |     im = im.convert("RGB")
+  |     im.thumbnail((1600, 1600), Image.LANCZOS)
+  |     buf = io.BytesIO()
+  |     im.save(buf, "JPEG", quality=85, optimize=True)   # ⛔ ni exif= ni icc_profile= : rien n'est recopie
+  |     b = buf.getvalue()
+  |     r1 = resume(b)
+  |     open(os.path.join(OUT, cible), "wb").write(b)
+  |     print("  cible   : docs/photos/%s" % cible)
+  |     print("  cible   : %d o · sha256 %s" % (len(b), hashlib.sha256(b).hexdigest()))
+  |     print("  cible   : SOF %s pixels %s x %s (%s) · APP1 Exif relus : %d · marqueurs %s"
+  |           % (",".join(r1["sof"]), r1["pixels"][0], r1["pixels"][1],
+  |              "portrait" if r1["pixels"][1] > r1["pixels"][0] else "paysage",
+  |              r1["exif_app1"], " ".join(r1["marqueurs"])))
+  |     print("  verdict : < 600 000 o ? %s · EXIF absent ? %s" % (len(b) < 600000, r1["exif_app1"] == 0))

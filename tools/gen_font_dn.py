@@ -62,6 +62,8 @@ LA DÉRIVE DE LA LISTE DES SYMBOLES :
 DÉPENDANCE : `lv_font_conv` (npm), appelé PAR SON NOM par le script amont.
    `npx --yes lv_font_conv@1.5.3` fonctionne depuis ce WSL (mesuré) ; poser un
    shim exécutable nommé `lv_font_conv` sur le PATH suffit. Voir le README.
+   ⚠️ dn8-4 (2026-09-13) : « le README » est désormais le journal de bord,
+   `docs/journal-de-bord.md` (§ Les polices) — parti octet pour octet ce jour-là.
 
 USAGE
     python3 tools/gen_font_dn.py            # génère les deux tailles
@@ -611,7 +613,8 @@ def prevol_lv_font_conv():
     sys.exit(
         "ÉCHEC : `lv_font_conv` %s — RIEN n'a été généré.\n"
         "  C'est une dépendance npm, ⛔ absente du tableau des versions figées\n"
-        "  du dépôt : un clone neuf ne l'a PAS. Recette (README § Les polices) :\n"
+        "  du dépôt : un clone neuf ne l'a PAS. Recette (docs/journal-de-bord.md,\n"
+        "  l'ancien README, § Les polices) :\n"
         "      npm install -g lv_font_conv\n"
         "  puis vérifier :  lv_font_conv --version\n"
         "  ⚠️ Si l'icône visée est DÉJÀ portée par les `.c` (cas d'un codepoint\n"

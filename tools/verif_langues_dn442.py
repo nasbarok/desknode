@@ -888,7 +888,13 @@ def main():
     # ⚠️ CE CONTROLE MANQUAIT : le mutant 24 avait ete DECLARE et jamais ECRIT,
     #    et il restait donc VERT. Trouve en balayant les 26, ⛔ pas en relisant —
     #    exactement comme le mutant 9. C'est la DEUXIEME fois dans cette gate.
-    readme = M(24, lire(os.path.join(RACINE, "README.md")),
+    # ⚠️ dn8-4 (2026-09-13) — REPOINTE. Ce chemin valait `README.md` a la racine.
+    #    Le journal francais que cette gate garde y est parti OCTET POUR OCTET
+    #    (13 liens rebases, preuve : `tools/scission_readme_dn84.py --verifier`) ;
+    #    la racine porte desormais une VITRINE anglaise, gardee par
+    #    `tools/verif_vitrine_dn84.py`. ⛔ Aucune ancre ni aucun mutant touche : la
+    #    gate garde le JOURNAL, ⛔ plus ce qu'un inconnu lit en premier.
+    readme = M(24, lire(os.path.join(RACINE, "docs", "journal-de-bord.md")),
                "Le choix de langue N'EST PAS sur la dalle", "La langue se choisit")
     attendus = ("N'EST PAS sur la dalle", "flasheur web", "langue fr")
     absents_rm = [a for a in attendus if a not in readme]

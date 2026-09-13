@@ -2014,7 +2014,13 @@ GEN_FONT = os.path.join(RACINE, "tools", "gen_font_dn.py")
 DN_FONT_H = os.path.join(MAIN, "fonts", "dn_font.h")
 DN_WIDGET_H = os.path.join(MAIN, "dn_widget.h")
 CMAKE_MAIN = os.path.join(MAIN, "CMakeLists.txt")
-README = os.path.join(RACINE, "README.md")
+# ⚠️ dn8-4 (2026-09-13) — REPOINTE. Ce chemin valait `README.md` a la racine.
+#    Le journal francais que cette gate garde y est parti OCTET POUR OCTET
+#    (13 liens rebases, preuve : `tools/scission_readme_dn84.py --verifier`) ;
+#    la racine porte desormais une VITRINE anglaise, gardee par
+#    `tools/verif_vitrine_dn84.py`. ⛔ Aucune ancre ni aucun mutant touche : la
+#    gate garde le JOURNAL, ⛔ plus ce qu'un inconnu lit en premier.
+README = os.path.join(RACINE, "docs", "journal-de-bord.md")
 _Q3 = "'" * 3
 
 
