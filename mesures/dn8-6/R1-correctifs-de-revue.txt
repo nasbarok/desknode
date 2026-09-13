@@ -1,0 +1,155 @@
+==============================================================================
+dn8-6 / R1 — LES CORRECTIFS DEMANDES PAR LA REVUE, ET CE QUI LES PROUVE
+  Joue le 2026-09-13 a partir de 18:20 (+02:00), SANS carte, SANS port, SANS
+  commit. Base : desknode e0dd06334bf083cb8b5eac94447ba5f7b2ef4553, arbre sale.
+  ⚠️ ANNOTE, ⛔ PAS REECRIT : T1 § 4 et § 6 ont ete releves avec le libelle
+     anglais « firmware » et la fabrique `menu_ligne_poser()`. Ces deux faits
+     sont PERIMES par ce fichier ; les chiffres de T1 restent ce qu'ils
+     mesuraient a leur heure.
+==============================================================================
+
+── 1. LES CINQ CONSTATS, ET LE CHANGEMENT DE CHACUN ─────────────────────────
+  (1) La fabrique `menu_ligne_poser(parent, quoi, txt, …)` echappait a
+      `verif_langues_dn442.py` : § 3 ne lit que le 2e argument des appels dont
+      le nom FINIT par `texte(`, § 4 ne comptait plus `menu_titre_panneau()`.
+      ⇒ renommee `menu_texte(parent, txt, couleur, x, y, utile, quoi)` ; son
+        commentaire ecrit que la couverture tient AU NOM. ⛔ Rien dans `tools/`.
+  (2) Un build sans `.git` recoit `PROJECT_VER = "1"` (ESP-IDF v5.5.5,
+      `tools/cmake/project.cmake`, ordre : `version.txt` · `VERSION` de
+      `project()` · `git describe` · `1` ; `CONFIG_APP_PROJECT_VER_FROM_CONFIG`
+      ecrase le tout dans `esp_app_format/CMakeLists.txt`).
+      ⇒ `"1"` est traite comme la chaine vide ⇒ « ? » ; le commentaire du bloc
+        `dn8-6` dit l'ordre reel. ⚠️ Prix ecrit : un `version.txt` a `1`
+        afficherait « ? » aussi.
+  (3) Libelle anglais « firmware » ⇒ « version » (le mot de l'owner, identique
+      au francais). Chiffres du commentaire de `dn_langue.h` remis a la mesure
+      du § 3 ; ⚠️ `langue fr`/`langue en` ne change plus la ligne a l'oeil.
+  (4) `MENU_TITRE_H` et `MENU_VER_H` recopient des `line_height` : declares
+      NON GARDES dans le meme ⚠️ que `MENU_ENTETE_LISERE` (commentaire seul).
+  (5) `CONTRIBUTING.md` (§ DeskNode version, et la phrase « still to come »),
+      `.github/ISSUE_TEMPLATE/bug_report.yml` (description de
+      `desknode-version`) et `docs/dn5-1-ecart-promesses.md` (lignes 3 du § 2 et
+      « DeskNode version » du § 3, ANNOTEES et datees, mesure d'origine
+      gardee) disent ou lire la version : en-tete du MENU, sous le titre ;
+      firmware plus ancien : bandeau serie `App version` ; build sans git :
+      `version ?`.
+      ⚠️ Ces pages decrivent une ligne CONSTRUITE ET COMPILEE, ⛔ pas encore
+         vue sur la dalle (seance carte). La page `dn5-1` le dit ;
+         `CONTRIBUTING.md` et le formulaire, non.
+      ⚠️ `docs/roadmap.md` (ligne `dn8`, paragraphe « when `CONTRIBUTING.md`
+         says a version displayed on the device is "still to come" ») cite
+         l'ANCIENNE phrase et ⛔ n'a pas ete touche : il n'etait pas dans la
+         demande, et la ligne `dn8-6` de la roadmap appartient au commit qui
+         cloturera la marche.
+
+── 2. CONSTAT (1) DEMONTRE SUR UNE COPIE DE BROUILLON ───────────────────────
+  Copie : `tools/verif_langues_dn442.py`, `tools/dn_police.py`,
+  `firmware/desknode/main/` entier et `docs/journal-de-bord.md`, copies de
+  l'arbre sous le scratchpad (la gate derive sa racine de `__file__`).
+  ⛔ Aucune mutation dans l'arbre suivi ; la copie a ete restauree et
+  comparee a l'arbre (`cmp` : identique) apres les deux tirs.
+  (a) copie INTACTE                                         : rc=0 · BILAN : 31 OK, 0 KO · 13 fonction(s) qui posent un label
+  (b) `menu_titre_panneau` passe "VEILLE" par `menu_texte`  : rc=1 · BILAN : 30 OK, 1 KO · 13 fonction(s) qui posent un label
+      [KO ] ⛔ aucun litteral PORTEUR DE LETTRES n'atteint un label   ⛔ dn_ui.c : « VEILLE »
+  (c) TEMOIN NEGATIF : le meme litteral, la fabrique renommee
+      `menu_ligne_poser` (texte toujours en 2e argument)       : rc=0 · BILAN : 31 OK, 0 KO · 12 fonction(s) qui posent un label
+  ⇒ § 3 rougit 31/0 ⇒ 30/1 sur un litteral passe par la fabrique, et § 4
+    revient a 13 fonctions (12 a T1 § 6) ; renommer la fabrique suffit a les
+    aveugler de nouveau (c). ⇒ la couverture tient AU NOM, et le commentaire
+    de `menu_texte()` le dit.
+
+── 3. CONSTAT (3) — LES LARGEURS REMESUREES (`temoin_c_largeur.py`, T1 § 8) ──
+  geometrie relue : {'DN_LCD_H_RES': 480, 'DN_UI_MARGE': 10, 'DN_UI_RETOUR_W': 120, 'MENU_TITRE_X': 150, 'MENU_VER_UTILE': 320}
+  libelles lus    : {'EN': 'version', 'FR': 'version'}
+  glyphes les plus larges : hex 'b' = 10 px · chiffre '0' = 9 px · ASCII 'W' = 16 px
+  place utile     : MENU_VER_UTILE = 320 px
+  
+    EN  'e0dd063'                   7 signes  121 px  TIENT
+    FR  'e0dd063'                   7 signes  121 px  TIENT
+        ↳ nominal (HEAD d'aujourd'hui)
+    EN  'e0dd063-dirty'            13 signes  160 px  TIENT
+    FR  'e0dd063-dirty'            13 signes  160 px  TIENT
+        ↳ arbre sale au configure
+    EN  'v0.1.0-beta'              11 signes  132 px  TIENT
+    FR  'v0.1.0-beta'              11 signes  132 px  TIENT
+        ↳ tag de la release (dn8-7)
+    EN  'v0.1.0-beta-12-ge0dd063'  23 signes  229 px  TIENT
+    FR  'v0.1.0-beta-12-ge0dd063'  23 signes  229 px  TIENT
+        ↳ tag + 12 commits
+    EN  'v0.1.0-beta-0000-gbbbbbbb-' 31 signes  298 px  TIENT
+    FR  'v0.1.0-beta-0000-gbbbbbbb-' 31 signes  298 px  TIENT
+        ↳ REALISTE, 31 signes au pire (tag v0.1.0-beta, N a 4 chiffres, sha 7, -dirty, glyphes les plus larges de chaque classe)
+    EN  'v0.1.0-beta-0000-gbbbbbbbb' 31 signes  319 px  TIENT
+    FR  'v0.1.0-beta-0000-gbbbbbbbb' 31 signes  319 px  TIENT
+        ↳ PIRE DU FORMAT `v0.1.0-beta-N-g<hex>` : 31 signes sans `-dirty`, le hex le plus large remplissant la place (abreviation git longue)
+    EN  'WWWWWWWWWWWWWWWWWWWWWWWWWW' 31 signes  553 px  DEBORDE de 233 px ⇒ `menu trop_larges` + ESP_LOGW
+    FR  'WWWWWWWWWWWWWWWWWWWWWWWWWW' 31 signes  553 px  DEBORDE de 233 px ⇒ `menu trop_larges` + ESP_LOGW
+        ↳ ABSOLU, 31 fois le glyphe ASCII le plus large ('W')
+  ⇒ avec « version » dans les deux langues, tout ce qui a la forme d'une
+    sortie de `git describe` pour le tag prevu TIENT, jusqu'a l'abreviation
+    de 13 hex sans `-dirty` (319 px sur 320). Seul un nom de tag large deborde
+    (31 « W » : 553 px) — compte et journalise, ⛔ pas muet.
+
+── 4. BUILD HOTE APRES LES CORRECTIFS (`build.sh B5-revue`) ─────────────────
+  === dn8-6 / build B5-revue — debut 2026-09-13T18:40:45+02:00 ===
+  HEAD desknode : e0dd06334bf083cb8b5eac94447ba5f7b2ef4553
+  git describe --tags --always --dirty : e0dd063-dirty
+  git status --porcelain :
+     M .github/ISSUE_TEMPLATE/bug_report.yml
+     M CONTRIBUTING.md
+     M docs/dn5-1-ecart-promesses.md
+     M firmware/desknode/main/CMakeLists.txt
+     M firmware/desknode/main/dn_langue.h
+     M firmware/desknode/main/dn_ui.c
+     M installeur/IDENTITE.md
+    ?? mesures/dn8-6/
+  EMPREINTE desknode AVANT : 7fc1d90361bffd5d
+  idf.py reconfigure : rc=0  17 s
+    -- App "desknode" version: e0dd063-dirty
+  objets de main retires avant build : 27
+  idf.py build : rc=0  19 s
+  avertissements (lignes « warning: ») : 0
+  objets de main recompiles : 27
+    desknode.bin binary size 0x1354f0 bytes. Smallest app partition is 0x400000 bytes. 0x2cab10 bytes (70%) free.
+  build/desknode.bin : 1266928 o  2026-09-13 18:41:23.857569831 +0200
+  sha256 : b5d67d11aa13b135ce93f0ad1be6c375588aa2e65ffe27104445c5a4ecea23a5
+  descripteur : magie 0xABCD5432 @0x20 = OUI
+  descripteur : version @0x30 = 'e0dd063-dirty'
+  descripteur : projet  @0x50 = 'desknode' · compile Sep 13 2026 16:41:43 · IDF v5.5.5
+  git describe --tags --always --dirty (apres) : e0dd063-dirty
+  EMPREINTE desknode APRES : 7fc1d90361bffd5d
+  git status --porcelain (apres) :
+     M .github/ISSUE_TEMPLATE/bug_report.yml
+     M CONTRIBUTING.md
+     M docs/dn5-1-ecart-promesses.md
+     M firmware/desknode/main/CMakeLists.txt
+     M firmware/desknode/main/dn_langue.h
+     M firmware/desknode/main/dn_ui.c
+     M installeur/IDENTITE.md
+    ?? mesures/dn8-6/
+  === fin 2026-09-13T18:41:24+02:00 ===
+  ⇒ rc=0, 0 avertissement sur les 27 sources recompilees ; 1 266 928 o, la
+    MEME taille que B4 (T1 § 3) mais un sha256 DIFFERENT (B4 cbe4f2d6…,
+    B5 b5d67d11…) : ⛔ une taille egale ne dit pas un code egal. Cout total de
+    la marche en flash : +176 o sur la base B0.
+  ⚠️ `installeur/IDENTITE.md` recale de nouveau : accent 4095, trait 4707,
+     alerte 2976 (lignes relues : `sed -n '4095p;4707p;2976p'`).
+
+── 5. LES GATES, AU COMPTE, APRES LES CORRECTIFS (passe R1) ─────────────────
+  Passe du 2026-09-13, 18:42:54 → 19:00:01, `passe-sans-runner.sh R1` (= le
+  script de T0 § 4 MOINS le bloc `run_gates.sh`), sur l'arbre des correctifs,
+  ce fichier ecrit jusqu'au § 4. EMPREINTES AVANT = APRES (desknode
+  7fc1d90361bffd5d · cockpit f74f56a391926aa3) ⇒ ⛔ aucune ecriture pendant.
+  gate                               T0 rc OK/KO            R1 rc OK/KO            verdict
+  
+  gates comparees : 49 · identiques au compte : 49 · differentes : 0 · OK perdu ou KO gagne : 0
+  verif_dossier_dn415.py a R1 : 23 OK / 10 KO  (exige : 23 OK / 10 KO)
+  ⇒ 49 / 49 identiques au compte ; `verif_dossier_dn415` 23 OK / 10 KO ;
+    `verif_reception_dn85` 16/0 et `verif_vitrine_dn84` 16/0 (lecteurs du
+    formulaire et de `CONTRIBUTING.md`) ; `verif_licences_dn52` 34/0 ;
+    `verif_installeur_dn71` 28/0 avec `(c18)` « 7 source(s) rouverte(s) » ;
+    `verif_langues_dn442` 31/0, « 13 fonction(s) », « 3 site(s) » ;
+    `verif_campagne_dn56` 8/0, 707 mutants, « aucun mutant devenu MUET ».
+  ⚠️ Ce § 5 est ecrit APRES sa passe : seules les gates qui lisent `mesures/`
+     ont ete re-tirees ensuite, et leurs comptes sont rapportes avec la
+     livraison, ⛔ pas ici.

@@ -182,6 +182,20 @@ typedef enum {
     /*    « noir » sont deux états — la faute que `DN_CAPT_DX_ABSENT` a       */ \
     /*    coûtée deux fois à la console.                                     */ \
     X(MENU_NON_CHOISI, "-- %",                     "-- %")                     \
+    /* 🎯 `dn8-6` / FR18 — LE LIBELLÉ DE LA LIGNE DE VERSION, sous le titre   */ \
+    /*    du MENU (décision owner du 2026-09-13). La VERSION elle-même ⛔ n'est */ \
+    /*    PAS ici : elle est lue dans le descripteur du binaire.               */ \
+    /* ⚠️ « version » DANS LES DEUX LANGUES : c'est le mot de l'owner, et le   */ \
+    /*    même mot en anglais. ⇒ `langue fr`/`langue en` ne change PAS la      */ \
+    /*    ligne à l'œil — comme `MENU_TITRE`.                                  */ \
+    /* ⚠️ COURT, ET C'EST MESURÉ (`mesures/dn8-6/`, `tools/dn_police.py`) :     */ \
+    /*    « version » + espace + une version de 31 signes, glyphes les plus    */ \
+    /*    larges, en `dn_font_14`, sur 320 px utiles : 298 px avec            */ \
+    /*    `v0.1.0-beta-NNNN-g<sha7>-dirty`, 319 px avec 13 hex sans `-dirty`. */ \
+    /*    Un nom de tag plus LARGE peut déborder (31 « W » : 553 px) : compté */ \
+    /*    et journalisé par le MENU, ⛔ pas muet. « firmware », essayé d'abord, */ \
+    /*    débordait dès les 13 hex (332 px). ⛔ Ne pas le rallonger.          */ \
+    X(MENU_VERSION,    "version",                  "version")                  \
                                                                                \
     /* ── L'ÉTAT DE LA VEILLE, DANS LE PANNEAU LUMINOSITE ───────────────── */ \
     X(ET_MODE,         "mode",                     "mode")                     \

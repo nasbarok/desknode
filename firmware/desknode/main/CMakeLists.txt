@@ -216,6 +216,12 @@ idf_component_register(
         # LUI-MÊME les lignes salies, au lieu de laisser draw_bitmap parcourir
         # les 614 400 o du framebuffer entier à chaque appel.
         esp_mm
+        # 🎯 dn8-6 / FR18 : `esp_app_get_description()` — le MENU affiche la
+        # version LUE dans le descripteur du binaire (`esp_app_desc.h`), ⛔ jamais
+        # une constante recopiée. Le composant est déjà lié à l'image (c'est lui
+        # qui imprime `App version` au boot) ; `main` a des REQUIRES explicites,
+        # donc son en-tête n'est atteignable qu'en le nommant ici.
+        esp_app_format
         # 🔴 dn2-2, VERDICT T5 : la maquette branche B (WiFi WebSocket) n'est
         # PLUS liée. Le verrou 1 l'a tuée par la mesure : le simple LINK de
         # esp_wifi/esp_netif/esp_event/esp_http_server coûtait 53 480 o de

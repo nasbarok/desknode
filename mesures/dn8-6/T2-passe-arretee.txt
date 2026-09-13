@@ -1,0 +1,203 @@
+==============================================================================
+dn8-6 / T2 — LA PREMIERE PASSE D'ARRIVEE : DEUX GATES ONT PERDU UN OK, ET ELLE
+  A ETE ARRETEE
+  Jouee le 2026-09-13 a partir de 16:44:28 (+02:00) sur l'arbre modifie de la
+  marche (4 fichiers suivis + mesures/dn8-6/ T0 et T1), ⛔ aucun commit.
+  Tirs isoles : TERMINES (49 gates + outils). `run_gates.sh --silencieux` :
+  ARRETE en cours (~17:16) par l'agent, des la lecture des deux KO ci-dessous
+  — ⛔ aucune ecriture de l'arbre n'a eu lieu PENDANT la passe : les
+  corrections ont ete ecrites APRES l'arret (aucun `verif_*` ni `run_gates`
+  vivant, controle `ps`). ⇒ cette passe n'est la borne d'arrivee de RIEN :
+  c'est le CONSTAT qui a fait changer le code. La borne est T3.
+==============================================================================
+
+── 1. LE COMPTE, T0 ⇒ T2, GATE PAR GATE (script `comparer.py`, § 4) ──────────
+  gate                               T0 rc OK/KO            T2 rc OK/KO            verdict
+  verif_affiliation_dn65.py          rc=0     23/0            rc=0     23/0            =
+  verif_banc_langue_dn73.py          rc=0     81/0            rc=0     81/0            =
+  verif_bme680_retard_dn45.py        rc=0     15/0            rc=0     15/0            =
+  verif_boitier_dn64.py              rc=0     29/0            rc=0     29/0            =
+  verif_bom_dn61.py                  rc=0     24/0            rc=0     24/0            =
+  verif_cablage_dn62.py              rc=0     37/0            rc=0     37/0            =
+  verif_campagne_dn440.py            rc=0     62/0            rc=0     62/0            =
+  verif_campagne_dn56.py             rc=0      8/0            rc=1      7/1            ⛔ OK PERDU / KO GAGNE
+  verif_courbe_dn413.py              rc=0     58/0            rc=0     58/0            =  (forme [OK]/[KO])
+  verif_cumul_ambient_dn45.py        rc=0     23/0            rc=0     23/0            =
+  verif_d4_nvs_dn45.py               rc=0      6/0            rc=0      6/0            =
+  verif_decoupe_horloge_dn418.py     rc=0      7/0            rc=0      7/0            =  (forme ✅/❌)
+  verif_demarrage_dn443.py           rc=0     58/0            rc=0     58/0            =
+  verif_dossier_d5_dn45.py           rc=0     12/0            rc=0     12/0            =
+  verif_dossier_dn415.py             rc=1     23/10           rc=1     23/10           =
+  verif_entree_dn82.py               rc=0     45/0            rc=0     45/0            =
+  verif_flash_dn72.py                rc=0     30/0            rc=0     30/0            =
+  verif_harnais_dn413.py             rc=0     22/0            rc=0     22/0            =  (forme [OK]/[KO])
+  verif_harnais_dn81.py              rc=0     28/0            rc=0     28/0            =
+  verif_hist_dn413.py                rc=0     56/0            rc=0     56/0            =  (forme [OK]/[KO])
+  verif_installeur_dn71.py           rc=0     28/0            rc=1     27/1            ⛔ OK PERDU / KO GAGNE
+  verif_instruments_dn423.py         rc=0    163/0            rc=0    163/0            =
+  verif_journal_soak_dn45.py         rc=0     26/0            rc=0     26/0            =
+  verif_langue_dalle_dn73.py         rc=0     61/0            rc=0     61/0            =
+  verif_langues_dn442.py             rc=0     31/0            rc=0     31/0            =
+  verif_ledger_dn416.py              rc=0     36/0            rc=0     36/0            =
+  verif_lhm_ps_dn83.py               rc=0     26/0            rc=0     26/0            =
+  verif_licences_dn52.py             rc=0     34/0            rc=0     34/0            =
+  verif_lissage_dn45.py              rc=0     21/0            rc=0     21/0            =
+  verif_miroir_horloge_dn418.py      rc=0     18/0            rc=0     18/0            =  (forme ✅/❌)
+  verif_page_dn722.py                rc=0     56/0            rc=0     56/0            =
+  verif_paliers_dn441.py             rc=0     42/0            rc=0     42/0            =
+  verif_photos_dn63.py               rc=0     28/0            rc=0     28/0            =
+  verif_placement_dn74.py            rc=0     42/0            rc=0     42/0            =
+  verif_polices_dn440.py             rc=0     11/0            rc=0     11/0            =
+  verif_preconditions_dn76.py        rc=0     55/0            rc=0     55/0            =
+  verif_prerequis_dn75.py            rc=0     51/0            rc=0     51/0            =
+  verif_rebouclage_dn45.py           rc=0     30/0            rc=0     30/0            =
+  verif_reception_dn85.py            rc=0     16/0            rc=0     16/0            =
+  verif_reprise_horloge_dn418.py     rc=0     50/0            rc=0     50/0            =  (forme ✅/❌)
+  verif_selection_dn49.py            rc=0     70/0            rc=0     70/0            =  (forme [OK]/[KO])
+  verif_serie_dn412.py               rc=0     50/0            rc=0     50/0            =
+  verif_source_lhm_dn48.py           rc=0     46/0            rc=0     46/0            =  (forme [OK]/[KO])
+  verif_sr03.py                      rc=2      0/0            rc=2      0/0            =  (forme ✅/❌)
+  verif_temoin_filtre_dn447.py       rc=0      5/0            rc=0      5/0            =
+  verif_veille_dn33.py               rc=0    267/0            rc=0    267/0            =
+  verif_verrou_lvgl_dn413.py         rc=0     60/0            rc=0     60/0            =  (forme [OK]/[KO])
+  verif_vitrine_dn84.py              rc=0     16/0            rc=0     16/0            =
+  verif_xip_dn422.py                 rc=0     10/0            rc=0     10/0            =
+  
+  gates comparees : 49 · identiques au compte : 47 · differentes : 2 · OK perdu ou KO gagne : 2
+  verif_dossier_dn415.py a T2 : 23 OK / 10 KO  (exige : 23 OK / 10 KO)
+
+── 2. LES DEUX KO, TELS QU'IMPRIMES ─────────────────────────────────────────
+  verif_installeur_dn71, ligne 55 :
+    [KO ] (c18) chaque couleur EST a la ligne de firmware citee      ⛔ --dn-accent ⇒ firmware/desknode/main/dn_ui.c:4047 ne porte pas #a0d8ff · --dn-trait ⇒ firmware/desknode/main/dn_ui.c:4649 ne porte pas #33404a — une citation qui a pourri se remarque ICI, ⛔ pas six mois plus tard
+  verif_campagne_dn56, ligne 10 :
+    [KO ] tout mutant rend rc=1                                      ⛔ NE ROUGISSENT PLUS : tools/verif_langues_dn442.py#20 (rc=0)
+
+── 3. LES DEUX CAUSES, ET CE QUI A ETE CHANGE ───────────────────────────────
+  (1) 🔴 `(c18)` — FAUTE DE L'AGENT, ET LA GATE A FAIT CE POUR QUOI ELLE EXISTE.
+      Les citations de `installeur/IDENTITE.md` avaient ete recalees (4047,
+      4649, 2976) PUIS un commentaire de `dn_ui.c` a encore ete allonge d'une
+      ligne (le bloc de la geometrie) ⇒ les deux premieres pointaient une
+      ligne trop haut. ⛔ La regle « toute citation que le changement decale
+      est recalee dans le meme commit » ne se tient qu'en recalant APRES la
+      DERNIERE ecriture de `dn_ui.c` — et c'est ce qui a ete refait :
+      accent ⇒ 4074, trait ⇒ 4675, alerte 2976 (apres la fabrique, § (2)).
+      Rejoue : `verif_installeur_dn71.py` rc=0, `(c18) 7 source(s)
+      rouverte(s)`, BILAN : 28 OK, 0 KO.
+  (2) 🔴 `verif_campagne_dn56` — LE CHANGEMENT DESARMAIT UNE GARDE EXISTANTE.
+      `verif_langues_dn442.py` § 10 compte les sites `menu_largeur_controler(`
+      de `dn_ui.c` et exige `>= 3`. Il y en avait EXACTEMENT 3 (definition,
+      titres de panneau, bloc d'etat). La ligne de version en ajoutait un 4ᵉ
+      ⇒ le mutant 20, qui RETIRE la mesure du bloc d'etat, laissait 3 sites et
+      ⛔ ne rougissait plus : la mesure du seul panneau qui dit pourquoi un
+      reglage n'a pas ete enregistre n'etait plus gardee par rien — et
+      `verif_langues_dn442.py` elle-meme restait a 31 OK / 0 KO. ⇒ seule la
+      CAMPAGNE (`dn56`) l'a vu : une gate verte n'aurait rien dit.
+      ⇒ CORRECTION, dans `dn_ui.c` seul (le perimetre borne) : une fabrique
+        `menu_ligne_poser()` pose ET mesure une ligne `dn_font_14` du MENU ;
+        `menu_titre_panneau()` et la ligne de version passent par elle. Le
+        compte de sites reste 3, et `--mutant 20` rejoue sur l'arbre corrige
+        rend rc=1, `BILAN : 30 OK, 1 KO`, « 2 site(s) ».
+      ⛔ CE QUI N'A PAS ETE FAIT, ET POURQUOI : relever le seuil de la gate a
+        `>= 4` (⛔ `tools/` hors du perimetre borne par l'owner, et un seuil
+        recite se perime au site suivant) ; cacher l'appel a l'expression
+        reguliere (ce serait fabriquer une gate verte sur du code faux).
+      ⚠️ LE PRIX, DECLARE : remplacer l'appel de la version par un `texte()`
+        nu ⛔ ne ferait rougir AUCUNE gate.
+
+── 4. LES OUTILS QUI NE SONT PAS DES GATES (tires avant l'arret) ─────────────
+  --- node tools/banc_langue_dalle_dn73.mjs : rc=0  0.74 s
+        BANC : 39 OK, 0 KO
+  --- node tools/banc_couverture_dn82.mjs : rc=0  0.94 s
+        COUVERTURE dn8-2 — LE SCRIPT DE LA PAGE, MESURE PENDANT QU'IL S'EXECUTE
+        COUVERTURE : 96/100 fonctions, 131/190 blocs — les deux seuils sont tenus.
+  --- python3 tools/inventaire_motif_dn53.py : rc=0  0.31 s
+        18:  [OK ] classe 1 : le defaut de `--csv` est LOCALISE par AST     ancre semantique, ⛔ pas verbatim
+        19:  [OK ] classe 1 : l'arbre du jour est SOLDE                     0 fait
+        20:  [OK ] classe 1 : faute REPLANTEE ⇒ elle REMONTE                ≥1 fait
+        23:  1. dependance FONCTIONNELLE  (le seul defaut)      0 fichiers      0 sites
+        24:  2. exemple d'usage          (declare au site)     30 fichiers     77 sites
+        25:  3. trace de generation      (polices — INTACTES)    5 fichiers      5 sites
+        26:  4. registre de preuves      (mesures/ — INTACT)  231 fichiers   2041 sites
+        27:  5. le motif est le SUJET    (EXCLUSION DECLAREE)    4 fichiers     21 sites
+        28:       TOTAL                                       270 fichiers   2144 sites
+        55:     STABLE, c'est la classe 1 : plus aucun outil ne depend d'une
+  --- python3 tools/campagne_ctrl_dn440.py --cockpit /home/nasbarok/projects/compagnon_project : rc=0  60.92 s
+        BILAN TRI : 15 cas au tableau — dont 11 SITE(S) VIVANT(S) et 4 FICHE(S) de remede — 6 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 5 BRANCHE(S), 0 echec(s)
+  --- python3 tools/verif_ledger_dn416.py --cockpit /home/nasbarok/projects/compagnon_project --manifeste : rc=0  0.70 s
+  --- python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres WORKTREE : rc=0  0.11 s
+           couverture : 13 lien(s) local(aux) dans la base, 13 rebasage(s)
+        IDENTIQUE — le corps du journal est T(README@baf4265a292a), octet pour octet.
+  --- python3 tools/stub_lhm_dn48.py --port 8085 : rc=1  0.06 s
+  --- python3 -m py_compile tools/dn_console.py tools/gen_font_dn.py tools/dn_gates.py : rc=0  0.06 s
+  --- bash -n tools/rendre-port.sh : rc=0  0.01 s
+  
+  ⇒ identiques a T0, a une ligne pres : `inventaire_motif_dn53` compte le
+    registre de preuves `mesures/` a 231 fichiers / 2041 sites (229 / 2030 a
+    T0) — ce sont T0 et T1 de cette marche, ⛔ un defaut.
+
+── 5. LE SCRIPT DE COMPARAISON (tel que joue : `python3 comparer.py T0 T2`) ──
+  ⚠️ Vu ROUGIR avant usage : une copie de T0 alteree (langues 31 ⇒ 30 OK,
+     dossier_dn415 10 ⇒ 11 KO, un `[OK` de courbe_dn413 change en `[KO`) sort
+     les trois en « ⛔ OK PERDU / KO GAGNE ».
+  | #!/usr/bin/env python3
+  | # dn8-6 — compare, gate par gate et AU COMPTE, deux passes de `passe.sh` (T0 ⇒ Tx).
+  | # Le compte d'une gate est : sa ligne BILAN (OK / KO) si elle en imprime une ; sinon ses lignes
+  | # `[OK`/`[KO` capturees, ou a defaut ses lignes ✅/❌ (meme methode que les T0 de dn8-4/dn8-5).
+  | # ⛔ Une gate absente d'une des deux passes est DITE, ⛔ pas sautee.
+  | import os
+  | import re
+  | import sys
+  | 
+  | S = "/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/210578d2-1a31-479e-ba3c-a3c9e115d4c3/scratchpad/dn86"
+  | A, B = sys.argv[1], sys.argv[2]
+  | RX = re.compile(r"^(verif_\S+\.py)(?: --cockpit)?\s+rc=(\S+)\s+([\d.]+) s\s+(.*)$")
+  | 
+  | 
+  | def lire(et):
+  |     res = {}
+  |     for l in open(os.path.join(S, et, "resume.txt"), encoding="utf-8"):
+  |         m = RX.match(l.rstrip("\n"))
+  |         if not m:
+  |             continue
+  |         nom, rc, _, bilan = m.groups()
+  |         ok = ko = None
+  |         mb = re.findall(r"BILAN\s*:\s*(\d+)\s*OK\s*[,/·]\s*(\d+)\s*KO", bilan)
+  |         if mb:
+  |             ok, ko = (int(x) for x in mb[-1])
+  |             forme = "BILAN"
+  |         else:
+  |             txt = open(os.path.join(S, et, "gates", nom[:-3] + ".txt"), encoding="utf-8").read()
+  |             n_ok, n_ko = len(re.findall(r"\[OK", txt)), len(re.findall(r"\[KO", txt))
+  |             if n_ok or n_ko:
+  |                 ok, ko, forme = n_ok, n_ko, "[OK]/[KO]"
+  |             else:
+  |                 ok, ko, forme = txt.count("✅"), txt.count("❌"), "✅/❌"
+  |         res[nom] = (rc, ok, ko, forme)
+  |     return res
+  | 
+  | 
+  | a, b = lire(A), lire(B)
+  | perdus, ecarts = [], []
+  | print("%-34s %-22s %-22s %s" % ("gate", A + " rc OK/KO", B + " rc OK/KO", "verdict"))
+  | for nom in sorted(set(a) | set(b)):
+  |     if nom not in a or nom not in b:
+  |         print("%-34s %s" % (nom, "⛔ ABSENTE de " + (A if nom not in a else B)))
+  |         ecarts.append(nom)
+  |         continue
+  |     ra, oa, ka, fa = a[nom]
+  |     rb, ob, kb, fb = b[nom]
+  |     v = "="
+  |     if (ra, oa, ka) != (rb, ob, kb):
+  |         v = "≠"
+  |         ecarts.append(nom)
+  |     if ob < oa or kb > ka:
+  |         v = "⛔ OK PERDU / KO GAGNE"
+  |         perdus.append(nom)
+  |     print("%-34s rc=%-3s %4s/%-4s %-7s rc=%-3s %4s/%-4s %-7s %s"
+  |           % (nom, ra, oa, ka, "", rb, ob, kb, "", v + ("  (forme %s)" % fa if fa != "BILAN" else "")))
+  | print()
+  | print("gates comparees : %d · identiques au compte : %d · differentes : %d · OK perdu ou KO gagne : %d"
+  |       % (len(set(a) & set(b)), len(set(a) & set(b)) - len(ecarts), len(ecarts), len(perdus)))
+  | d415 = b.get("verif_dossier_dn415.py")
+  | print("verif_dossier_dn415.py a %s : %s OK / %s KO  (exige : 23 OK / 10 KO)" % (B, d415[1], d415[2]))
+  | sys.exit(1 if perdus or (d415[1], d415[2]) != (23, 10) else 0)

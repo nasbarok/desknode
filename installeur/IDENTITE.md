@@ -31,12 +31,12 @@ police distante est une page qui ne s'ouvre pas quand le réseau est mauvais.
 | jeton | rôle dans la page | valeur | source dans le firmware | nom là-bas |
 |---|---|---|---|---|
 | `--dn-fond` | le fond de la page et des cartes | `#000000` | `firmware/desknode/main/dn_widget.c:1425` | `W_AMB_CASE_BG` |
-| `--dn-accent` | titres, boutons, liens, valeurs mises en avant | `#a0d8ff` | `firmware/desknode/main/dn_ui.c:3996` | *(titre de menu)* |
+| `--dn-accent` | titres, boutons, liens, valeurs mises en avant | `#a0d8ff` | `firmware/desknode/main/dn_ui.c:4095` | *(titre de menu)* |
 | `--dn-texte` | le corps du texte | `#c0d8e8` | `firmware/desknode/main/dn_widget.c:657` | `W_COL_SEC` |
 | `--dn-eteint` | ce qui est secondaire, absent, ou pas encore su | `#9a9a9a` | `firmware/desknode/main/dn_widget.c:652` | `W_COL_ABSENTE` |
-| `--dn-trait` | bordures, séparateurs, cadres | `#33404a` | `firmware/desknode/main/dn_ui.c:4576` | *(trait de courbe)* |
+| `--dn-trait` | bordures, séparateurs, cadres | `#33404a` | `firmware/desknode/main/dn_ui.c:4707` | *(trait de courbe)* |
 | `--dn-avertissement` | ce qui demande un geste, sans être cassé | `#ffb020` | `firmware/desknode/main/dn_widget.c:654` | `W_COL_SIMULEE` |
-| `--dn-alerte` | le fond des blocs d'échec | `#7f0000` | `firmware/desknode/main/dn_ui.c:2975` | *(écran d'alerte)* |
+| `--dn-alerte` | le fond des blocs d'échec | `#7f0000` | `firmware/desknode/main/dn_ui.c:2976` | *(écran d'alerte)* |
 
 > 🎯 **ANNOTÉ ET DATÉ LE 2026-09-10 (`dn7-4`) — ⛔ AUCUNE COLONNE DE LA TABLE N'EST TOUCHÉE,
 > ET ⛔ AUCUN JETON N'EST AJOUTÉ.** **QUATRE** rôles s'élargissent — ⛔ pas deux, et le compte est
@@ -145,7 +145,7 @@ police distante est une page qui ne s'ouvre pas quand le réseau est mauvais.
   quelque chose à faire avant que ce soit vrai* — l'écart déclaré, le navigateur qui n'a pas
   l'accès série, l'adresse qui ne convient pas.
 - **L'alerte est un FOND, ⛔ pas un texte, et le firmware la traite pareil.** À
-  `dn_ui.c:2975`, `0x7f0000` est posé en `bg_color` d'un écran entier. Écrit en couleur de
+  `dn_ui.c:2976`, `0x7f0000` est posé en `bg_color` d'un écran entier. Écrit en couleur de
   texte sur du noir, il serait illisible ; la page le garde donc en fond, avec le texte
   ordinaire par-dessus.
 
@@ -154,7 +154,7 @@ police distante est une page qui ne s'ouvre pas quand le réseau est mauvais.
 ```bash
 # la valeur citée est-elle vraiment à la ligne citée ?
 sed -n '1425p' firmware/desknode/main/dn_widget.c
-sed -n '3996p;4576p;2975p' firmware/desknode/main/dn_ui.c
+sed -n '4095p;4707p;2976p' firmware/desknode/main/dn_ui.c
 sed -n '652p;654p;657p' firmware/desknode/main/dn_widget.c
 
 # l'accent dominant, compté plutôt qu'affirmé
@@ -168,6 +168,11 @@ python3 tools/verif_installeur_dn71.py
 relit la ligne citée et rougit si la couleur n'y est plus, ce qui force à re-relever la
 source au lieu de laisser la citation pourrir en silence. ⛔ Une source qu'on ne peut plus
 rouvrir n'est pas une source.
+
+> 📌 **RE-RELEVÉ LE 2026-09-13 (`dn8-6`)** — le firmware a gagné une ligne d'inclusion, la
+> ligne de version de l'en-tête du MENU et la fabrique qui la pose. Les trois citations de `dn_ui.c` ont été **recalées
+> dans le même changement** : accent **3996 ⇒ 4095**, trait **4576 ⇒ 4707**, alerte
+> **2975 ⇒ 2976**. ⛔ Aucune valeur, aucun rôle, aucun jeton n'a changé.
 
 Copyright © 2026 Nasbarok. Ce fichier suit la licence du dossier `installeur/`, déclarée
 dans [`LICENSING.md`](../LICENSING.md).

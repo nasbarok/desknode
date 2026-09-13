@@ -170,8 +170,11 @@ Please include:
   is a short front page in English, which names both tiers as well.*
 - Whether **LibreHardwareMonitor** is installed (it changes what the CPU and disk
   cells can show).
-- Your **DeskNode version**. ⚠️ There is **no version shown on the display** yet. The
-  device identifies its firmware by a git SHA printed on the **serial console at boot**:
+- Your **DeskNode version**. Recent firmware (`dn8-6` onwards) shows it **on the
+  display**: open the **MENU** and read the line under its title, for example
+  `version 6a91fa3` — `version ?` means the firmware was built without git (see below).
+  ⚠️ Older firmware shows **no version on the display**: it identifies itself only by a
+  git SHA printed on the **serial console at boot**, where every firmware prints it:
 
   ```
   I (783) app_init: Project name:     desknode
@@ -205,9 +208,10 @@ Please include:
   Nothing in `firmware/desknode/sdkconfig.defaults` pins a project version, so
   ESP-IDF derives it from git: a build made from a downloaded ZIP (no `.git`) prints
   `App version: 1`, and a build made from a modified tree prints `<sha>-dirty`. All
-  three are useful — just say which one you saw.
+  three are useful — just say which one you saw. On the display, that `1` is shown as
+  `version ?`, because a bare `1` would read like a real version number.
 
-  A version displayed on the device itself, and a release tag, are still to come
+  The version on the display now exists (above); a release tag is still to come
   (`dn8` — see [`docs/roadmap.md`](docs/roadmap.md)).
 - Your **Windows version**, and the make of your GPU. ⚠️ GPU metrics come from
   **AMD only** today: NVIDIA is **not implemented** — there is no NVML in the agent

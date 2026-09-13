@@ -49,6 +49,7 @@
 #include "dn_veille.h"
 #include "dn_widget.h"
 #include "fonts/dn_font.h"
+#include "esp_app_desc.h"
 #include "esp_cache.h"
 #include "esp_check.h"
 #include "esp_heap_caps.h"
@@ -3282,6 +3283,14 @@ static void on_menu_clic(lv_event_t *e)
  * ⚠️ EXACTEMENT DEUX RÉGLAGES, ET RIEN D'AUTRE (D-5 / AC6.6). Pas de
  *    luminosité, pas de diagnostic, pas de reboot, pas de version. Toute 3ᵉ
  *    entrée est un correct-course, ⛔ pas une décision de dev.
+ * 🎯 ANNOTÉ LE 2026-09-13 (`dn8-6`) — LA PHRASE CI-DESSUS RESTE, ET ELLE N'EST
+ *    PLUS VRAIE SUR DEUX MOTS. « pas de luminosité » est tombé avec `dn4-41`
+ *    (plus bas). « pas de version » tombe par DÉCISION OWNER du 2026-09-13,
+ *    verbatim *« on met juste la version dans les settings et c'est tt »* :
+ *    `H1` levée par la voie (A), `NFR19` amendée pour `dn8-6` SEULE (tracker
+ *    DeskNode, commit cockpit `7d6fe457`). ⚠️ La version est UNE LIGNE DE TEXTE
+ *    de l'en-tête — ⛔ ni une entrée, ni une cible tactile, ni un réglage. Le
+ *    reste de la phrase TIENT : toute autre entrée est un correct-course.
  *
  * ⚠️ LES CIBLES FONT 210 x 66 px. Le ledger porte « une cible de 10 px ne se
  *    vise pas » : on ne refait pas ça sur un écran de 2,8".
@@ -3367,6 +3376,61 @@ _Static_assert(MENU_ETAT_DY + MENU_ETAT_LIGNES * 18 <= MENU_H_LUM,
 #define MENU_SEL_Y_LUM 32
 _Static_assert(MENU_SEL_Y_LUM + MENU_SEL_H <= MENU_ETAT_DY,
                "dn4-41 : les cibles de luminosite mordent sur le texte d'etat.");
+/*
+ * ══ 🎯 `dn8-6` / FR18 — LA VERSION DU FIRMWARE, SOUS LE TITRE DE L'EN-TÊTE ═══
+ *
+ * Décision owner du 2026-09-13 (annotation du bloc dn3-3 plus haut).
+ * ⚠️ LA CHAÎNE EST LUE DANS LE DESCRIPTEUR DU BINAIRE
+ *    (`esp_app_get_description()->version`), ⛔ jamais recopiée ici. ESP-IDF y
+ *    écrit `PROJECT_VER`, fixé **AU CONFIGURE** et coupé à 31 signes, pris
+ *    dans cet ordre (`tools/cmake/project.cmake`) : un `version.txt` à la
+ *    racine du projet · l'argument `VERSION` de `project()` · **`git describe
+ *    --always --tags --dirty`** · et **`1`** quand git échoue (pas de `.git`).
+ *    ⚠️ `CONFIG_APP_PROJECT_VER_FROM_CONFIG` écrase le tout
+ *    (`esp_app_format/CMakeLists.txt`). Ce dépôt ne pose aucun des trois
+ *    premiers ⇒ c'est `git describe` sur un clone, `1` sur une archive —
+ *    et `1` s'affiche « ? » (voir `build_menu()`).
+ *    ⇒ elle dit l'arbre **tel qu'il était au dernier configure**, ⛔ forcément
+ *    tel qu'il est au build : un fichier modifié après le configure ne pose
+ *    PAS `-dirty`. D'où la règle de séance : `idf.py reconfigure` avant le
+ *    build de référence, puis le descripteur relu et confronté à
+ *    `git describe` (`mesures/dn8-6/`).
+ *
+ * LA GÉOMÉTRIE, ADDITIONNÉE ICI POUR QUE PERSONNE N'AIT À LA REFAIRE :
+ *   · `panneau()` ne porte AUCUN padding (`lv_obj_remove_style_all`), mais un
+ *     LISERÉ de 1 px (`aplat()`, `dn_widget.c`). LVGL place un enfant à
+ *     `pad + liseré` du bord (`lv_obj_move_to` → `lv_obj_get_style_space_top`)
+ *     ⇒ les `y` ci-dessous sont RELATIFS à une boîte de contenu de 80 − 2 = 78.
+ *   · retour     y = 10  (60 px)                          → 70 · x 10..130
+ *   · titre      y = 24  (35 px, `dn_font_28.line_height`) → 59
+ *   · version    y = 60  (18 px, `dn_font_14.line_height`) → 78  ≤ 78 ✅
+ *   ⚠️ LE PRIX, MESURÉ ET ⛔ PAS ARRONDI : **0 px de marge basse** dans la boîte
+ *      de contenu (seul le liseré bas reste dessous) et **1 px** sous le titre.
+ *      Le cadrage annonçait « 2 px » : il oubliait le liseré.
+ *   · en x : du titre (150) à la marge droite (470) ⇒ 320 px utiles, même
+ *     convention que `MENU_TXT_UTILE` (liseré ignoré). La cible de retour
+ *     finit à 130 : ⛔ aucune cible tactile à moins de 20 px, ⛔ aucune neuve.
+ * ⚠️ TROIS VALEURS SONT RECOPIÉES, ET ⛔ AUCUNE GATE NE GARDE LES COPIES :
+ *    `MENU_ENTETE_LISERE` (le `border_width` d'`aplat()`), `MENU_TITRE_H` et
+ *    `MENU_VER_H` (les `line_height` de `dn_font_28` et `dn_font_14`). Une
+ *    police régénérée plus haute ou un liseré épaissi ROGNE la ligne de
+ *    version — 0 px de marge — SANS que les `_Static_assert` ci-dessous
+ *    rougissent : ils additionnent les copies, ⛔ les vraies valeurs.
+ *    ⇒ après `gen_font_dn.py` ou un changement d'`aplat()`, refaire l'addition.
+ */
+#define MENU_TITRE_X (DN_UI_MARGE + DN_UI_RETOUR_W + 20) /* 150 */
+#define MENU_TITRE_Y 24
+#define MENU_TITRE_H 35 /* dn_font_28.line_height, relu dans fonts/dn_font_28.c */
+#define MENU_VER_Y 60
+#define MENU_VER_H 18 /* dn_font_14.line_height, relu dans fonts/dn_font_14.c */
+#define MENU_VER_UTILE (DN_LCD_H_RES - DN_UI_MARGE - MENU_TITRE_X) /* 320 */
+#define MENU_ENTETE_LISERE 1
+_Static_assert(MENU_TITRE_Y + MENU_TITRE_H <= MENU_VER_Y,
+               "dn8-6 : la ligne de version chevauche le titre du MENU.");
+_Static_assert(MENU_VER_Y + MENU_VER_H <= MENU_ENTETE_H - 2 * MENU_ENTETE_LISERE,
+               "dn8-6 : la ligne de version sort de l'en-tete du MENU (boite de "
+               "contenu = MENU_ENTETE_H moins les deux liseres). Refaire "
+               "l'addition ci-dessus.");
 /*
  * ══════════════════════════════════════════════════════════════════════════
  * 🔴 `dn4-42` / AC2 — **LE SÉLECTEUR DE LANGUE N'EST PAS SUR LA DALLE**,
@@ -3985,16 +4049,51 @@ static void on_menu_cran_clic(lv_event_t *e)
 /* ── La construction ─────────────────────────────────────────────────────── */
 
 /*
+ * 🎯 `dn8-6` — UNE LIGNE `dn_font_14` DU MENU, POSÉE **ET MESURÉE** EN UN SEUL
+ *    SITE : les titres de panneau ET la ligne de version.
+ * 🔴 ELLE EST NÉE D'UNE MESURE, ⛔ PAS D'UN GOÛT. La version a d'abord été posée
+ *    par un `texte()` suivi de son propre `menu_largeur_controler()`. Or
+ *    `verif_langues_dn442.py` (§ 10) exige `>= 3` sites de mesure, et il y en
+ *    avait EXACTEMENT 3 : avec un 4ᵉ, son mutant 20 (« retire le contrôle de
+ *    largeur du bloc d'état ») laissait encore 3 sites et ⛔ NE ROUGISSAIT PLUS
+ *    — `verif_campagne_dn56.py` 8 OK / 0 KO ⇒ 7 OK / 1 KO, relevé le
+ *    2026-09-13. La mesure du bloc d'état n'était plus gardée par rien.
+ * ⇒ Même doctrine que la fabrique de `dn4-42` ci-dessous : la mesure vit DANS
+ *   la fabrique, ⛔ à côté de chaque `texte()`.
+ *
+ * 🔴 SA COUVERTURE PAR `verif_langues_dn442.py` TIENT **À SON NOM**, ET À RIEN
+ *    D'AUTRE — ⛔ ne pas la renommer, ⛔ ne pas déplacer le texte hors du 2ᵉ
+ *    argument. Elle s'appelait d'abord `menu_ligne_poser(parent, quoi, txt, …)`
+ *    et la revue l'a montré sur copie : un littéral à lettres passé par elle
+ *    restait à 31 OK / 0 KO, parce que le § 3 de la gate ne lit que le 2ᵉ
+ *    argument des appels dont le nom FINIT par `texte(` (motif non ancré), et
+ *    son § 4 ne comptait plus `menu_titre_panneau()` (13 ⇒ 12 fonctions).
+ *    ⇒ nom en `…texte`, texte en 2ᵉ argument : les deux paragraphes la voient
+ *    de nouveau (démontré sur copie de brouillon, `mesures/dn8-6/`).
+ * ⚠️ CE QUE ÇA NE RÉPARE PAS, ET C'EST ÉCRIT : remplacer l'appel de la version
+ *    par un `texte()` nu ⛔ ne ferait rougir AUCUNE gate.
+ */
+static lv_obj_t *menu_texte(lv_obj_t *parent, const char *txt,
+                            lv_color_t couleur, int x, int y, int utile,
+                            const char *quoi)
+{
+    lv_obj_t *l = texte(parent, txt, &dn_font_14, couleur, x, y);
+    menu_largeur_controler(quoi, txt, &dn_font_14, utile);
+    return l;
+}
+
+/*
  * 🔴 `dn4-42` — LE TITRE D'UN PANNEAU DU MENU, POSÉ **ET MESURÉ**.
  * ⛔ Les trois titres étaient posés par trois `texte()` copiés : la mesure
  *    d'AC4.2 aurait donc dû être copiée trois fois aussi, et le quatrième
  *    panneau l'aurait oubliée. Une fabrique, et le contrôle est STRUCTUREL.
+ * ⚠️ `dn8-6` : la pose et la mesure sont désormais dans `menu_texte()`,
+ *    juste au-dessus — ⛔ même police, même couleur, même place, même utile.
  */
 static void menu_titre_panneau(lv_obj_t *panneau_, dn_txt_t cle)
 {
-    const char *t = dn_t(cle);
-    texte(panneau_, t, &dn_font_14, lv_color_hex(0xa0d8ff), MENU_SEL_X0, 10);
-    menu_largeur_controler("titre de panneau", t, &dn_font_14, MENU_TXT_UTILE);
+    menu_texte(panneau_, dn_t(cle), lv_color_hex(0xa0d8ff), MENU_SEL_X0, 10,
+               MENU_TXT_UTILE, "titre de panneau");
 }
 
 static menu_sel_t menu_sel_creer(lv_obj_t *parent, int x, int y,
@@ -4028,7 +4127,39 @@ static void build_menu(lv_obj_t *scr)
                                   on_retour_clic, NULL);
     texte(retour, LV_SYMBOL_LEFT, &dn_font_28, lv_color_white(), 16, 14);
     texte(entete, dn_t(DN_T_MENU_TITRE), &dn_font_28, lv_color_hex(0xa0d8ff),
-          DN_UI_MARGE + DN_UI_RETOUR_W + 20, 24);
+          MENU_TITRE_X, MENU_TITRE_Y);
+
+    /*
+     * ── 🎯 `dn8-6` / FR18 — LA VERSION, SOUS LE TITRE ────────────────────────
+     * Avant cette ligne, le SHA n'existait qu'au bandeau série, et seulement au
+     * boot. ⚠️ LUE dans le descripteur du binaire, ⛔ jamais écrite ici.
+     * ⚠️ Le texte composé passe par un TAMPON sur la pile : `texte()` →
+     *    `lv_label_set_text()`, qui le COPIE (`lv_malloc` dans LVGL 9.5.0).
+     * ⚠️ Le tampon vaut le champ version ENTIER (32 o, NUL compris) plus 64 o :
+     *    ⛔ aucune coupe tant que le libellé fait moins de 63 o (7 aujourd'hui).
+     *    Au-delà, `snprintf` couperait la FIN — c'est-à-dire la version.
+     * ⛔ DEUX VALEURS RENDENT « ? », ET AUCUNE N'EST UNE VERSION :
+     *    · la chaîne VIDE (`CONFIG_APP_EXCLUDE_PROJECT_VER_VAR`) — un libellé
+     *      suivi de rien se lirait comme une version vide VRAIE ;
+     *    · 🔴 `"1"` : le REPLI d'ESP-IDF quand aucune source ne répond — build
+     *      depuis une archive ZIP ou une source de release, SANS `.git`
+     *      (`tools/cmake/project.cmake`, « Default PROJECT_VER to 1 » ;
+     *      `CONTRIBUTING.md` le publie). « version 1 » se lirait comme une vraie
+     *      version. ⚠️ Le prix, ÉCRIT : un `version.txt` qui vaudrait `1`
+     *      afficherait « ? » lui aussi.
+     * ⛔ Pas de timer, pas de cible : une étiquette statique, jamais invalidée
+     *    après la construction. Et elle est MESURÉE comme toute ligne du MENU
+     *    (`menu_texte()`, qui dit un débordement sans le tronquer).
+     */
+    const esp_app_desc_t *app = esp_app_get_description();
+    const char *v = app->version;
+    if (v[0] == '\0' || strcmp(v, "1") == 0) {
+        v = dn_t(DN_T_INCONNU);
+    }
+    char ver[sizeof(app->version) + 64];
+    snprintf(ver, sizeof(ver), "%s %s", dn_t(DN_T_MENU_VERSION), v);
+    menu_texte(entete, ver, lv_color_hex(MENU_COL_LIBRE), MENU_TITRE_X,
+               MENU_VER_Y, MENU_VER_UTILE, "version");
 
     /* ── Réglage 1 : la veille, ON / OFF ─────────────────────────────────── */
     lv_obj_t *p1 = panneau(scr, MENU_PAN_X, MENU_Y_VEILLE, MENU_PAN_W,

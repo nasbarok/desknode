@@ -1,0 +1,462 @@
+==============================================================================
+dn8-6 / T1 — LE BUILD HOTE, LE DESCRIPTEUR, ET LES TEMOINS DE LA MATRICE
+  Joue le 2026-09-13 de 15:57:47 a 17:19:54 (+02:00), SANS carte, SANS port,
+  SANS commit. Base : desknode e0dd06334bf083cb8b5eac94447ba5f7b2ef4553.
+  Sorties brutes sous le scratchpad de session, versees ici APRES coup.
+  ⚠️ AUCUNE de ces mesures n'a chevauche une passe de gates : T0 finit a
+     16:31:32, le premier build commence a 16:32:39. Une premiere passe
+     d'arrivee (T2, 16:44:28) a trouve deux defauts : elle a ete ARRETEE
+     pendant `run_gates.sh`, et l'arbre n'a ete corrige qu'APRES son arret
+     (voir T2). La passe d'arrivee qui fait foi (T3) commence apres la
+     derniere ecriture de l'arbre.
+==============================================================================
+
+⚠️ ANNOTE LE 2026-09-13 APRES LA REVUE — ⛔ rien ci-dessous n'est reecrit : le
+   libelle anglais « firmware » est devenu « version », la fabrique
+   `menu_ligne_poser()` est devenue `menu_texte()`, et `"1"` s'affiche « ? ».
+   Ce qui en decoule (largeurs, gate de langues, build) est RELEVE dans
+   `R1-correctifs-de-revue.txt`.
+
+⛔ CE QUE CE FICHIER NE DIT PAS — la marche n'est PAS livree par lui :
+  · ⛔ que la version est LISIBLE sur la dalle (AC8.6.2 : l'oeil de l'owner, au
+    doigt, >= 3 min apres le boot) ;
+  · ⛔ que la dalle, le descripteur du `.bin` FLASHE et le bandeau `App version`
+    sont egaux a `git describe` d'un arbre COMMITTE (AC8.6.3, AC8.6.5) — ici
+    l'arbre est SALE par construction (temoin (b)) ;
+  · ⛔ le COUT (AC8.6.4 : cycles de redessin/s, deficit pire, CORRUPTION) ;
+  ⇒ ces quatre AC appartiennent a la SEANCE CARTE, apres la revue et le commit.
+    ⛔ Rien ci-dessous ne s'y substitue.
+
+── 1. TEMOIN (a) « CONFIGURE PERIME » — le `.bin` en place, AVANT tout rebuild ─
+  Releve a 2026-09-13T15:57:47+02:00, en LECTURE seule (⛔ avant T0, ⛔ avant
+  tout `idf.py`) :
+    build/desknode.bin        1 266 752 o · mtime 2026-09-08 23:14:52 +0200
+    sha256                    00719e7310df9c5368cd84b965190883a001b39530c35ae61c6b8729f63e72b5
+    magie @0x20               3254cdab (0xABCD5432) = OUI
+    version @0x30             '40be2c8'
+    projet @0x50              'desknode' · compile 'Sep  8 2026' 23:14:36 · IDF 'v5.5.5'
+    git describe --tags --always --dirty = 'e0dd063'  (HEAD e0dd06334bf0…, 0 tag)
+    build/project_description.json  mtime 2026-09-08 23:14:33 (le dernier configure)
+  ⇒ DESCRIPTEUR ≠ git describe : le binaire en place nomme `40be2c8`
+    (fix(dn7-1), 2026-09-08 19:54:57), l'arbre est a `e0dd063`, 25 commits plus
+    loin. C'est la ligne « Configure perime » de la matrice, DETECTEE par la
+    methode qu'elle prescrit (lecture du descripteur contre `git describe`),
+    et TRAITEE par elle : `reconfigure` puis rebuild (§ 2 : 'e0dd063').
+  ⚠️ `git diff --quiet 40be2c8 e0dd063 -- firmware/desknode/main` : rc=0 —
+     les 25 commits ne touchent PAS `firmware/desknode/main`. ⚠️ Ce constat ne
+     vaut PAS pour la fenetre A de la seance : il porte sur le `.bin` du
+     POSTE, ⛔ sur le binaire de la CARTE, qui se relit au bandeau (seance, (0)).
+  ⚠️ CE QUE (a) NE PROUVE PAS : qu'un COMMIT pose apres un configure laisse
+     `idf.py build` estampiller le commit precedent. (a) est un binaire jamais
+     rebati, ⛔ un build fait sur un configure perime. LU (⛔ mesure) dans
+     l'IDF v5.5.5 : `GetGitRevisionDescription.cmake.in` fait un
+     `configure_file` de `.git/refs/heads/main` ⇒ un commit sur une ref
+     LIBRE doit re-declencher CMake au build suivant. DEDUIT, ⛔ joue : il
+     faudrait un commit, et cette passe n'en pose aucun. Le cas qui, lui,
+     EST mesure est l'arbre modifie APRES le configure : temoin (e), § 5.
+
+── 2. BUILD DE BASE — arbre PROPRE, `reconfigure` puis `build` ──────────────
+  ⚠️ Les objets de `main` sont RETIRES avant chaque build (script § 7) : un
+     build incremental tairait les avertissements des fichiers non recompiles.
+     30 objets au premier retrait, 27 recompiles (27 sources : 22 `.c` + 5
+     polices) — les 3 de trop sont des residus d'anciennes sources.
+  === dn8-6 / build B0-base — debut 2026-09-13T16:32:39+02:00 ===
+  HEAD desknode : e0dd06334bf083cb8b5eac94447ba5f7b2ef4553
+  git describe --tags --always --dirty : e0dd063
+  git status --porcelain :
+  EMPREINTE desknode AVANT : 22b7ccf4c3b37691
+  idf.py reconfigure : rc=0  14 s
+    -- App "desknode" version: e0dd063
+  objets de main retires avant build : 30
+  idf.py build : rc=0  19 s
+  avertissements (lignes « warning: ») : 0
+  objets de main recompiles : 27
+    desknode.bin binary size 0x135440 bytes. Smallest app partition is 0x400000 bytes. 0x2cabc0 bytes (70%) free.
+  build/desknode.bin : 1266752 o  2026-09-13 16:33:16.600494118 +0200
+  sha256 : e3e8cfaa810341c0987eaeac75858a9718cd5cefa5439f0021b0b1cfaa2b12dd
+  descripteur : magie 0xABCD5432 @0x20 = OUI
+  descripteur : version @0x30 = 'e0dd063'
+  descripteur : projet  @0x50 = 'desknode' · compile Sep 13 2026 16:32:58 · IDF v5.5.5
+  git describe --tags --always --dirty (apres) : e0dd063
+  EMPREINTE desknode APRES : 22b7ccf4c3b37691
+  git status --porcelain (apres) :
+  === fin 2026-09-13T16:33:16+02:00 ===
+
+── 3. TEMOIN (b) « ARBRE SALE AU CONFIGURE » — le meme releve, arbre NON committe ─
+  QUATRE builds ont ete tires sur l'arbre modifie — B1 (16:35:50), B2
+  (16:37:45), B3 (16:41:22), B4 (17:19:19) — parce que l'arbre a encore change
+  entre eux : un commentaire de `dn_langue.h` apres B1, un commentaire de
+  `dn_ui.c` apres B2, le temoin (e) a reconstruit l'ANCIEN code entre B2 et
+  B3, et la FABRIQUE `menu_ligne_poser()` est entree apres B3 (motif : la
+  premiere passe d'arrivee, `T2-passe-arretee.txt`). Tous : rc=0, 0
+  avertissement, descripteur 'e0dd063-dirty' ; B1..B3 font 1 266 896 o, B4
+  1 266 928 o. Le releve qui fait foi est B4, sur l'arbre final du firmware :
+  === dn8-6 / build B4-arbre-sale-final — debut 2026-09-13T17:19:19+02:00 ===
+  HEAD desknode : e0dd06334bf083cb8b5eac94447ba5f7b2ef4553
+  git describe --tags --always --dirty : e0dd063-dirty
+  git status --porcelain :
+     M firmware/desknode/main/CMakeLists.txt
+     M firmware/desknode/main/dn_langue.h
+     M firmware/desknode/main/dn_ui.c
+     M installeur/IDENTITE.md
+    ?? mesures/dn8-6/
+  EMPREINTE desknode AVANT : 5dc2c92fa7f7ab71
+  idf.py reconfigure : rc=0  13 s
+    -- App "desknode" version: e0dd063-dirty
+  objets de main retires avant build : 27
+  idf.py build : rc=0  19 s
+  avertissements (lignes « warning: ») : 0
+  objets de main recompiles : 27
+    desknode.bin binary size 0x1354f0 bytes. Smallest app partition is 0x400000 bytes. 0x2cab10 bytes (70%) free.
+  build/desknode.bin : 1266928 o  2026-09-13 17:19:54.365972587 +0200
+  sha256 : cbe4f2d6b84bd89efbc2498f76fd0763c475349629df38c286b98effe981bdd5
+  descripteur : magie 0xABCD5432 @0x20 = OUI
+  descripteur : version @0x30 = 'e0dd063-dirty'
+  descripteur : projet  @0x50 = 'desknode' · compile Sep 13 2026 16:41:43 · IDF v5.5.5
+  git describe --tags --always --dirty (apres) : e0dd063-dirty
+  EMPREINTE desknode APRES : 5dc2c92fa7f7ab71
+  git status --porcelain (apres) :
+     M firmware/desknode/main/CMakeLists.txt
+     M firmware/desknode/main/dn_langue.h
+     M firmware/desknode/main/dn_ui.c
+     M installeur/IDENTITE.md
+    ?? mesures/dn8-6/
+  === fin 2026-09-13T17:19:54+02:00 ===
+  ⇒ la chaine porte `-dirty` ⇒ ⛔ PAS DE FLASH DE REFERENCE depuis cet arbre :
+    la ligne de la matrice est constatee, et son traitement tient.
+  ⇒ COUT EN FLASH : 1 266 752 ⇒ 1 266 928 o = +176 o (0x135440 ⇒ 0x1354f0),
+    partition app 0x400000, 70 % libre avant comme apres.
+  ⇒ AVERTISSEMENTS : 0 ⇒ 0, sur les 27 sources de `main` RECOMPILEES, avec
+    `-Wall -Werror=all -Wextra` (relus dans compile_commands.json).
+  ⚠️ Le `.bin` de B4 est un binaire SALE : ⛔ il n'est la reference de rien, et
+     son sha256 ne se compare a aucun binaire de seance.
+
+── 4. TEMOIN (c) « CHAINE LONGUE » — largeur calculee sur l'hote ────────────
+  Methode : la ligne est recomposee comme le firmware la compose (`"%s %s"`),
+  libelles LUS dans `dn_langue.h`, geometrie RELUE des `#define` de `dn_ui.c`,
+  largeurs recalculees depuis les `adv_w` par `tools/dn_police.py` — la
+  bibliotheque de `verif_langues_dn442.py`, dont `lire`/`defini`/`deplier_c`
+  sont EXTRAITES par AST et appelees (⛔ recopiees). Script en § 7.
+  geometrie relue : {'DN_LCD_H_RES': 480, 'DN_UI_MARGE': 10, 'DN_UI_RETOUR_W': 120, 'MENU_TITRE_X': 150, 'MENU_VER_UTILE': 320}
+  libelles lus    : {'EN': 'firmware', 'FR': 'version'}
+  glyphes les plus larges : hex 'b' = 10 px · chiffre '0' = 9 px · ASCII 'W' = 16 px
+  place utile     : MENU_VER_UTILE = 320 px
+  
+    EN  'e0dd063'                   7 signes  134 px  TIENT
+    FR  'e0dd063'                   7 signes  121 px  TIENT
+        ↳ nominal (HEAD d'aujourd'hui)
+    EN  'e0dd063-dirty'            13 signes  173 px  TIENT
+    FR  'e0dd063-dirty'            13 signes  160 px  TIENT
+        ↳ arbre sale au configure
+    EN  'v0.1.0-beta'              11 signes  145 px  TIENT
+    FR  'v0.1.0-beta'              11 signes  132 px  TIENT
+        ↳ tag de la release (dn8-7)
+    EN  'v0.1.0-beta-12-ge0dd063'  23 signes  242 px  TIENT
+    FR  'v0.1.0-beta-12-ge0dd063'  23 signes  229 px  TIENT
+        ↳ tag + 12 commits
+    EN  'v0.1.0-beta-0000-gbbbbbbb-' 31 signes  311 px  TIENT
+    FR  'v0.1.0-beta-0000-gbbbbbbb-' 31 signes  298 px  TIENT
+        ↳ REALISTE, 31 signes au pire (tag v0.1.0-beta, N a 4 chiffres, sha 7, -dirty, glyphes les plus larges de chaque classe)
+    EN  'v0.1.0-beta-0000-gbbbbbbbb' 31 signes  332 px  DEBORDE de 12 px ⇒ `menu trop_larges` + ESP_LOGW
+    FR  'v0.1.0-beta-0000-gbbbbbbbb' 31 signes  319 px  TIENT
+        ↳ PIRE DU FORMAT `v0.1.0-beta-N-g<hex>` : 31 signes sans `-dirty`, le hex le plus large remplissant la place (abreviation git longue)
+    EN  'WWWWWWWWWWWWWWWWWWWWWWWWWW' 31 signes  566 px  DEBORDE de 246 px ⇒ `menu trop_larges` + ESP_LOGW
+    FR  'WWWWWWWWWWWWWWWWWWWWWWWWWW' 31 signes  553 px  DEBORDE de 233 px ⇒ `menu trop_larges` + ESP_LOGW
+        ↳ ABSOLU, 31 fois le glyphe ASCII le plus large ('W')
+  ⇒ la chaine d'aujourd'hui (7 signes), `-dirty`, le tag de `dn8-7`, et le
+    pire REALISTE a 31 signes (sha 7 + `-dirty`) TIENNENT dans les deux langues.
+  🔴 L'ESTIMATION DU DOSSIER EST REFUTEE AU PIRE : « 31 caracteres ≈ 300 px au
+     pire ». 31 fois le glyphe ASCII le plus large font 553 a 566 px, et le
+     format de tag prevu avec une abreviation git de 13 hex SANS `-dirty` fait
+     332 px en anglais (DEBORDE de 12). Ces cas ne sont PAS masques : ils
+     tombent dans `menu_largeur_controler` ⇒ `menu trop_larges` + ESP_LOGW,
+     la voie que la matrice nomme. ⛔ Ils ne sont pas tronques en silence — ils
+     sont CLIPPES par LVGL et DITS.
+
+── 5. TEMOIN (e) — UN FICHIER SUIVI MODIFIE APRES LE CONFIGURE ⛔ NE POSE PAS `-dirty` ─
+  Ajoute a la matrice parce que le commentaire du firmware l'AFFIRME : une
+  affirmation se mesure. Protocole et script en § 7 (les 4 fichiers de la
+  marche mis de cote par `git stash` ET copies sous le scratchpad, puis
+  restaures et compares octet pour octet).
+  === temoin (e) — debut 2026-09-13T16:40:34+02:00 ===
+  avant : git describe = e0dd063-dirty · status :
+     M firmware/desknode/main/CMakeLists.txt
+     M firmware/desknode/main/dn_langue.h
+     M firmware/desknode/main/dn_ui.c
+     M installeur/IDENTITE.md
+    ?? mesures/dn8-6/
+    stash : Saved working directory and index state On main: dn8-6-temoin-e
+  1) arbre mis de cote : git describe = e0dd063 · status = [?? mesures/dn8-6/ ]
+  2) idf.py reconfigure rc=0 · -- App "desknode" version: e0dd063
+  3) IDENTITE.md remis (fichier suivi, hors CMake) : git describe = e0dd063-dirty · status = [ M installeur/IDENTITE.md ?? mesures/dn8-6/ ]
+  4) idf.py build SANS reconfigure rc=0 · cmake re-joue ? 0 ligne(s) « App version » dans le log
+     descripteur du .bin = 'e0dd063' · git describe = 'e0dd063-dirty'
+    pop : no changes added to commit (use "git add" and/or "git commit -a")
+    pop : Dropped refs/stash@{0} (44b4e0769319636ea7d094004e49ec848a404ec6)
+  5) restauration : les 4 fichiers identiques octet pour octet a la copie = OUI · git describe = e0dd063-dirty · stash restants = 0
+  === fin 2026-09-13T16:41:14+02:00 ===
+  ⇒ build SANS reconfigure sur un arbre devenu sale : le descripteur dit
+    'e0dd063', `git describe` dit 'e0dd063-dirty'. Modifier `installeur/`
+    ne rejoue PAS CMake. ⇒ la regle de seance « `reconfigure` AVANT le build
+    de reference » n'est pas une precaution de style : sans elle, un binaire
+    construit sur un arbre sale peut porter une etiquette PROPRE.
+  ✅ Restauration verifiee : les 4 fichiers identiques a la copie, 0 stash
+     restant. ⚠️ Le `build/` laisse par (e) portait l'ANCIEN code : il a ete
+     rebati par B3 puis B4 (§ 3) avant toute passe de gates.
+
+── 6. TEMOIN (d) « LANGUE » — `verif_langues_dn442.py` avec la cle neuve ────
+  rc=0 · BILAN : 31 OK, 0 KO (31 OK, 0 KO au T0 : le COMPTE est identique),
+  rejoue sur l'arbre FINAL (apres la fabrique).
+  Ce qui a BOUGE dans ses details, relu ligne a ligne contre la sortie T0
+  (`diff` brut, ⛔ PAS via le filtre du proxy — qui a rendu « identical » sur
+  ces memes entrees, deux fois dans cette passe) :
+    1c1
+    <   [OK ] la liste porte des cles                                  108 cle(s) — ⛔ un compte, pas une liste ecrite ici
+    ---
+    >   [OK ] la liste porte des cles                                  109 cle(s) — ⛔ un compte, pas une liste ecrite ici
+    3c3
+    <   [OK ] toute cle a une traduction dans TOUTES les langues       108 cle(s) x 2 langue(s)
+    ---
+    >   [OK ] toute cle a une traduction dans TOUTES les langues       109 cle(s) x 2 langue(s)
+    11,12c11,12
+    <   [OK ] ⛔ aucune chaine de la table ne porte un glyphe ABSENT (AC4.3) 216 chaine(s) confrontees aux cmaps RELUES
+    <   [OK ] ⛔ aucune chaine COMPOSEE ne porte un glyphe absent (AC4.3) 13 fonction(s) qui posent un label, journaux retires
+    ---
+    >   [OK ] ⛔ aucune chaine de la table ne porte un glyphe ABSENT (AC4.3) 218 chaine(s) confrontees aux cmaps RELUES
+    >   [OK ] ⛔ aucune chaine COMPOSEE ne porte un glyphe absent (AC4.3) 12 fonction(s) qui posent un label, journaux retires
+  ⇒ la cle `MENU_VERSION` est VUE par la gate : 108 ⇒ 109 cles, traduites dans
+    les deux colonnes (sinon la compilation echoue : X-macro), ses 2 chaines
+    confrontees aux cmaps (216 ⇒ 218, 0 glyphe absent).
+  ⚠️ « 13 ⇒ 12 fonction(s) qui posent un label » : ⛔ pas une ligne de moins a
+     l'ecran. Le proxy de la gate ne reconnait qu'une signature ecrite sur UNE
+     ligne (`^[A-Za-z_][^\n;=]*\)\s*\n\{`). `menu_titre_panneau()` ne pose
+     plus de label elle-meme (elle appelle la fabrique), et `menu_ligne_poser()`
+     a une signature sur trois lignes ⇒ INVISIBLE au proxy. Ce qui n'est plus
+     balaye ne porte AUCUN litteral affiche (le seul, « titre de panneau », va
+     au journal). La chaine composee de la version (`"%s %s"`) est dans
+     `build_menu()`, qui pose d'autres labels et RESTE balayee.
+  🔴 ET UNE PHRASE DE LA GATE EST FAUSSE, AVANT CETTE MARCHE : son § 4 ecrit
+     « une chaine composee dans une fonction et posee dans une AUTRE. Il n'y en
+     a aucune aujourd'hui ». Il y en avait DEJA une — les libelles des crans
+     (`"%d %s"`, composes dans `build_menu()`, poses dans `menu_sel_creer()`) —
+     et la version en fait une DEUXIEME. ⛔ Pas corrige ici (`tools/` hors du
+     perimetre borne par l'owner) : DECLARE.
+  ⚠️ « 3 site(s) » mesures a chaud : identique au T0, parce que la version est
+     mesuree DANS la fabrique (motif : T2). `--mutant 20` rejoue sur l'arbre
+     final : rc=1, `BILAN : 30 OK, 1 KO`, « 2 site(s) » ⇒ il ROUGIT de nouveau.
+  ⚠️ CE QUE LA GATE NE VOIT PAS, et c'est DECLARE : la cle neuve n'est dans
+     AUCUNE liste de largeur statique (§ 5 de la gate, liste explicite) ⇒ sa
+     largeur est gardee par le seul controle A CHAUD. Et ⛔ AUCUNE gate ne
+     rougirait si la ligne de version disparaissait de `build_menu()`, ou si
+     elle y etait posee par un `texte()` nu, sans mesure.
+  ⚠️ Le libelle SUIT la langue : « firmware » (EN) / « version » (FR). Il
+     n'est vu a l'oeil qu'en seance (`langue fr` puis `langue en`).
+
+── 7. CE QUI A ETE CONFIRME AU CODE (lu, ⛔ suppose) ──────────────────────────
+  · `panneau()` = `dn_widget_panneau()` : `lv_obj_remove_style_all` ⇒ AUCUN
+    padding ; mais `aplat()` pose `border_width 1` sur tous les cotes.
+  · LVGL 9.5.0, `lv_obj_move_to()` : un enfant est place a
+    `lv_obj_get_style_space_top(parent)` = pad_top + border_width si le bord
+    haut est dessine ⇒ les `y` des enfants de l'en-tete sont decales de +1 px
+    et la boite de contenu fait 80 − 2 = 78 px.
+    ⇒ 🔴 « 2 px de marge basse » (Design Notes du dossier) est FAUX : la ligne
+      60 + 18 = 78 remplit la boite de contenu, **0 px de marge**, le liseré
+      bas dessous ; 1 px entre le bas du titre (59) et la version (60).
+      Garde par `_Static_assert(MENU_VER_Y + MENU_VER_H <= MENU_ENTETE_H
+      - 2 * MENU_ENTETE_LISERE)`. ⚠️ `MENU_ENTETE_LISERE` RECOPIE le 1 d'`aplat()`
+      et ⛔ aucune gate ne garde la copie.
+  · `lv_label_set_text()` ⇒ `set_text_internal()` : `lv_malloc` + copie
+    ⇒ le tampon sur la pile de `build_menu` est sur.
+  · IDF v5.5.5 : `PROJECT_VER` = `git -C <projet> describe --always --tags
+    --dirty` au configure (`GetGitRevisionDescription.cmake`), coupe a 31
+    signes (`esp_app_format/CMakeLists.txt`, `string(SUBSTRING … 0 31 …)`) ;
+    `CONFIG_APP_EXCLUDE_PROJECT_VER_VAR` non pose (sdkconfig) ⇒ le champ est
+    rempli. Le firmware rend « ? » s'il est vide.
+  · `dn_font_14.line_height` = 18, `dn_font_28.line_height` = 35
+    (`fonts/dn_font_14.c`, `fonts/dn_font_28.c`).
+
+── 8. LES SCRIPTS, TELS QUE JOUES ───────────────────────────────────────────
+  --- build.sh (B0, B1, B2, B3, B4 : `rtk proxy bash build.sh <etiquette>`) ---
+  | #!/usr/bin/env bash
+  | # dn8-6 — build hote relevé : `idf.py reconfigure` puis `idf.py build`, les 30 objets de `main`
+  | # RETIRES avant le build pour que CHAQUE source de `main` soit recompilee et que ses
+  | # avertissements soient imprimes (un build incremental tairait ceux des fichiers non touches, et
+  | # « aucun avertissement neuf » se comparerait a du silence).
+  | # ⛔ `build/` est gitignore : aucune ecriture dans l'arbre suivi (empreinte avant/apres).
+  | # Usage : build.sh <etiquette>
+  | set -u
+  | SCR=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/210578d2-1a31-479e-ba3c-a3c9e115d4c3/scratchpad/dn86
+  | ET="$1"; OUT="$SCR/build-$ET"; mkdir -p "$OUT"
+  | DN=/home/nasbarok/projects/desknode
+  | FW="$DN/firmware/desknode"
+  | R="$OUT/resume.txt"
+  | emp() { ( cd "$DN" && git ls-files -z | xargs -0 sha256sum ) | sha256sum | cut -c1-16; }
+  | {
+  | echo "=== dn8-6 / build $ET — debut $(date -Iseconds) ==="
+  | echo "HEAD desknode : $(git -C "$DN" rev-parse HEAD)"
+  | echo "git describe --tags --always --dirty : $(git -C "$DN" describe --tags --always --dirty)"
+  | echo "git status --porcelain :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  | echo "EMPREINTE desknode AVANT : $(emp)"
+  | } > "$R"
+  | . "$HOME/esp/esp-idf/export.sh" > "$OUT/export.log" 2>&1
+  | cd "$FW" || exit 9
+  | t0=$(date +%s)
+  | idf.py reconfigure > "$OUT/reconfigure.log" 2>&1; rc_r=$?
+  | echo "idf.py reconfigure : rc=$rc_r  $(( $(date +%s) - t0 )) s" >> "$R"
+  | grep -E 'App "desknode" version' "$OUT/reconfigure.log" | sed 's/^/  /' >> "$R"
+  | n_obj=$(find build/esp-idf/main/CMakeFiles/__idf_main.dir -name '*.obj' | wc -l)
+  | find build/esp-idf/main/CMakeFiles/__idf_main.dir -name '*.obj' -delete
+  | echo "objets de main retires avant build : $n_obj" >> "$R"
+  | t0=$(date +%s)
+  | idf.py build > "$OUT/build.log" 2>&1; rc_b=$?
+  | echo "idf.py build : rc=$rc_b  $(( $(date +%s) - t0 )) s" >> "$R"
+  | {
+  | echo "avertissements (lignes « warning: ») : $(grep -c 'warning:' "$OUT/build.log")"
+  | grep 'warning:' "$OUT/build.log" | sed -E 's#^.*/(firmware/desknode/|esp-idf/|managed_components/)#\1#' | sort | uniq -c | sed 's/^/  /'
+  | echo "objets de main recompiles : $(find build/esp-idf/main/CMakeFiles/__idf_main.dir -name '*.obj' | wc -l)"
+  | grep -E 'desknode.bin binary size|smallest app partition' "$OUT/build.log" | sed 's/^/  /'
+  | echo "build/desknode.bin : $(stat -c '%s o  %y' build/desknode.bin)"
+  | echo "sha256 : $(sha256sum build/desknode.bin | cut -d' ' -f1)"
+  | python3 - <<'EOF'
+  | d = open('build/desknode.bin', 'rb').read()
+  | ok = d[0x20:0x24] == bytes.fromhex('3254cdab')
+  | print("descripteur : magie 0xABCD5432 @0x20 = %s" % ("OUI" if ok else "⛔ NON"))
+  | print("descripteur : version @0x30 = %r" % d[0x30:0x50].split(b'\0')[0].decode())
+  | print("descripteur : projet  @0x50 = %r · compile %s %s · IDF %s" % (
+  |     d[0x50:0x70].split(b'\0')[0].decode(), d[0x80:0x90].split(b'\0')[0].decode(),
+  |     d[0x70:0x80].split(b'\0')[0].decode(), d[0x90:0xB0].split(b'\0')[0].decode()))
+  | EOF
+  | echo "git describe --tags --always --dirty (apres) : $(git -C "$DN" describe --tags --always --dirty)"
+  | echo "EMPREINTE desknode APRES : $(emp)"
+  | echo "git status --porcelain (apres) :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  | echo "=== fin $(date -Iseconds) ==="
+  | } >> "$R"
+  --- temoin_c_largeur.py (`python3 temoin_c_largeur.py`) ---
+  | #!/usr/bin/env python3
+  | # dn8-6 — temoin (c) « chaine longue », SANS carte.
+  | # Largeur, calculee sur l'hote, de la ligne de version composee comme le firmware la compose
+  | # (`"%s %s"` : libelle de la table, espace, version), en `dn_font_14`, contre la place utile.
+  | # ⛔ Rien n'est recite : les libelles sont LUS dans `dn_langue.h` (meme depliage que
+  | #    `verif_langues_dn442.py`), la geometrie est RELUE des `#define` de `dn_ui.c`, les largeurs
+  | #    sont recalculees depuis les `adv_w` par `tools/dn_police.py` (la bibliotheque que la gate
+  | #    de langues utilise elle-meme).
+  | import ast
+  | import os
+  | import re
+  | import sys
+  | import types
+  | 
+  | DN = "/home/nasbarok/projects/desknode"
+  | sys.path.insert(0, os.path.join(DN, "tools"))
+  | import dn_police  # noqa: E402
+  | 
+  | # ⚠️ `verif_langues_dn442.py` finit par `sys.exit(main())` NON GARDE : l'importer JOUERAIT la gate.
+  | #    ⇒ ses fonctions `lire`, `defini`, `deplier_c` sont EXTRAITES par AST et APPELEES, ⛔ pas
+  | #      recopiees (une copie divergerait en silence).
+  | _src = open(os.path.join(DN, "tools", "verif_langues_dn442.py"), encoding="utf-8").read()
+  | _mod = ast.Module(body=[n for n in ast.parse(_src).body
+  |                         if isinstance(n, ast.FunctionDef) and n.name in ("lire", "defini", "deplier_c")],
+  |                   type_ignores=[])
+  | vl = types.SimpleNamespace()
+  | _ns = {"re": re, "os": os}
+  | exec(compile(_mod, "verif_langues_dn442.py", "exec"), _ns)
+  | vl.lire, vl.defini, vl.deplier_c = _ns["lire"], _ns["defini"], _ns["deplier_c"]
+  | 
+  | MAIN = os.path.join(DN, "firmware", "desknode", "main")
+  | ui = vl.lire(os.path.join(MAIN, "dn_ui.c"))
+  | lh = vl.lire(os.path.join(MAIN, "dn_langue.h"))
+  | pins = vl.lire(os.path.join(MAIN, "dn_pins.h"))
+  | 
+  | g = {}
+  | for nom, src in (("DN_LCD_H_RES", pins), ("DN_UI_MARGE", ui), ("DN_UI_RETOUR_W", ui),
+  |                  ("MENU_TITRE_X", ui), ("MENU_VER_UTILE", ui)):
+  |     g[nom] = vl.defini(src, nom, g)
+  | print("geometrie relue :", g)
+  | utile = g["MENU_VER_UTILE"]
+  | if utile is None:
+  |     sys.exit("⛔ MENU_VER_UTILE illisible — le temoin ne devine pas")
+  | 
+  | m = re.search(r'X\(MENU_VERSION,\s*("(?:\\.|[^"\\])*")\s*,\s*("(?:\\.|[^"\\])*")\s*\)', lh)
+  | if not m:
+  |     sys.exit("⛔ cle MENU_VERSION introuvable dans dn_langue.h")
+  | libelles = {"EN": vl.deplier_c(m.group(1)), "FR": vl.deplier_c(m.group(2))}
+  | print("libelles lus    :", libelles)
+  | 
+  | p = dn_police.police("dn_font_14")
+  | hexs = "0123456789abcdef"
+  | chiffres = "0123456789"
+  | h_max = max(hexs, key=p.largeur)
+  | d_max = max(chiffres, key=p.largeur)
+  | # L'alphabet d'un nom de tag git est quasi libre : le pire ABSOLU se prend sur l'ASCII imprimable
+  | # que `dn_font_14` porte (32..126), ⛔ pas sur un alphabet choisi.
+  | ascii_ = [chr(c) for c in range(33, 127)]
+  | a_max = max(ascii_, key=p.largeur)
+  | 
+  | cas = [
+  |     ("nominal (HEAD d'aujourd'hui)", "e0dd063"),
+  |     ("arbre sale au configure", "e0dd063-dirty"),
+  |     ("tag de la release (dn8-7)", "v0.1.0-beta"),
+  |     ("tag + 12 commits", "v0.1.0-beta-12-ge0dd063"),
+  |     ("REALISTE, 31 signes au pire (tag v0.1.0-beta, N a 4 chiffres, sha 7, -dirty, "
+  |      "glyphes les plus larges de chaque classe)",
+  |      ("v0.1.0-beta-" + d_max * 4 + "-g" + h_max * 7 + "-dirty")[:31]),
+  |     ("PIRE DU FORMAT `v0.1.0-beta-N-g<hex>` : 31 signes sans `-dirty`, le hex le plus large "
+  |      "remplissant la place (abreviation git longue)",
+  |      ("v0.1.0-beta-" + d_max * 4 + "-g" + h_max * 31)[:31]),
+  |     ("ABSOLU, 31 fois le glyphe ASCII le plus large (%r)" % a_max, a_max * 31),
+  | ]
+  | print("glyphes les plus larges : hex %r = %d px · chiffre %r = %d px · ASCII %r = %d px"
+  |       % (h_max, p.largeur(h_max), d_max, p.largeur(d_max), a_max, p.largeur(a_max)))
+  | print("place utile     : MENU_VER_UTILE = %d px" % utile)
+  | print()
+  | pire = {}
+  | for quoi, ver in cas:
+  |     for lg in ("EN", "FR"):
+  |         txt = "%s %s" % (libelles[lg], ver)
+  |         absents = p.absents(txt)
+  |         w = p.largeur(txt)
+  |         verdict = "TIENT" if w <= utile else "DEBORDE de %d px ⇒ `menu trop_larges` + ESP_LOGW" % (w - utile)
+  |         print("  %-3s %-26r %2d signes  %3d px  %s%s" % (lg, ver[:26], len(ver), w, verdict,
+  |               "  ⛔ glyphes absents %r" % absents if absents else ""))
+  |     print("      ↳ %s" % quoi)
+  --- temoin_e_sale_apres_configure.sh (`rtk proxy bash …`) ---
+  | #!/usr/bin/env bash
+  | # dn8-6 — temoin (e), SANS carte : UN FICHIER SUIVI MODIFIE APRES LE CONFIGURE POSE-T-IL `-dirty` ?
+  | # Protocole : les 4 fichiers de la marche sont mis de cote (`git stash`, + copie sous le
+  | # scratchpad) ⇒ arbre PROPRE ⇒ `idf.py reconfigure` ⇒ on remet UN fichier suivi qui n'est PAS une
+  | # dependance CMake (`installeur/IDENTITE.md`, depuis le stash) ⇒ `idf.py build` SANS reconfigure ⇒
+  | # descripteur relu contre `git describe`. Puis l'arbre est RESTAURE (`git checkout` + `stash pop`)
+  | # et compare octet pour octet a la copie.
+  | set -u
+  | S=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/210578d2-1a31-479e-ba3c-a3c9e115d4c3/scratchpad/dn86
+  | OUT=$S/temoin-e; mkdir -p $OUT
+  | DN=/home/nasbarok/projects/desknode
+  | R=$OUT/resume.txt
+  | desc() { python3 -c "d=open('$DN/firmware/desknode/build/desknode.bin','rb').read(); assert d[0x20:0x24]==bytes.fromhex('3254cdab'); print(d[0x30:0x50].split(b'\0')[0].decode())"; }
+  | cd $DN || exit 9
+  | {
+  | echo "=== temoin (e) — debut $(date -Iseconds) ==="
+  | echo "avant : git describe = $(git describe --tags --always --dirty) · status :"; git status --porcelain | sed 's/^/  /'
+  | git stash push -m dn8-6-temoin-e -- firmware/desknode/main/CMakeLists.txt firmware/desknode/main/dn_langue.h firmware/desknode/main/dn_ui.c installeur/IDENTITE.md 2>&1 | sed 's/^/  stash : /'
+  | echo "1) arbre mis de cote : git describe = $(git describe --tags --always --dirty) · status = [$(git status --porcelain | tr '\n' ' ')]"
+  | } > $R
+  | . "$HOME/esp/esp-idf/export.sh" > $OUT/export.log 2>&1
+  | cd $DN/firmware/desknode
+  | idf.py reconfigure > $OUT/reconfigure.log 2>&1; echo "2) idf.py reconfigure rc=$? · $(grep -E 'App "desknode" version' $OUT/reconfigure.log)" >> $R
+  | cd $DN
+  | git checkout stash@{0} -- installeur/IDENTITE.md
+  | git reset -q -- installeur/IDENTITE.md
+  | echo "3) IDENTITE.md remis (fichier suivi, hors CMake) : git describe = $(git describe --tags --always --dirty) · status = [$(git status --porcelain | tr '\n' ' ')]" >> $R
+  | cd $DN/firmware/desknode
+  | idf.py build > $OUT/build.log 2>&1; rc=$?
+  | echo "4) idf.py build SANS reconfigure rc=$rc · cmake re-joue ? $(grep -c -E 'App "desknode" version' $OUT/build.log) ligne(s) « App version » dans le log" >> $R
+  | echo "   descripteur du .bin = '$(desc)' · git describe = '$(git -C $DN describe --tags --always --dirty)'" >> $R
+  | cd $DN
+  | git checkout -- installeur/IDENTITE.md
+  | git stash pop 2>&1 | tail -2 | sed 's/^/  pop : /' >> $R
+  | ok=OUI
+  | for f in firmware/desknode/main/CMakeLists.txt firmware/desknode/main/dn_langue.h firmware/desknode/main/dn_ui.c installeur/IDENTITE.md; do
+  |   cmp -s $f $S/sauvegarde-arbre/$f || ok=NON
+  | done
+  | echo "5) restauration : les 4 fichiers identiques octet pour octet a la copie = $ok · git describe = $(git describe --tags --always --dirty) · stash restants = $(git stash list | grep -c dn8-6-temoin-e)" >> $R
+  | echo "=== fin $(date -Iseconds) ===" >> $R

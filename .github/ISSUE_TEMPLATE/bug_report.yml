@@ -41,11 +41,12 @@ body:
     attributes:
       label: DeskNode version (firmware SHA)
       description: >-
-        There is no version on the screen yet. The firmware prints a git SHA on the serial console at boot,
+        Recent firmware shows it on the screen: open the MENU and read the line under its title (`version <sha>`).
+        Older firmware shows no version on the screen. Every firmware prints the git SHA on the serial console at boot,
         on the `App version:` line, and `python3 tools/dn_console.py --reset --port COM3` restarts the board and captures it.
         That command cannot open the port while the DeskNode agent holds it: stop the agent first, for example with
         "Stop the agent and hand the port back" on the install page.
-        A build from a ZIP prints `1`, a build from a modified tree prints the SHA followed by `-dirty`: say which one you saw.
+        A build from a ZIP prints `1` (the MENU shows `version ?`), a build from a modified tree prints the SHA followed by `-dirty`: say which one you saw.
         For a bug in the Windows agent or the install page, the version is the commit you cloned (`git rev-parse --short HEAD`).
         Details: [Reporting a bug](https://github.com/nasbarok/desknode/blob/main/CONTRIBUTING.md#reporting-a-bug).
       placeholder: 6a91fa3
