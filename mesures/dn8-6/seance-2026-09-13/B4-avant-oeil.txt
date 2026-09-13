@@ -1,0 +1,93 @@
+
+$ veille
+mode : ACTIF · veille DESARMEE · delai 3 min (180000 ms)
+inactivite : 207215 ms (max vue depuis le reset : 207215 ms)
+bascules -> Ambient : 0 · reveils : 0 · dernier reveil par : aucun
+secondes OBSERVEES : 209 (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat
+   pas pendant `ui off`, donc la veille y est AVEUGLE)
+─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───
+  Actif   :      211 s
+  Ambient :        0 s
+  total   :      211 s  ⇒ Ambient = 0 %  🔴 SOUS LE SEUIL de 50 %
+  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le
+     module se croit, ⛔ pas que la dalle est effectivement
+     sombre. Le constat owner reste requis. Et pendant un
+     `ui off`, le temps est impute au mode COURANT — sans
+     consequence en regime, ou le port est tenu par l'agent.
+  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la
+     fenetre du soak de toute facon (AC3.6).
+rebases d'horloge a `ui on` : 0 · bascules ANNULEES (async refusee) : 0
+aucune ecriture NVS depuis le boot ou le dernier `veille reset`
+   (les deux reglages sont ceux qui etaient deja en vigueur).
+ecarts contact->bascule : AUCUN ECHANTILLON
+   ⛔ « pas mesure », ⛔ PAS « 0 ms ».
+taps CONSOMMES par un reveil : 0 · taps de reglage dans le MENU : 0
+contacts consommes EXPIRES (bus illisible) : 0 · bascules dont l'async a ete ABANDONNEE : 0
+transitions provoquees PAR LA VEILLE : 0 (dans `nav`, mais SANS
+   chronometre : elles ne naissent d'aucun geste)
+
+⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER
+   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue
+   MENU ouverte, les appuis suivants au meme endroit ne tombent sur
+   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans
+   la bande y = 589..639, puis `←` (ou `nav back`), huit fois.
+   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne
+     serait PAS une zone morte.
+   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..59)
+   doivent rendre 0 tap — elle, elle reste morte.
+
+usage : veille                       etat, compteurs, diagnostics
+        veille on | off              ARME / DESARME (persiste en NVS)
+        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)
+        veille now                   bascule en Ambient MAINTENANT
+        veille wake                  reveille MAINTENANT (origine console)
+        veille lat                   les DEUX latences de reveil (AC4)
+        veille geom                  la preuve que le layout NE BOUGE PAS
+        veille assets                le recompte de la partition (AC1.4)
+        veille fond                  voiles et aplats RELUS DES OBJETS LVGL
+        veille reset                 compteurs ET latences a zero
+  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---
+        veille pct <3..100>           niveau d'Ambient de DERNIER RECOURS
+        veille voile <0..255>        opacite du voile en Ambient
+        veille gris <reel|simule|absent> <rrggbb>
+        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)
+        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE
+                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)
+        veille jauge on|off          la barre de remplissage en veille
+        veille case <rrggbb>         l'aplat de case en Ambient
+⚠️ La ligne de resume de `help` a OMIS `fond`, `unite`, `jauge` et
+   `case` jusqu'au 2026-08-28 — corrige. `veille fond` est l'outil de
+   bissection qui a tranche le constat owner « au lieu d'un noir/gris
+   sombre c'est un vert » : il etait invisible pour qui part de `help`.
+--- fin : 59 lignes emises ---
+✅ compteur : 59 annoncées, 59 reçues.
+   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été
+      perdu » : une ligne perdue et un log asynchrone arrivés dans
+      la MÊME capture s'annulent. Cet instrument ne sait pas les
+      distinguer, et il le dit plutôt que de le taire.
+
+$ nav
+vue : dashboard · modele « screens » · 0 transitions depuis le boot
+taps sur zone : 0 (dont 0 sur MENU) · derniere zone touchee : aucune
+metriques : 0=CPU 1=GPU 2=RAM 3=RÉSEAU 4=DISQUE 5=AMBIANCE 
+langue de l'ecran : FR (⛔ defaut = EN ; la console, elle, reste en FRANCAIS)
+libelles du MENU trop larges : 0 (⛔ pas les cases — voir `widget`)
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 60920 o · utilisé 29908 o (50 %) · libre 31012 o
+  plus gros bloc libre 28124 o · fragmentation 10 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+usage : nav                        vue courante et compteurs
+        nav open <0..5>            ouvre le detail d'une metrique
+        nav back                   retour au dashboard
+        nav menu                   ouvre la vue MENU (dn3-3)
+        nav model rebuild|screens  MODELE de navigation (A/B d'AC4)
+        nav ab <n>                 n allers-retours, chronometres
+--- fin : 17 lignes emises ---
+🔴 PERTE DE LIGNES : la carte en annonce 17, 16 sont arrivées
+   (1 MANQUENT). ⛔ Ne rien conclure de cette capture — une ligne
+   perdue produit « l'adresse 0x23 n'est pas là » sur un capteur
+   QUI RÉPOND. ⇒ RE-JOUER.
+   ⚠️ La cause reste NON INSTRUITE (2 A/B, 30 passes sans
+      reproduction) : cet instrument REND LA PERTE VISIBLE, il ne
+      la supprime pas.

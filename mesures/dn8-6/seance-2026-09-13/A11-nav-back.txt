@@ -1,0 +1,9 @@
+
+$ nav back
+retour au dashboard.
+--- fin : 1 lignes emises ---
+✅ compteur : 1 annoncées, 1 reçues.
+   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été
+      perdu » : une ligne perdue et un log asynchrone arrivés dans
+      la MÊME capture s'annulent. Cet instrument ne sait pas les
+      distinguer, et il le dit plutôt que de le taire.

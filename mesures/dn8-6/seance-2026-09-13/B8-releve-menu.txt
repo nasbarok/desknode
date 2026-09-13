@@ -1,0 +1,102 @@
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 120629 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=4479 trames comptées) : 10 % 0 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 16 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ sous le seuil, il restait 759 µs de marge (97 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2261 µs · ph_max 2273 µs · ph_n 4479 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 1 consommée(s) depuis le boot · la fenêtre ci-dessus (120629 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 4511 · enroulements : 4511
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=4510 · min 26721 · moy 26737 · MAX 26754 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +16 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=4479 · min 2245 · moy 2256 · MAX 2273 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2261 us · 1 ligne = 39 us
+     ⚠️ MAX (2273) > référence (2261) : les déficits ci-dessous sont SOUS-comptés de 12 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 4479. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 0
+cycles de redessin : 0
+aucun flush depuis le reset — rien à conclure.
+--- fin : 68 lignes emises ---
+✅ compteur : 68 annoncées, 68 reçues.
+   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été
+      perdu » : une ligne perdue et un log asynchrone arrivés dans
+      la MÊME capture s'annulent. Cet instrument ne sait pas les
+      distinguer, et il le dit plutôt que de le taire.
+
+$ nav
+vue : menu · modele « screens » · 1 transitions depuis le boot
+taps sur zone : 1 (dont 1 sur MENU) · derniere zone touchee : MENU
+metriques : 0=CPU 1=GPU 2=RAM 3=RÉSEAU 4=DISQUE 5=AMBIANCE 
+langue de l'ecran : FR (⛔ defaut = EN ; la console, elle, reste en FRANCAIS)
+libelles du MENU trop larges : 0 (⛔ pas les cases — voir `widget`)
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 60936 o · utilisé 29924 o (50 %) · libre 31012 o
+  plus gros bloc libre 28124 o · fragmentation 10 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+usage : nav                        vue courante et compteurs
+        nav open <0..5>            ouvre le detail d'une metrique
+        nav back                   retour au dashboard
+        nav menu                   ouvre la vue MENU (dn3-3)
+        nav model rebuild|screens  MODELE de navigation (A/B d'AC4)
+        nav ab <n>                 n allers-retours, chronometres
+--- fin : 17 lignes emises ---
+🔴 PERTE DE LIGNES : la carte en annonce 17, 16 sont arrivées
+   (1 MANQUENT). ⛔ Ne rien conclure de cette capture — une ligne
+   perdue produit « l'adresse 0x23 n'est pas là » sur un capteur
+   QUI RÉPOND. ⇒ RE-JOUER.
+   ⚠️ La cause reste NON INSTRUITE (2 A/B, 30 passes sans
+      reproduction) : cet instrument REND LA PERTE VISIBLE, il ne
+      la supprime pas.

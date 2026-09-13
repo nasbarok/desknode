@@ -1,0 +1,21 @@
+[injecteur] protocole v3
+[injecteur] jeu « rampe » — 150 s a 1 Hz, espacement 40 ms (peremption 3 s : sans ca les cases retombent a « -- »)
+[injecteur] ✅ JEU VARIABLE (rampes triangulaires, périodes premières entre elles).
+[injecteur]    Les valeurs changent à chaque cycle ⇒ le TEXTE change ⇒ LVGL invalide.
+[injecteur]    ⚠️ MESURÉ le 2026-08-31 : ça ne fait PAS dessiner PLUS — l'aire cumulée
+[injecteur]    est la MÊME qu'en jeu figé (11,37 M px à 1 % près, 3 passes chacun).
+[injecteur]    Ce que ça change, c'est la CADENCE d'invalidation, ⛔ pas le total.
+[injecteur]    ⚠️ Le rapport au régime RÉEL reste à mesurer sur la carte. Repère qui
+[injecteur]    TIENT : 124 750 px/cycle avec `widget mock on` (contre 128 613 attendus).
+[injecteur]    ⛔ Le repère « 94 645 en jeu figé » NE SE REPRODUIT PAS (46 572 · 71 984 ·
+[injecteur]    74 576) — ⛔ ne pas s'y comparer. ⇒ Publier l'ESPACEMENT avec le chiffre :
+[injecteur]    un relevé de régime sans son espacement n'est comparable à rien.
+[injecteur] ⚠️ branche A : ceci teste le CHEMIN DE CODE, pas le materiel.
+[injecteur] 750 trames ECRITES. ⚠️ les cases retombent a « -- » dans 3 s — c'est la peremption, PAS une regression.
+[injecteur] 🔴 4 REFUS LU(S) DANS LA RÉPONSE DE LA CARTE — ⛔ ces
+[injecteur]    trames-là n'ont PAS été acceptées. « 750 écrites »
+[injecteur]    ⛔ ne veut donc PAS dire « 750 reçues ».
+[injecteur]      · [REPL: commande inconnue] Unrecognized command
+[injecteur]      · [REPL: commande inconnue] Unrecognized command
+[injecteur]      · [REPL: commande inconnue] Unrecognized command
+[injecteur]      · [REPL: commande inconnue] Unrecognized command

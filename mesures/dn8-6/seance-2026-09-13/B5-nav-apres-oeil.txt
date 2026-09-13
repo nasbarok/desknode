@@ -1,0 +1,26 @@
+
+$ nav
+vue : menu · modele « screens » · 1 transitions depuis le boot
+taps sur zone : 1 (dont 1 sur MENU) · derniere zone touchee : MENU
+metriques : 0=CPU 1=GPU 2=RAM 3=RÉSEAU 4=DISQUE 5=AMBIANCE 
+langue de l'ecran : FR (⛔ defaut = EN ; la console, elle, reste en FRANCAIS)
+libelles du MENU trop larges : 0 (⛔ pas les cases — voir `widget`)
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 60936 o · utilisé 29884 o (50 %) · libre 31052 o
+  plus gros bloc libre 28124 o · fragmentation 10 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+usage : nav                        vue courante et compteurs
+        nav open <0..5>            ouvre le detail d'une metrique
+        nav back                   retour au dashboard
+        nav menu                   ouvre la vue MENU (dn3-3)
+        nav model rebuild|screens  MODELE de navigation (A/B d'AC4)
+        nav ab <n>                 n allers-retours, chronometres
+--- fin : 17 lignes emises ---
+🔴 PERTE DE LIGNES : la carte en annonce 17, 16 sont arrivées
+   (1 MANQUENT). ⛔ Ne rien conclure de cette capture — une ligne
+   perdue produit « l'adresse 0x23 n'est pas là » sur un capteur
+   QUI RÉPOND. ⇒ RE-JOUER.
+   ⚠️ La cause reste NON INSTRUITE (2 A/B, 30 passes sans
+      reproduction) : cet instrument REND LA PERTE VISIBLE, il ne
+      la supprime pas.

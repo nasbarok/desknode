@@ -10792,3 +10792,42 @@ C'est un **non-événement**, exactement comme les 6 de §32.5.
 
 Quatre relevés neufs : **2 080 ×3, 2 081 ×1**. ⇒ **n = 36 (2 079..2 467 ms)**, bornes inchangées.
 ⚠️ **Ces quatre sont des resets RTS, ⛔ pas des démarrages à froid** — dit plutôt que mélangé.
+
+# §34 — 🎯 SÉANCE CARTE DU 2026-09-13 : LA VERSION DANS LE MENU (`dn8-6`), FIRMWARE `55006c1`
+
+**Relevé complet, captures brutes et protocole : `mesures/dn8-6/S1-seance-carte-2026-09-13.md`.**
+Ce paragraphe ne recopie que les chiffres qui font foi pour ce dossier.
+
+## §34.1 — Ce que le firmware affiche désormais
+
+L'en-tête du MENU porte, sous le titre, une ligne `dn_font_14` : `version <chaîne>`. La chaîne est lue
+dans `esp_app_get_description()->version` ; si elle est vide ou vaut `1` (build sans git), la ligne
+rend `version ?`. **Verbatim owner, MENU ouvert au doigt : « version 55006c1 lisible ok (mais a la
+limite) »**. ⚠️ **« À la limite » n'est PAS arrondi** : la ligne tient avec **0 px** de marge basse
+dans la boîte de contenu de l'en-tête (liseré compris).
+
+## §34.2 — L'A/B de la marge de déchirure, régime INJECTÉ, un seul flash
+
+**A** = `40be2c8`, trouvé sur la carte : son `firmware/desknode/main` est identique au parent de
+`55006c1`. **B** = `55006c1`. Fenêtres de 300 s, tableau de bord affiché, `flush reset` en régime,
+`dn_injecteur.py --jeu rampe`, espacement 0,04 s.
+
+| | cycles de redessin | flushes | aire cumulée | seaux 10 / 25 / 50 % | 🔴 CORRUPTION | déficit pire |
+|---|---:|---:|---:|---|---:|---:|
+| **A** `40be2c8` | 1 442 (4,795/s) | 1 553 | 56 793 550 px | 176 / 0 / 0 | **0** | 168 µs |
+| **B** `55006c1` | 1 432 (4,763/s) | 1 555 | 56 866 750 px | 94 / 0 / 0 | **0** | 120 µs |
+
+⇒ **La ligne de version NE DÉPENSE PAS la marge** : CORRUPTION et seaux 25 / 50 % restent à 0, et le
+régime de dessin est identique à 1 % près. Les références de §26.6, post-XIP en injecté, étaient
+176 µs et CORRUPTION 0 : cohérent.
+
+⛔ **Pas une amélioration** : les écarts 176 ⇒ 94 et 168 ⇒ 120 µs tiennent dans le bruit de ce
+compteur, avec une fenêtre par binaire. ⚠️ **Conditions non identiques** : A démarre à ~3,5 min
+d'uptime, B à ~86 min. ⚠️ **Un MENU ouvert ne redessine pas** (1 cycle en A, 0 en B sur 120 s) : les
+fenêtres « MENU ouvert » mesurent presque du vide, et c'est dit.
+
+## §34.3 — Un fait d'instrument, NOUVEAU pour ce dossier
+
+🔴 **`veille off` / `veille on` PERSISTENT EN NVS** (`dn_ui_veille_set_armee`, « persiste en NVS » dans
+l'aide de la commande). ⇒ une fenêtre qui désarme la veille **modifie la configuration de la carte**
+au-delà de la séance. **Relever `veille` AVANT, et la restaurer APRÈS**, relue.
