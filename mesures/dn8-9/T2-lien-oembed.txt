@@ -1,0 +1,141 @@
+==============================================================================
+dn8-9 / T2 — LE LIEN S'OUVRE, PROUVE PAR UNE REPONSE QUI DISTINGUE (AC8.9.2)
+  Joue le 2026-09-14 a 10:54:30 (+02:00), APRES la pose du lien dans la
+  vitrine (ecrite a 10:53:42). Sorties sous le scratchpad, versees ici apres.
+  Session NON AUTHENTIFIEE : `curl -q` (⛔ aucun .curlrc), ⛔ aucun cookie
+  (ni -b ni -c), ⛔ aucun en-tete d'authentification, ⛔ `gh`.
+==============================================================================
+
+── 0. POURQUOI `oembed` ET ⛔ `watch?v=` ────────────────────────────────────────
+  Mesure du CC le 2026-09-13, REJOUEE ci-dessous : `watch?v=` rend 200 pour
+  un identifiant INEXISTANT (`watch-temoin` : 200). ⛔ Un 200 sur `watch?v=`
+  ne prouve rien. `oembed` distingue : 200 sur le vrai lien, 400 sur son
+  temoin altere d'UN caractere (U ⇒ V).
+
+── 1. LE RELEVE (script `t2.sh`, § 3, tel que joue) ─────────────────────────
+  === dn8-9 / T2 — debut 2026-09-14T10:54:30+02:00 ===
+  ── (1) L'URL, LUE DANS LA VITRINE (section ## Demo, lien Markdown en ligne) ──
+    lien(s) http de la section : https://youtu.be/tcCF3vogwSU
+    attendue (mesuree le 2026-09-13) : https://youtu.be/tcCF3vogwSU
+    ⇒ EGALES
+    identifiant lu : tcCF3vogwSU · temoin (dernier caractere altere) : tcCF3vogwSV
+
+  ── (2) LES CODES HTTP (session NON authentifiee) ──
+    oembed-youtu.be            200  ⇐ https://www.youtube.com/oembed?url=https://youtu.be/tcCF3vogwSU&format=json
+    oembed-watch               200  ⇐ https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=tcCF3vogwSU&format=json
+    watch                      200  ⇐ https://www.youtube.com/watch?v=tcCF3vogwSU
+    oembed-temoin              400  ⇐ https://www.youtube.com/oembed?url=https://youtu.be/tcCF3vogwSV&format=json
+    watch-temoin               200  ⇐ https://www.youtube.com/watch?v=tcCF3vogwSV
+
+  ── (3) CE QUE RENDENT LES CORPS ──
+    oembed (vrai lien), champs :
+      title          'DeskNode — a physical desktop dashboard (ESP32-S3 touchscreen, live PC telemetry)'
+      author_name    (⛔ recopie : un nom de personne n'entre pas dans un depot destine a devenir public ; lu, NON VIDE)
+      type           'video'
+      provider_name  'YouTube'
+      width          200
+      height         113
+    oembed (temoin), corps brut : [Bad Request]
+    page publique (vrai lien) :
+      "isUnlisted":[a-z]*                            1 "isUnlisted":true 
+      "isPrivate":[a-z]*                             1 "isPrivate":false 
+      "lengthSeconds":"[0-9]*"                       2 "lengthSeconds":"78" 
+      "playabilityStatus":\{"status":"[A-Z_]*"       1 "playabilityStatus":{"status":"OK" 
+    page publique (temoin) :
+      "isUnlisted":[a-z]*                      
+      "lengthSeconds":"[0-9]*"                 
+      "playabilityStatus":\{"status":"[A-Z_]*"       1 "playabilityStatus":{"status":"ERROR" 
+    taille des corps : oembed-temoin.corps=11 oembed-watch.corps=912 oembed-youtu.be.corps=912 watch-temoin.corps=778967 watch.corps=1192466 
+  === fin 2026-09-14T10:54:31+02:00 ===
+
+  Complement joue a 10:54:44, meme session, pour que « isUnlisted »:true ne
+  soit pas une constante de la page :
+    curl -q -sS --max-time 30 -o watch-temoin-public.corps -w '%{http_code}' 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    ⇒ 200 · "isUnlisted":false (1) · "lengthSeconds" : "213" (1), "214" (1)
+    (une video PUBLIQUE connue ⇒ `false` ; le vrai lien ⇒ `true`)
+
+── 2. CE QUE LE RELEVE ETABLIT, ET CE QU'IL ⛔ N'ETABLIT PAS ─────────────────
+  ⇒ AC8.9.2 : l'URL est LUE dans la section `## Demo` de la vitrine
+    (`https://youtu.be/tcCF3vogwSU`, unique lien http de la section) et EGALE
+    a celle mesuree le 2026-09-13 ; `oembed` 200 (forme youtu.be ET forme
+    watch?v=) ; temoin `tcCF3vogwSV` ⇒ 400 « Bad Request ».
+  ⇒ AC8.9.1, la partie observable : page publique `"isUnlisted":true`,
+    `"isPrivate":false`, lecture `OK`, `"lengthSeconds":"78"` — coherent avec
+    les 77,845 s du montage mesure (`T1` § 1 ; YouTube arrondit a la seconde).
+    Le titre rendu est le titre saisi par l'owner.
+  ⛔ Non observable d'une session non authentifiee, DECLARE PAR L'OWNER :
+    la video est NON MONETISEE et televersee SANS licence Creative Commons.
+  ⛔ Ce releve ne prouve pas que la video en ligne EST le fichier de sha256
+    `da5f4a08…bd8` : seule la duree concorde. La relecture du sha256 AVANT
+    L'ENVOI est un geste owner ⛔ releve par personne.
+  ⛔ Il ne dit rien de l'avenir du lien : non repertoriee aujourd'hui, la
+    video passe en PUBLIQUE apres `dn8-8` (geste owner, checklist).
+  ⚠️ Les corps HTML de `watch` (1 192 466 o) et du temoin (778 967 o) restent
+    au scratchpad : ⛔ verses ici, ils publieraient la page entiere.
+
+── 3. LE SCRIPT (tel que joue : `bash t2.sh T2`) ─────────────────────────────
+  | #!/usr/bin/env bash
+  | # dn8-9 / T2 — le lien s'ouvre, prouve par une reponse qui DISTINGUE (AC8.9.2).
+  | # `curl -q` (⛔ aucun .curlrc), ⛔ aucun cookie (ni -b ni -c), ⛔ aucun en-tete d'authentification.
+  | # L'URL est EXTRAITE de la vitrine, ⛔ recopiee. Sorties sous le scratchpad.
+  | set -u
+  | DN=/home/nasbarok/projects/desknode
+  | O="$1"; mkdir -p "$O" || exit 9
+  | ATTENDUE=https://youtu.be/tcCF3vogwSU
+  | echo "=== dn8-9 / T2 — debut $(date -Iseconds) ==="
+  | echo "── (1) L'URL, LUE DANS LA VITRINE (section ## Demo, lien Markdown en ligne) ──"
+  | URL=$(python3 - "$DN/README.md" <<'PY'
+  | import re, sys
+  | txt = open(sys.argv[1], encoding="utf-8").read()
+  | m = re.search(r"(?m)^## +Demo\s*$", txt)
+  | if not m:
+  |     print("SECTION-ABSENTE"); sys.exit(0)
+  | suite = re.search(r"(?m)^## ", txt[m.end():])
+  | sec = txt[m.end():m.end() + suite.start()] if suite else txt[m.end():]
+  | liens = re.findall(r"(?<!!)\[[^\]]*\]\((https?://[^)\s]+)\)", sec)
+  | print(" ".join(liens) if liens else "AUCUN-LIEN")
+  | PY
+  | )
+  | echo "  lien(s) http de la section : $URL"
+  | echo "  attendue (mesuree le 2026-09-13) : $ATTENDUE"
+  | [ "$URL" = "$ATTENDUE" ] && echo "  ⇒ EGALES" || echo "  ⛔ DIFFERENTES"
+  | ID=${URL##*/}
+  | TEMOIN="${ID%?}V"
+  | [ "$TEMOIN" = "$ID" ] && TEMOIN="${ID%?}W"
+  | echo "  identifiant lu : $ID · temoin (dernier caractere altere) : $TEMOIN"
+  |
+  | code() {  # $1 etiquette, $2 url
+  |   local c
+  |   c=$(curl -q -sS --max-time 30 -o "$O/$1.corps" -w '%{http_code}' "$2" 2>"$O/$1.err")
+  |   printf '  %-26s %s  ⇐ %s\n' "$1" "$c" "$2"
+  | }
+  | echo
+  | echo "── (2) LES CODES HTTP (session NON authentifiee) ──"
+  | code oembed-youtu.be "https://www.youtube.com/oembed?url=https://youtu.be/$ID&format=json"
+  | code oembed-watch "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=$ID&format=json"
+  | code watch "https://www.youtube.com/watch?v=$ID"
+  | code oembed-temoin "https://www.youtube.com/oembed?url=https://youtu.be/$TEMOIN&format=json"
+  | code watch-temoin "https://www.youtube.com/watch?v=$TEMOIN"
+  | echo
+  | echo "── (3) CE QUE RENDENT LES CORPS ──"
+  | echo "  oembed (vrai lien), champs :"
+  | python3 - "$O/oembed-youtu.be.corps" <<'PY'
+  | import json, sys
+  | try:
+  |     d = json.load(open(sys.argv[1], encoding="utf-8"))
+  | except Exception as x:
+  |     print("    ⛔ corps illisible : %s" % x); sys.exit(0)
+  | for k in ("title", "author_name", "type", "provider_name", "width", "height"):
+  |     print("    %-14s %r" % (k, d.get(k)))
+  | PY
+  | echo "  oembed (temoin), corps brut : [$(head -c 200 "$O/oembed-temoin.corps")]"
+  | echo "  page publique (vrai lien) :"
+  | for motif in '"isUnlisted":[a-z]*' '"isPrivate":[a-z]*' '"lengthSeconds":"[0-9]*"' '"playabilityStatus":\{"status":"[A-Z_]*"'; do
+  |   printf '    %-40s %s\n' "$motif" "$(grep -oE "$motif" "$O/watch.corps" | sort | uniq -c | tr '\n' ' ')"
+  | done
+  | echo "  page publique (temoin) :"
+  | for motif in '"isUnlisted":[a-z]*' '"lengthSeconds":"[0-9]*"' '"playabilityStatus":\{"status":"[A-Z_]*"'; do
+  |   printf '    %-40s %s\n' "$motif" "$(grep -oE "$motif" "$O/watch-temoin.corps" | sort | uniq -c | tr '\n' ' ')"
+  | done
+  | echo "  taille des corps : $(stat -c '%n=%s' "$O"/*.corps | sed "s#$O/##g" | tr '\n' ' ')"
+  | echo "=== fin $(date -Iseconds) ==="

@@ -25,6 +25,24 @@ TRAVERSE, ET ELLE EST GARDEE.
    `APP0 JFIF`, et tout segment `COM`, sont refuses (l'EXIF, l'XMP, un
    commentaire d'appareil). ⛔ Aucun Pillow : il est chez l'auteur, ⛔ pas sur
    le runner.
+   🆕 AMENDE LE 2026-09-14 PAR `dn8-9` — le paragraphe ci-dessus est ⛔ NON
+   EFFACE, et il n'est PLUS la regle entiere : « par ses marqueurs JPEG »
+   decrivait une vitrine qui ne citait que des JPEG. La section `## Demo`
+   cite trois GIF, et un GIF faisait ROUGIR (c5) (« pas un JPEG lisible »).
+   ⇒ l'image est DISPATCHEE PAR SES OCTETS MAGIQUES, ⛔ par son extension :
+     · `FF D8` ⇒ le chemin JPEG ci-dessus, A L'IDENTIQUE ;
+     · `GIF87a` / `GIF89a` ⇒ lue BLOC PAR BLOC jusqu'au trailer `0x3B`
+       (`structure_gif`) : ecran logique ET chaque image <= `PIXELS_MAX` ;
+       extensions en LISTE BLANCHE — controle graphique `0xF9`, et
+       application `NETSCAPE2.0` (la boucle) SEULE. ⛔ Tout le reste est
+       refuse PAR SON NOM : commentaire `0xFE`, texte brut `0x01`, une autre
+       application (un paquet XMP), une etiquette inconnue. C'est
+       l'equivalent exact de « APP0 JFIF seul, 0 COM » : ce qui n'est ni des
+       pixels ni la boucle est refuse, qu'on l'ait prevu ou non. Une structure
+       TRONQUEE ou INCOHERENTE sort « pas un GIF lisible » ;
+     · ni l'un ni l'autre ⇒ un KO NOMME (« ni JPEG ni GIF »).
+   ⛔ AVEUGLEMENT DECLARE, ⛔ exerce par personne : les octets APRES le
+   trailer `0x3B` ne sont pas lus — comme ceux apres `SOS` cote JPEG.
 
 ── LES SEIZE CONTROLES ──────────────────────────────────────────────────────
    (c1)  l'ORDRE statue : `# DeskNode` → la photo ACTIVE → la phrase
@@ -36,6 +54,10 @@ TRAVERSE, ET ELLE EST GARDEE.
    (c4)  la vitrine tient sous `PLAFOND_VITRINE` octets
    (c5)  toute image locale citee est un JPEG lisible, ⛔ sans `APPn` hors
          `APP0 JFIF` ni `COM`, grand cote <= `PIXELS_MAX`
+         🆕 amende le 2026-09-14 (`dn8-9`), la ligne ci-dessus ⛔ non effacee :
+         JPEG **ou** GIF, dispatche par octets magiques — un GIF lisible
+         jusqu'a son trailer, ⛔ sans extension hors `0xF9` et `NETSCAPE2.0`,
+         ecran et images <= `PIXELS_MAX` ; ni JPEG ni GIF ⇒ KO nomme
    (c6)  toute image locale citee existe et pese moins de `PLAFOND_PHOTO` o
    (c7)  la photo de CONTEXTE suit la photo active, et sa legende ASSUME le
          prototype cable a nu et l'ecran en francais (`D24`, voie a)
@@ -98,6 +120,14 @@ PLAFOND_VITRINE = 16000
 PLAFOND_PHOTO = 600000
 # Le grand cote PRESCRIT par le dossier de la marche (1 600 px).
 PIXELS_MAX = 1600
+# 🆕 dn8-9 — le GIF, lu par ses marqueurs. Les deux en-tetes de la norme, et
+#    l'UNIQUE extension d'application admise : la boucle que `ffmpeg -loop 0`
+#    ecrit (mesure le 2026-09-13 : `GIF89a`, 1 `NETSCAPE2.0`, un bloc `0xF9`
+#    par image, 0 commentaire).
+MAGIE_GIF = (b"GIF87a", b"GIF89a")
+APPLI_GIF_PERMISE = b"NETSCAPE2.0"
+NOMS_EXTENSIONS_GIF = {0xFE: "extension de commentaire 0xFE",
+                       0x01: "extension de texte brut 0x01"}
 
 AVEUGLEMENT_VITRINE = (
     "⛔ AVEUGLEMENT DECLARE : cette gate lit la vitrine HORS blocs de code — "
@@ -168,6 +198,51 @@ MUTANTS[15] = ("declare dans `CIBLES` un controle INEXISTANT ⇒ une cible "
 CIBLES[15] = ("c15",)
 MUTANTS[16] = ("declare une cible pour un mutant qui N'EXISTE PAS")
 CIBLES[16] = ("c16",)
+# 🆕 dn8-9 — QUATRE mutants pour les QUATRE regles neuves de (c5), chacun
+#    REPLANTE sa faute dans le PREMIER GIF cite. ⚠️ (c14) garde « chaque
+#    controle a un mutant », ⛔ pas « chaque regle » : un seul mutant aurait
+#    laisse trois regles gardees par rien. Sans GIF cite ⇒ rc=3.
+MUTANTS[17] = ("insere une EXTENSION DE COMMENTAIRE `21 FE` dans le 1er GIF "
+               "cite ⇒ du texte hors pixels, que la liste blanche refuse")
+CIBLES[17] = ("c5",)
+MUTANTS[18] = ("insere une extension d'APPLICATION ETRANGERE `XMP DataXMP` "
+               "dans le 1er GIF cite ⇒ ⛔ pas la boucle NETSCAPE2.0")
+CIBLES[18] = ("c5",)
+MUTANTS[19] = ("porte la LARGEUR DE L'ECRAN LOGIQUE du 1er GIF cite a "
+               "PIXELS_MAX + 1 ⇒ grand cote au-dela du plafond")
+CIBLES[19] = ("c5",)
+MUTANTS[20] = ("TRONQUE le 1er GIF cite juste AVANT son trailer 0x3B ⇒ "
+               "une structure qui ne se termine pas")
+CIBLES[20] = ("c5",)
+# 🆕 AMENDE LE 2026-09-14 A LA REVUE DE `dn8-9` — le commentaire ci-dessus
+#    (« QUATRE mutants ») est ⛔ non efface, et il etait FAUX sur le fond : la
+#    revue a affaibli deux branches de la lecture GIF sans qu'aucun des 20
+#    mutants ne rougisse, et une NETSCAPE2.0 ou un 0xF9 portant une CHARGE en
+#    plus passaient (c5) vert (seul le NOM de l'extension etait lu). ⇒ ONZE
+#    mutants GIF (17 a 27), un par regle de la lecture, chacun REPLANTE sa
+#    faute dans le 1er GIF cite.
+MUTANTS[21] = ("ajoute un SOUS-BLOC DE CHARGE a la NETSCAPE2.0 du 1er GIF "
+               "cite ⇒ la boucle transporte autre chose que la boucle")
+CIBLES[21] = ("c5",)
+MUTANTS[22] = ("ajoute un SOUS-BLOC DE CHARGE au 1er controle graphique 0xF9 "
+               "du 1er GIF cite ⇒ plus que ses 4 octets")
+CIBLES[22] = ("c5",)
+MUTANTS[23] = ("porte la LARGEUR DU 1er DESCRIPTEUR D'IMAGE 0x2C du 1er GIF "
+               "cite a PIXELS_MAX + 1, l'ecran logique restant valide")
+CIBLES[23] = ("c5",)
+MUTANTS[24] = ("insere une extension d'ETIQUETTE INCONNUE 0x77 dans le 1er "
+               "GIF cite ⇒ ni controle, ni application, ni commentaire")
+CIBLES[24] = ("c5",)
+MUTANTS[25] = ("RETIRE tous les blocs du 1er GIF cite entre sa table globale "
+               "et son trailer ⇒ un GIF a 0 image")
+CIBLES[25] = ("c5",)
+MUTANTS[26] = ("insere un OCTET DE TETE INCOHERENT 0x42 avant le 1er bloc du "
+               "1er GIF cite")
+CIBLES[26] = ("c5",)
+MUTANTS[27] = ("remplace les 6 OCTETS MAGIQUES du 1er GIF cite par le debut de "
+               "la signature PNG ⇒ ni JPEG ni GIF")
+CIBLES[27] = ("c5",)
+MUTANTS_GIF = tuple(range(17, 28))
 
 CONTROLES_PREVUS = 16
 
@@ -273,7 +348,9 @@ def aplati(txt):
     return dn_gates.plat(re.sub(r"[*_`]", "", txt or "")).lower()
 
 
-def muter_photo(rel, brut):
+def muter_photo(rel, brut, premier_gif=None):
+    if _MUTANT in MUTANTS_GIF and rel == premier_gif:
+        return muter_gif(brut)
     if _MUTANT == 5 and rel == PHOTO_ACTIVE:
         if brut[:2] != b"\xff\xd8":
             raise NonExerce("MUTANT 5 NON EXERCE : la photo n'a pas de SOI")
@@ -284,6 +361,51 @@ def muter_photo(rel, brut):
         manque = PLAFOND_PHOTO - len(brut) + 1
         return brut + b"\x00" * max(manque, 1)
     return brut
+
+
+def muter_gif(brut):
+    """Les mutants 17 a 20 — chacun REPLANTE sa faute dans le 1er GIF cite.
+    ⚠️ La position d'insertion et celle du trailer sont LUES par
+    `structure_gif`, ⛔ supposees : un GIF sans table globale, ou suivi
+    d'octets, deplacerait une position ecrite en dur.
+    🆕 2026-09-14, revue : et les mutants 21 a 27 (`MUTANTS_GIF`) — leurs
+    positions (fin de la NETSCAPE2.0, fin du 1er 0xF9, 1er descripteur 0x2C)
+    sont celles que `structure_gif` a trouvees en MARCHANT les blocs."""
+    g, _raison = structure_gif(brut)
+    manque = g is None or (_MUTANT == 21 and g["fin_netscape"] is None) \
+        or (_MUTANT == 22 and g["fin_controle"] is None) \
+        or (_MUTANT == 23 and g["descripteur"] is None)
+    if manque:
+        raise NonExerce("MUTANT %d NON EXERCE : le 1er GIF cite n'est pas un "
+                        "GIF lisible, ou n'a pas le bloc vise — la faute ne "
+                        "peut pas etre REPLANTEE" % _MUTANT)
+    p = g["debut_blocs"]
+    if _MUTANT == 17:
+        texte = b"dn8-9 mutant 17"
+        return brut[:p] + b"\x21\xfe" + bytes([len(texte)]) + texte \
+            + b"\x00" + brut[p:]
+    if _MUTANT == 18:
+        return brut[:p] + b"\x21\xff\x0bXMP DataXMP" + b"\x03xmp" + b"\x00" \
+            + brut[p:]
+    if _MUTANT == 19:
+        return brut[:6] + struct.pack("<H", PIXELS_MAX + 1) + brut[8:]
+    if _MUTANT in (21, 22):
+        # le sous-bloc de charge s'insere JUSTE AVANT le terminal 0x00
+        t = (g["fin_netscape"] if _MUTANT == 21 else g["fin_controle"]) - 1
+        charge = b"dn8-9 mutant %d : charge hors pixels et hors boucle" % _MUTANT
+        return brut[:t] + bytes([len(charge)]) + charge + brut[t:]
+    if _MUTANT == 23:
+        d = g["descripteur"]
+        return brut[:d + 5] + struct.pack("<H", PIXELS_MAX + 1) + brut[d + 7:]
+    if _MUTANT == 24:
+        return brut[:p] + b"\x21\x77\x02ab\x00" + brut[p:]
+    if _MUTANT == 25:
+        return brut[:p] + brut[g["fin"]:]
+    if _MUTANT == 26:
+        return brut[:p] + b"\x42" + brut[p:]
+    if _MUTANT == 27:
+        return b"\x89PNG\r\n" + brut[6:]
+    return brut[:g["fin"]]
 
 
 # ══ LA LECTURE ══════════════════════════════════════════════════════════════
@@ -377,6 +499,141 @@ def pixels(segs):
     return None
 
 
+def _taille_table(packe):
+    """Octets d'une table de couleurs, si le bit 7 du champ tasse la declare."""
+    return 3 * 2 ** ((packe & 7) + 1) if packe & 0x80 else 0
+
+
+def structure_gif(brut):
+    """Le GIF lu BLOC PAR BLOC jusqu'a son trailer — 🆕 dn8-9, ⛔ Pillow n'est
+    pas sur le runner.
+
+    Rend ⛔ `None` si ce n'est pas un GIF LISIBLE : en-tete hors `GIF87a` /
+    `GIF89a`, structure TRONQUEE (un bloc, un sous-bloc ou le trailer manque),
+    octet de tete INCOHERENT, ou 0 image. Sinon un dict : `version`, `ecran`
+    (largeur, hauteur de l'ecran logique), `images` [(largeur, hauteur)],
+    `controles` (blocs `0xF9`), `netscape`, `intrus` (les extensions HORS
+    liste blanche, NOMMEES), `debut_blocs` (1er octet apres la table globale)
+    et `fin` (position du trailer `0x3B`).
+    ⛔ Les octets APRES le trailer ne sont pas lus (aveuglement declare dans
+    l'en-tete de ce fichier).
+    🆕 AMENDE LE 2026-09-14 A LA REVUE — le paragraphe ci-dessus est ⛔ non
+    efface, et deux de ses phrases ont change :
+      · la fonction rend un COUPLE `(dict, None)` ou `(None, raison)` : les
+        trois fautes « illisibles » (coupe, octet incoherent, 0 image)
+        sortaient sous le MEME libelle, et un KO doit nommer SA faute ;
+      · la liste blanche lit la FORME, ⛔ plus seulement le nom : `0xF9` =
+        exactement un sous-bloc de 4 o ; `NETSCAPE2.0` = l'identifiant de
+        11 o puis exactement un sous-bloc de 3 o dont le 1er octet vaut 0x01.
+        Une charge en plus y passait VERTE (mesure par la revue). Tout autre
+        forme est un intrus NOMME « malforme(e) ».
+      · le dict porte aussi `fin_netscape`, `fin_controle` (position apres le
+        terminal de la 1re NETSCAPE2.0 / du 1er 0xF9) et `descripteur` (le 1er
+        0x2C), trouves en marchant — les positions des mutants 21 a 23."""
+    if brut[:6] not in MAGIE_GIF or len(brut) < 13:
+        return None, "en-tete ou ecran logique TRONQUE"
+    largeur, hauteur, packe = struct.unpack("<HHB", brut[6:11])
+    i = 13 + _taille_table(packe)
+    g = {"version": brut[:6].decode("ascii"), "ecran": (largeur, hauteur),
+         "images": [], "controles": 0, "netscape": 0, "intrus": [],
+         "debut_blocs": i, "fin": None, "fin_netscape": None,
+         "fin_controle": None, "descripteur": None}
+
+    def sous_blocs(j):
+        """(position apres le bloc terminal `0x00`, [sous-blocs]) — ou
+        (None, …) si la chaine est coupee avant son terminal."""
+        blocs = []
+        while j < len(brut):
+            n = brut[j]
+            j += 1
+            if n == 0:
+                return j, blocs
+            if j + n > len(brut):
+                return None, blocs
+            blocs.append(brut[j:j + n])
+            j += n
+        return None, blocs
+
+    while True:
+        if i >= len(brut):
+            return None, "coupe AVANT le trailer 0x3B"
+        tete = brut[i]
+        if tete == 0x3B:
+            g["fin"] = i
+            break
+        if tete == 0x2C:
+            if i + 11 > len(brut):
+                return None, "descripteur d'image 0x2C TRONQUE"
+            _x, _y, iw, ih, p = struct.unpack("<HHHHB", brut[i + 1:i + 10])
+            if g["descripteur"] is None:
+                g["descripteur"] = i
+            # descripteur (10 o), table locale, 1 o de taille LZW, sous-blocs
+            i, _ = sous_blocs(i + 10 + _taille_table(p) + 1)
+            if i is None:
+                return None, "donnees d'image TRONQUEES"
+            g["images"].append((iw, ih))
+        elif tete == 0x21:
+            if i + 2 > len(brut):
+                return None, "extension TRONQUEE"
+            etiquette = brut[i + 1]
+            i, blocs = sous_blocs(i + 2)
+            if i is None:
+                return None, "extension 0x%02X TRONQUEE" % etiquette
+            if etiquette == 0xF9:
+                if len(blocs) == 1 and len(blocs[0]) == 4:
+                    g["controles"] += 1
+                else:
+                    g["intrus"].append("controle graphique 0xF9 malforme "
+                                       "(%s octets de sous-blocs)"
+                                       % "+".join(str(len(x)) for x in blocs))
+                if g["fin_controle"] is None:
+                    g["fin_controle"] = i
+            elif etiquette == 0xFF:
+                ident = blocs[0] if blocs else b""
+                if ident != APPLI_GIF_PERMISE:
+                    g["intrus"].append("extension d'application %r"
+                                       % ident[:11].decode("latin-1"))
+                elif len(blocs) == 2 and len(blocs[1]) == 3 \
+                        and blocs[1][0] == 0x01:
+                    g["netscape"] += 1
+                else:
+                    g["intrus"].append("NETSCAPE2.0 malformee (%s octets de "
+                                       "sous-blocs)"
+                                       % "+".join(str(len(x)) for x in blocs))
+                if ident == APPLI_GIF_PERMISE and g["fin_netscape"] is None:
+                    g["fin_netscape"] = i
+            else:
+                g["intrus"].append(NOMS_EXTENSIONS_GIF.get(
+                    etiquette, "extension inconnue 0x%02X" % etiquette))
+        else:
+            return None, "octet de tete incoherent 0x%02X a l'octet %d" % (tete, i)
+    if not g["images"]:
+        return None, "0 image avant le trailer"
+    return g, None
+
+
+def verdict_hors_jpeg(rel, brut):
+    """(faute, detail) pour une image citee qui ⛔ n'ouvre pas sur `FF D8`.
+    Exactement un des deux est `None`. Un GIF est juge par `structure_gif` ;
+    tout autre fichier est une faute NOMMEE, ⛔ un « pas un JPEG » generique."""
+    court = rel[-40:]
+    if brut[:6] not in MAGIE_GIF:
+        return ("%s ⛔ ni JPEG (SOI FF D8) ni GIF (GIF87a/GIF89a) : octets %r"
+                % (court, brut[:6]), None)
+    g, raison = structure_gif(brut)
+    if g is None:
+        return "%s ⛔ pas un GIF lisible : %s" % (court, raison), None
+    if g["intrus"]:
+        return "%s ⛔ porte %s" % (court, " + ".join(g["intrus"])), None
+    grand = max([g["ecran"]] + g["images"], key=max)
+    if max(grand) > PIXELS_MAX:
+        return ("%s ⛔ %s %dx%d, grand cote > %d"
+                % (court, "ecran logique" if grand == g["ecran"] else "image",
+                   grand[0], grand[1], PIXELS_MAX), None)
+    return None, "%dx%d (%s, %d images, %d NETSCAPE2.0)" % (
+        g["ecran"] + (g["version"], len(g["images"]), g["netscape"]))
+
+
 def section(txt, titre):
     """Le texte d'une section `## titre`, jusqu'au `## ` suivant."""
     m = re.search(r"(?m)^## +%s\s*$" % re.escape(titre), txt)
@@ -419,13 +676,23 @@ def main():
         #    image posee dans la vitrine echappait a (c5)/(c6) (revue 2026-09-13).
         cites = [e[2][1] for e in elements(txt)[0] if e[1] == "image"
                  and not re.match(r"^[a-z]+:", e[2][1])]
+        # 🆕 dn8-9 — la cible des mutants 17-20 : le PREMIER `.gif` cite.
+        premier_gif = next((r for r in cites
+                            if r.split("#")[0].lower().endswith(".gif")), None)
+        if _MUTANT in MUTANTS_GIF and premier_gif is None:
+            raise NonExerce("MUTANT %d NON EXERCE : la vitrine ne cite AUCUN "
+                            "GIF — la faute n'a nulle part ou etre replantee"
+                            % _MUTANT)
         photos = {}
         for rel in list(dict.fromkeys(cites + list(PHOTOS))):
             try:
                 with open(os.path.join(RACINE, rel.split("#")[0]), "rb") as f:
-                    photos[rel] = muter_photo(rel, f.read())
+                    photos[rel] = muter_photo(rel, f.read(), premier_gif)
             except OSError:
                 photos[rel] = None
+        if _MUTANT in MUTANTS_GIF and photos.get(premier_gif) is None:
+            raise NonExerce("MUTANT %d NON EXERCE : le 1er GIF cite (%s) est "
+                            "ABSENT du disque" % (_MUTANT, premier_gif))
     except NonExerce as x:
         print("⛔ %s" % x)
         print("   ⇒ rc=3 : un mutant qui ne change rien ⛔ ne prouve rien.")
@@ -498,6 +765,18 @@ def main():
             f5.append("%s ABSENTE" % rel)
             f6.append("%s ABSENTE" % rel)
             continue
+        # 🆕 dn8-9 — DISPATCH PAR OCTETS MAGIQUES, ⛔ par extension : un GIF
+        #    renomme `.jpg` est lu comme un GIF, et un PNG renomme `.gif` sort
+        #    « ni JPEG ni GIF ». Le chemin JPEG ci-dessous est INCHANGE.
+        # 🆕 2026-09-14, revue : (c6) UNE SEULE FOIS, pour TOUTE image, AVANT
+        #    le dispatch — sa copie dans la branche GIF n'etait gardee par aucun
+        #    mutant (un GIF de 680 000 o sortait 16/0 sans elle).
+        (f6 if len(b) >= PLAFOND_PHOTO else d6).append(
+            "%s %d o" % (os.path.basename(rel)[:16], len(b)))
+        if b[:6] in MAGIE_GIF or b[:2] != b"\xff\xd8":
+            faute, detail = verdict_hors_jpeg(rel, b)
+            (f5 if faute else d5).append(faute or detail)
+            continue
         segs = segments_jpeg(b)
         px = pixels(segs)
         intrus = ["APP%d" % (m - 0xE0) if m != 0xFE else "COM"
@@ -513,11 +792,13 @@ def main():
                                                        PIXELS_MAX))
         else:
             d5.append("%dx%d" % px)
-        (f6 if len(b) >= PLAFOND_PHOTO else d6).append(
-            "%s %d o" % (os.path.basename(rel)[:16], len(b)))
     ctrl(not f5 and bool(photos),
-         "(c5) JPEG lisibles, APP0 JFIF seul, <= %d px" % PIXELS_MAX,
-         "%d image(s) citee(s) · pixels %s · ⛔ 0 APPn hors JFIF, 0 COM"
+         # ⚠️ < 58 CARACTERES UNE FOIS FORMATE (56) : la cle de campagne se lit
+         #    A COLONNE FIXE (`verif_campagne_dn56.py` (c4), `LARGEUR_LIBELLE`).
+         #    La 1re redaction en faisait 74, et (c4) l'a compte « >= 58 ».
+         "(c5) JPEG (JFIF seul) ou GIF (liste blanche), <= %d px" % PIXELS_MAX,
+         "%d image(s) citee(s) · pixels %s · ⛔ 0 APPn hors JFIF, 0 COM, "
+         "0 extension GIF hors liste blanche"
          % (len(photos), " et ".join(d5)) if not f5 and photos
          else "⛔ " + " · ".join(f5 or ["AUCUNE image citee"]))
     ctrl(not f6, "(c6) toute image citee existe, < %d o" % PLAFOND_PHOTO,

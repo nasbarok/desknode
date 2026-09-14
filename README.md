@@ -16,6 +16,18 @@ Six cells: **CPU** · **GPU** · **RAM** · **NETWORK** · **DISK** · **AMBIENT
 
 **About these photos (2026-08-30).** What you see is the **prototype**: bare wiring, a sensor breakout above the screen, **no enclosure**. This first version ships without one, and that is assumed rather than hidden. The screen in the photos speaks **French**; a freshly flashed board starts in **English** (see *Language* below). There is no logo yet: the name above stands in for one.
 
+## Demo
+
+[Watch the 78-second demo video on YouTube](https://youtu.be/tcCF3vogwSU). The three animations below are silent excerpts of it, a few seconds each.
+
+![A finger touches DeskNode in its calm Ambient view, the screen switches to the full Active view, and a second touch on the CPU cell opens its detail view with a usage curve](docs/demo/2026-08-30-1853-desknode-toucher.gif)
+
+![DeskNode during a download: the network cell, labelled RÉSEAU on this French screen, jumps from 0.0 Mb/s to more than 2,000 Mb/s while the other cells keep updating](docs/demo/2026-08-30-1910-desknode-reseau-en-direct.gif)
+
+![The network detail view: live download and upload rates falling back towards zero above a history curve, with a minimum of 0.0 Mb/s and a maximum of 5.5 Gb/s](docs/demo/2026-08-30-1911-desknode-courbe-reseau.gif)
+
+**About this video (2026-08-30).** It was filmed on the same day as the photos above, and it shows the same **prototype**: bare wiring, **no enclosure**. The screen in the video speaks **French**; a freshly flashed board starts in **English**.
+
 ## Two hardware tiers
 
 | tier | what you buy | what it adds |

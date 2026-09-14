@@ -6,6 +6,31 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- 🆕 **The demo can be seen: a link to the video, and three animations on the front page** (`dn8-9`, 2026-09-14).
+  Measured that day: the front page cited two images, no animation and no video link, and the
+  repository tracked no GIF and no video file — a stranger never saw DeskNode move. What changed.
+  (1) A `## Demo` section, placed right after the caption of the photos, links the 78-second demo
+  video, which is hosted on YouTube, **outside this repository**. (2) Three silent GIF excerpts of
+  that video live in `docs/demo/` — a touch that wakes the full view and opens the CPU detail, the
+  network cell jumping past 2,000 Mb/s, and the network curve — each lighter than the ceiling the
+  front-page check already set for images, and each named after the time read on the screen; the
+  network detail view shows no clock, so the curve takes the time read on a neighbouring frame of
+  the same shot. Their
+  caption assumes what the photo caption assumes: a bare-wired prototype with no enclosure, and a
+  screen in French. (3) `tools/verif_vitrine_dn84.py` read every image the front page cites as a
+  JPEG, so a GIF would have turned it red: its image control now tells the two formats apart by
+  their first bytes, reads a GIF block by block up to its trailer, accepts only the graphic control
+  extension and the `NETSCAPE2.0` loop, each in its exact shape, and names anything else it finds.
+  Eleven new mutants plant a comment extension, a foreign application extension, an oversized
+  logical screen, a truncated file, a payload added to the loop, a payload added to a graphic
+  control block, an oversized image, an unknown extension, a GIF with no image, a stray byte
+  between blocks, and PNG magic bytes in place of GIF ones, and each one is seen red.
+  ⚠️ **These animations are ⛔ not part of the `v0.1.0-beta` release**: that tag was pushed before
+  them, and it does not move. ⚠️ **The video file is ⛔ not in the repository**, so the recipe that
+  cut the GIFs, written under `mesures/dn8-9/`, can be replayed by the owner only.
+
 ## [0.1.0-beta] - 2026-09-14
 
 Work towards the first public release, `v0.1.0-beta`.

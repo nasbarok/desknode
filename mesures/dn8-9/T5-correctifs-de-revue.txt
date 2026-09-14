@@ -1,0 +1,489 @@
+==============================================================================
+dn8-9 / T5 — LES CORRECTIFS DE LA REVUE, RELEVES ET VUS ROUGIR
+  Ecrit le 2026-09-14 apres la revue de la passe d'implementation. ⛔ `T0` a
+  `T4` ne sont PAS retouches : ce qu'ils disent de faux est corrige ICI, date.
+  Temoins joues de 12:43:23 a 12:43:30 (`t5.sh`, § 9), puis
+  `verif_campagne_dn56.py` DETACHE de 12:43:58 a 12:57:07 (+02:00). Sorties et
+  copies jetables sous le scratchpad (chemins ABSOLUS, le script REFUSE un
+  chemin relatif), versees ici APRES. ⛔ Aucun commit, rien de pousse.
+==============================================================================
+
+── 0. CE QUI A ETE CHANGE, ET QUAND (mtime) ───────────────────────────────────
+  desknode :
+    tools/verif_vitrine_dn84.py — (a) liste blanche lue a la FORME : `0xF9` =
+      exactement un sous-bloc de 4 o, `NETSCAPE2.0` = identifiant de 11 o puis
+      exactement un sous-bloc de 3 o dont le 1er octet vaut 0x01 ; sinon intrus
+      NOMME « controle graphique 0xF9 malforme » / « NETSCAPE2.0 malformee ».
+      (b) `structure_gif` rend `(dict, None)` ou `(None, raison)` : coupe,
+      octet incoherent et 0 image sortaient sous le MEME libelle. (c) SEPT
+      mutants neufs, 21 a 27, tous `("c5",)` ; `MUTANTS_GIF` = 17..27 ; le
+      commentaire « QUATRE mutants » est garde et AMENDE, date. (d) `(c6)` ne
+      s'ecrit plus qu'UNE fois, pour toute image, AVANT le dispatch JPEG/GIF.
+      `CONTROLES_PREVUS` reste 16.
+    CHANGELOG.md, docs/roadmap.md — l'heure de la courbe est lue sur une image
+      voisine du meme plan ; « four new mutants » ⇒ onze, avec leurs fautes.
+    mesures/dn8-9/T5-correctifs-de-revue.txt — ce fichier (NEUF).
+  cockpit :
+    sprint-status-desknode.yaml — une ligne de commentaire datee SOUS le bloc
+      « AJOUT du 2026-09-13 21:57 UTC » (⛔ dedans) : son en-tete « la ligne
+      `dn8-9-…:` ci-dessus est INTACTE » est faux depuis `backlog` ⇒ `review`.
+      `yaml.safe_load` ⇒ 103 cles, `dn8-9` = `review`.
+
+  Heures : gate 12:37:38 · CHANGELOG et roadmap 12:38:38 · tracker 12:39:21.
+  Rejoues APRES ces ecritures et AVANT ce fichier (seules les gates qui lisent
+  les fichiers touches) :
+    verif_vitrine_dn84 16/0 · verif_harnais_dn81 --cockpit 28/0 ·
+    verif_licences_dn52 34/0 · verif_reception_dn85 16/0 · verif_flash_dn72
+    30/0 · verif_prerequis_dn75 51/0 · verif_affiliation_dn65 23/0 ·
+    verif_dossier_dn415 --cockpit 23/10 (lignes `[KO` identiques a `T0`, `cmp`)
+    puis, apres le tracker : verif_ledger_dn416 36/0 · verif_harnais_dn81 28/0 ·
+    verif_boitier_dn64 29/0 · verif_dossier_d5_dn45 12/0 · verif_dossier_dn415
+    23/10 (identiques a `T0`) · verif_campagne_dn440 62/0 — tous --cockpit.
+  ⚠️ La passe complete (`T4`) ⛔ n'est PAS rejouee : les comptes de `T4` § 2
+     portent l'arbre d'AVANT ces correctifs.
+
+── 1. CORRIGE : LE TEMOIN D'oembed DE `T2` ETAIT MAL FORME ─────────────────────
+  `T2` a pris pour temoin `tcCF3vogwSV` (le dernier caractere altere) et en a
+  tire « 400 ⇒ identifiant inexistant ». ⛔ C'EST FAUX. Un identifiant YouTube
+  est 8 octets en base64url sur 11 caracteres : le dernier caractere ne porte
+  que 4 bits utiles, ses 2 bits de poids faible DOIVENT valoir 00. `V` porte
+  01 ⇒ `tcCF3vogwSV` est MAL FORME, et il se decode aux MEMES 8 octets que le
+  vrai (§ 7, bloc (1)). Son 400 « Bad Request » est un refus de FORME ;
+  ⛔ la preuve qu'un identifiant bien forme n'existe pas.
+  Mesure par l'orchestrateur le 2026-09-14, REJOUE ici a 12:43 (session non
+  authentifiee, methode de `t2.sh`, URL lue dans la vitrine) :
+      vrai lien    tcCF3vogwSU ⇒ 200
+      bien forme   tcCF3vogwSQ ⇒ 404 « Not Found »   (octets …24 contre …25)
+      mal forme    tcCF3vogwSV ⇒ 400 « Bad Request »
+  ⇒ CE QUI DISTINGUE UNE VIDEO EXISTANTE D'UN IDENTIFIANT BIEN FORME INEXISTANT
+    EST **200 CONTRE 404**. `AC8.9.2` tient sur ce couple ; le 400 de `T2` ne
+    prouvait que la forme. `T2` § 2 (« temoin `tcCF3vogwSV` ⇒ 400 ») et le
+    tracker (« temoin `tcCF3vogwSV` 400 ») disent le temoin d'origine : ⛔ pas
+    retouches, corriges ici.
+
+── 2. CORRIGE : `verser.py` COUPAIT LES REPONSES `gh api` AU MAUVAIS PREFIXE ──
+  `T0` et `T4` § 3 impriment « gh api …/releases : (⛔ JSON illisible, brut
+  15207 car.) » et « …/tags : (⛔ JSON illisible, brut 436 car.) ». Cause :
+  `resume_json(l, p.replace("(brut)", ""))` recevait le prefixe SANS « (brut) »
+  et coupait la ligne 6 caracteres trop tot ⇒ `json.loads` echouait. `T0`
+  § 2 (c) annonce un resume « champ par champ » qui n'a JAMAIS ete produit.
+  ⇒ le resume, produit par le script corrige (prefixe EXACT) sur les MEMES
+    sorties brutes du scratchpad, est au § 7, bloc (2)(3) : T0 et T4 rendent
+    1 release (`v0.1.0-beta`, prerelease, 6 assets) et 1 tag (`fb6d646…`).
+
+── 3. CORRIGE : LA SECTION « GATES SANS LIGNE BILAN » EST VIDE DANS `T0` ET `T4`
+  Le filtre de `verser.py` sautait toute ligne dont le champ CONTIENT « BILAN »
+  — or une gate sans bilan y est ecrite « ⛔ aucune ligne BILAN » ⇒ les dix
+  gates concernees etaient sautees, et la section sort VIDE.
+  ⇒ leurs comptes sont ceux de `T4` § 2 (`comparer.py`, qui relit les memes
+    sorties, forme `[OK]/[KO]` ou `✅/❌`) ; le detail, produit par le filtre
+    corrige (`^BILAN` en TETE), est au § 7, bloc (2)(3) — identique en T0
+    et en T4.
+
+── 4. LA LISIBILITE, RELUE A LA TAILLE AFFICHEE (x1, 320 px, ⛔ agrandie) ───────
+  `T1` § 7 a lu les chiffres sur des images agrandies x2. Relu ici sur les
+  images 00, 15 et 23 de chaque GIF, a leur taille native (§ 7, bloc (4)),
+  REGARDEES par l'agent le 2026-09-14 a 12:44 :
+  (a) toucher — 00 : 18:53 · 20,4 % / 2,8 GHz / 53,5 °C · 1,0 % / 67,0 °C /
+      60 W · 49,0 % · 0,2 / 3,6 Mb/s · 11,4 Mo/s / 1313 tr/min · 26,5 °C /
+      50,7 % — 15 (Active) : 18:53 · CPU 18,0 % / 2,3 GHz / 52,3 °C · GPU
+      6,0 % / 66,0 °C / 60 W · RAM 49,0 % · RÉSEAU 0,1 / 3,6 Mb/s · DISQUE
+      3,1 Mo/s / 1319 tr/min · AMBIANCE 26,5 °C / 50,7 % — 23 (detail CPU) :
+      17,2 % · 2,4 GHz · c.max 44,6 % · 52,3 °C · MIN 11,6 % · MAX 83,0 %.
+  (b) reseau en direct — 00 : 19:10 · CPU 7,0 % / 2,4 GHz / 41,5 °C · GPU
+      0,0 % / 45,0 °C / 50 W · RAM 55,2 % · RÉSEAU ↓ 0,0 ↑ 0,0 Mb/s · DISQUE
+      0,0 Mo/s / 981 tr/min · AMBIANCE 24,6 °C / 54,9 % — 15 : 19:10 · 23,8 % /
+      3,2 GHz / 44,5 °C · 2,0 % / 45,0 °C / 51 W · 60,2 % · ↓ 2280,2 ↑ 41,6
+      Mb/s · 2,1 Mo/s / 1085 tr/min · 24,7 °C / 54,2 % — 23 : 19:10 · 17,3 % /
+      3,2 GHz / 44,5 °C · 2,0 % / 45,0 °C / 52 W · 56,8 % · ↓ 1893,3 ↑ 48,0
+      Mb/s · 0,0 Mo/s / 1085 tr/min · 24,7 °C / 54,2 %.
+  (c) courbe reseau — 00 : ↓ 1,8 ↑ 84,8 Mb/s — 15 : ↓ 0,8 ↑ 0,6 Mb/s — 23 :
+      ↓ 0,3 ↑ 0,2 Mb/s ; MIN 0,0 Mb/s · MAX 5,5 Gb/s sur les trois.
+  ⇒ a x1, les GRANDES valeurs et l'horloge SE LISENT, et elles egalent la
+    lecture x2 de `T1`.
+  ⚠️ ⛔ LISIBLES A x1, ET C'EST ECRIT : les petits textes — « 15,6 / 31,9 Go »
+     sous la jauge RAM (devine plus que lu), « DIM. 30 AOÛT » (a peine), les
+     quatre lignes « source / état / régime / MIN/MAX sur » des vues detail
+     (illisibles) et les libelles des cellules en etat Ambient. `T1` § 7 les a
+     recopies depuis l'image x2 : ⛔ un visiteur ne les lit pas a la taille
+     affichee.
+
+── 5. POURQUOI CES MUTANTS : CE QUE LA REVUE A DEMONTRE, ET SA RECIPROQUE ──────
+  La revue a montre, sur copie : une `NETSCAPE2.0` suivie d'un sous-bloc de 52 o
+  de texte ⇒ `16 OK, 0 KO` ; deux branches de lecture affaiblies ⇒ les 20
+  mutants restaient rouges et la gate sortait 16/0 sur la faute ; la copie de
+  `(c6)` de la branche GIF supprimee ⇒ un GIF cite de 680 000 o sortait 16/0.
+  ⇒ ici, § 7 bloc (5d), la RECIPROQUE est jouee pour chaque branche neuve : la branche
+    AFFAIBLIE dans une copie de la gate, et son mutant doit sortir VERT (rc=0) —
+    8 affaiblissements sur 8, chacun rend son mutant VERT, et la gate affaiblie
+    sans mutant reste 16/0. ⛔ Un mutant rouge ne prouve que `mutant ⇒ rouge` ;
+    c'est cette reciproque qui prouve `branche ⇒ gardee`.
+  ⚠️ Ce que la reciproque ⛔ couvre pas : les branches « TRONQUE » autres que le
+     trailer (descripteur 0x2C coupe, sous-blocs d'image ou d'extension coupes,
+     en-tete < 13 o) ⇒ gardees par AUCUN mutant, NOMMEES ici ; et une 2e
+     `NETSCAPE2.0` bien formee passe (la liste blanche compte, ⛔ n'exige pas 1).
+
+── 6. `verif_campagne_dn56.py` AU COMPTE, SUR L'ARBRE CORRIGE ─────────────────
+  EMPREINTE avant dn56-T5 : f883f8438033580a · git status : 7159070630e063ef · gate sha256[:16] ecbddd8c5a55330c · 2026-09-14T12:43:58+02:00
+  rc=0 788.17 s 2026-09-14T12:57:07+02:00
+  ⇒ **8 OK / 0 KO**, le compte de `T0` ; **718** mutants confrontes (711 a `T3`
+    + les 7 neufs), chacun rc=1 avec un BILAN et un `[KO ]` nomme ; la cle a
+    colonne fixe reste valide (le plus long libelle fait 56). Empreintes AVANT =
+    APRES. ⚠️ Joue AVANT l'ecriture de ce fichier-ci, qui n'est donc pas dans
+    l'arbre qu'il a lu ; `verif_affiliation_dn65.py` (qui lit `mesures/`) est
+    rejoue APRES l'ecriture de ce fichier, hors releve.
+  Sortie integrale :
+    ==============================================================================
+    dn5-6 — LES CAMPAGNES DE MUTANTS SONT REJOUEES
+    ==============================================================================
+
+    ── (c1) LES CIBLES SONT DECOUVERTES, ⛔ JAMAIS ENUMEREES ─────────
+      [OK ] des gates declarent une campagne de mutants                23 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_lhm_ps_dn83.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_reception_dn85.py, tools/verif_temoin_filtre_dn447.py, tools/verif_vitrine_dn84.py
+
+    ── (c2) CHAQUE MUTANT ROUGIT, AVEC UN BILAN ET UN [KO ] NOMME ────
+      [OK ] toute cible repond, et aucun mutant ne meurt               718 mutant(s) confronte(s) sur 23 cible(s)
+      [OK ] tout mutant rend rc=1                                      aucun mutant devenu MUET
+      [OK ] tout mutant rouge a bien imprime un BILAN                  aucune sortie en amont
+      [OK ] tout mutant rouge porte au moins un [KO ] nomme            chaque mutant vise un controle
+
+    ── (c3) LES EXCEPTIONS SONT DECLAREES ET ⛔ NE PEUVENT PAS ROT ───
+      · tools/verif_langues_dn442.py#17 ⇒ porteur **dn4-42-l-ecran-parle-deux-langues**
+          MESURE le 2026-09-05 : `--mutant 17` sort en rc=1 SANS ligne BILAN et SANS aucun [KO ] — `MUTANT 17 INAPPLICABLE : le motif est introuvable`. Son ancr
+      [OK ] aucune exception n'a survecu au defaut qu'elle excuse      1 exception(s) declaree(s), 1 encore justifiee(s)
+
+    ── (c4) LA CLE DE CAMPAGNE RESTE LISIBLE A COLONNE FIXE ──────────
+      [OK ] toute cible s'analyse a l'AST                              2 fichier(s) lu(s) dans la portee de la cle
+         [hors portee] tools/verif_affiliation_dn65.py        0 libelle(s) >= 58 sur 29
+         [hors portee] tools/verif_banc_langue_dn73.py        0 libelle(s) >= 58 sur 25
+         [hors portee] tools/verif_boitier_dn64.py            0 libelle(s) >= 58 sur 33
+         [hors portee] tools/verif_bom_dn61.py                0 libelle(s) >= 58 sur 25
+         [hors portee] tools/verif_cablage_dn62.py            0 libelle(s) >= 58 sur 37
+         [hors portee] tools/verif_demarrage_dn443.py         34 libelle(s) >= 58 sur 60
+         [hors portee] tools/verif_dossier_d5_dn45.py         0 libelle(s) >= 58 sur 9
+         [hors portee] tools/verif_entree_dn82.py             0 libelle(s) >= 58 sur 26
+         [hors portee] tools/verif_flash_dn72.py              0 libelle(s) >= 58 sur 35
+         [hors portee] tools/verif_harnais_dn81.py            0 libelle(s) >= 58 sur 17
+         [hors portee] tools/verif_installeur_dn71.py         0 libelle(s) >= 58 sur 33
+         [hors portee] tools/verif_langue_dalle_dn73.py       0 libelle(s) >= 58 sur 31
+         [hors portee] tools/verif_langues_dn442.py           10 libelle(s) >= 58 sur 32
+         [hors portee] tools/verif_lhm_ps_dn83.py             0 libelle(s) >= 58 sur 18
+         [hors portee] tools/verif_page_dn722.py              0 libelle(s) >= 58 sur 31
+         [hors portee] tools/verif_photos_dn63.py             0 libelle(s) >= 58 sur 32
+         [hors portee] tools/verif_placement_dn74.py          0 libelle(s) >= 58 sur 21
+         [hors portee] tools/verif_preconditions_dn76.py      0 libelle(s) >= 58 sur 27
+         [hors portee] tools/verif_prerequis_dn75.py          0 libelle(s) >= 58 sur 24
+         [hors portee] tools/verif_reception_dn85.py          0 libelle(s) >= 58 sur 16
+         [hors portee] tools/verif_temoin_filtre_dn447.py     0 libelle(s) >= 58 sur 7
+         [hors portee] tools/verif_vitrine_dn84.py            0 libelle(s) >= 58 sur 17
+      [OK ] cle valide (aucun libelle >= 58)                           44 libelle(s) lu(s) a l'AST, le plus long fait 56
+
+    ⛔ CE QUE CETTE GATE NE PROUVE PAS : « N mutants, N vus rougir »
+       prouve `mutant ⇒ rouge`, ⛔ PAS `controle ⇒ couvert`. Un controle
+       qu'AUCUN mutant ne vise reste garde par rien, et ⛔ elle ne le
+       verra pas. Elle garde que les campagnes DEJA ECRITES ne
+       pourrissent pas.
+
+    ==============================================================================
+    BILAN : 8 OK, 0 KO
+    ==============================================================================
+
+── 7. LE RELEVE DES TEMOINS (`bash t5.sh /…/scratchpad/dn89/T5`, tel que joue) ─
+  === dn8-9 / T5 — debut 2026-09-14T12:43:23+02:00 ===
+  EMPREINTE desknode AVANT (contenu) : f883f8438033580a · git status : 7159070630e063ef
+  sha256[:16] gate ecbddd8c5a55330c · README 8c32abd36d250fbb
+
+  ── (1) LE TEMOIN D'oembed : UN IDENTIFIANT BIEN FORME, ⛔ UN IDENTIFIANT MAL FORME ──
+    URL lue dans la section ## Demo de la vitrine : https://youtu.be/tcCF3vogwSU · identifiant tcCF3vogwSU
+    tcCF3vogwSU ⇒ base64url b5c085defa20c125 · 2 bits de poids faible du dernier caractere = 00  (bien forme)
+    tcCF3vogwSV ⇒ base64url b5c085defa20c125 · 2 bits de poids faible du dernier caractere = 01  (⛔ doivent valoir 00 : identifiant MAL FORME)
+    tcCF3vogwSQ ⇒ base64url b5c085defa20c124 · 2 bits de poids faible du dernier caractere = 00  (bien forme)
+    oembed-vrai            200  corps [{"title":"DeskNode \u2014 a physical des]  ⇐ https://www.youtube.com/oembed?url=https://youtu.be/tcCF3vogwSU&format=json
+    oembed-bien-forme      404  corps [Not Found]  ⇐ https://www.youtube.com/oembed?url=https://youtu.be/tcCF3vogwSQ&format=json
+    oembed-mal-forme       400  corps [Bad Request]  ⇐ https://www.youtube.com/oembed?url=https://youtu.be/tcCF3vogwSV&format=json
+
+  ── (2)(3) LE RESUME QUE verser.py DEVAIT PRODUIRE, POUR T0 ET T4 (script corrige) ──
+    === T0 ===
+    gh api repos/nasbarok/desknode/releases (RESUME) : 1 objet(s)
+      tag_name=v0.1.0-beta · draft=False · prerelease=True · published_at=2026-09-14T06:38:04Z · 6 asset(s) : bootloader.bin(20848 o), desknode-v0.1.0-beta.zip(23228908 o), desknode.bin(1266928 o), living_pcb_v0.bin(614416 o), manifest.json(509 o), partition-table.bin(3072 o)
+    gh api repos/nasbarok/desknode/tags (RESUME) : 1 objet(s)
+      name=v0.1.0-beta · commit=fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+    gates SANS ligne BILAN (filtre corrige : `^BILAN` en TETE du champ, ⛔ « BILAN » contenu) :
+       verif_courbe_dn413             rc=0  ✅ 1   ❌ 0  [OK 58  [KO 0  · derniere : ✅ 58 contrôles passent, 0 échec.
+       verif_decoupe_horloge_dn418    rc=0  ✅ 7   ❌ 0  [OK 0   [KO 0  · derniere : ✅ TOUT TIENT.
+       verif_harnais_dn413            rc=0  ✅ 1   ❌ 0  [OK 22  [KO 0  · derniere : ✅ 22 contrôles passent, 0 échec.
+       verif_hist_dn413               rc=0  ✅ 1   ❌ 0  [OK 56  [KO 0  · derniere : ✅ 56 contrôles passent, 0 échec.
+       verif_miroir_horloge_dn418     rc=0  ✅ 18  ❌ 0  [OK 0   [KO 0  · derniere : ✅ LE MIROIR TIENT.
+       verif_reprise_horloge_dn418    rc=0  ✅ 50  ❌ 0  [OK 0   [KO 0  · derniere : ✅ LES 12 SCENES TIENNENT.
+       verif_selection_dn49           rc=0  ✅ 1   ❌ 0  [OK 70  [KO 0  · derniere : MESURENT sur la carte, et les constats sensoriels sont l'OWNER.
+       verif_source_lhm_dn48          rc=0  ✅ 3   ❌ 0  [OK 46  [KO 0  · derniere : service coupe pendant que l'agent tourne, sur la tour.
+       verif_sr03                     rc=2  ✅ 0   ❌ 0  [OK 0   [KO 0  · derniere : TLS aboutit puis le flux HTTP/2 casse (INTERNAL_ERROR).
+       verif_verrou_lvgl_dn413        rc=0  ✅ 1   ❌ 0  [OK 60  [KO 0  · derniere : ✅ 60 contrôles passent, 0 échec.
+    === T4 ===
+    gh api repos/nasbarok/desknode/releases (RESUME) : 1 objet(s)
+      tag_name=v0.1.0-beta · draft=False · prerelease=True · published_at=2026-09-14T06:38:04Z · 6 asset(s) : bootloader.bin(20848 o), desknode-v0.1.0-beta.zip(23228908 o), desknode.bin(1266928 o), living_pcb_v0.bin(614416 o), manifest.json(509 o), partition-table.bin(3072 o)
+    gh api repos/nasbarok/desknode/tags (RESUME) : 1 objet(s)
+      name=v0.1.0-beta · commit=fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+    gates SANS ligne BILAN (filtre corrige : `^BILAN` en TETE du champ, ⛔ « BILAN » contenu) :
+       verif_courbe_dn413             rc=0  ✅ 1   ❌ 0  [OK 58  [KO 0  · derniere : ✅ 58 contrôles passent, 0 échec.
+       verif_decoupe_horloge_dn418    rc=0  ✅ 7   ❌ 0  [OK 0   [KO 0  · derniere : ✅ TOUT TIENT.
+       verif_harnais_dn413            rc=0  ✅ 1   ❌ 0  [OK 22  [KO 0  · derniere : ✅ 22 contrôles passent, 0 échec.
+       verif_hist_dn413               rc=0  ✅ 1   ❌ 0  [OK 56  [KO 0  · derniere : ✅ 56 contrôles passent, 0 échec.
+       verif_miroir_horloge_dn418     rc=0  ✅ 18  ❌ 0  [OK 0   [KO 0  · derniere : ✅ LE MIROIR TIENT.
+       verif_reprise_horloge_dn418    rc=0  ✅ 50  ❌ 0  [OK 0   [KO 0  · derniere : ✅ LES 12 SCENES TIENNENT.
+       verif_selection_dn49           rc=0  ✅ 1   ❌ 0  [OK 70  [KO 0  · derniere : MESURENT sur la carte, et les constats sensoriels sont l'OWNER.
+       verif_source_lhm_dn48          rc=0  ✅ 3   ❌ 0  [OK 46  [KO 0  · derniere : service coupe pendant que l'agent tourne, sur la tour.
+       verif_sr03                     rc=2  ✅ 0   ❌ 0  [OK 0   [KO 0  · derniere : TLS aboutit puis le flux HTTP/2 casse (INTERNAL_ERROR).
+       verif_verrou_lvgl_dn413        rc=0  ✅ 1   ❌ 0  [OK 60  [KO 0  · derniere : ✅ 60 contrôles passent, 0 échec.
+
+  ── (4) LES IMAGES A LA TAILLE AFFICHEE (x1, 320 px) ──
+    docs/demo/2026-08-30-1853-desknode-toucher.gif ⇒ /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/ba75ee1d-8eb1-407f-8a65-b318463cbc01/scratchpad/dn89/T5/x1-2026-08-30-1853-desknode-toucher.png (960,320) : images 00, 15, 23 cote a cote, ⛔ agrandies
+    docs/demo/2026-08-30-1910-desknode-reseau-en-direct.gif ⇒ /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/ba75ee1d-8eb1-407f-8a65-b318463cbc01/scratchpad/dn89/T5/x1-2026-08-30-1910-desknode-reseau-en-direct.png (960,320) : images 00, 15, 23 cote a cote, ⛔ agrandies
+    docs/demo/2026-08-30-1911-desknode-courbe-reseau.gif ⇒ /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/ba75ee1d-8eb1-407f-8a65-b318463cbc01/scratchpad/dn89/T5/x1-2026-08-30-1911-desknode-courbe-reseau.png (960,320) : images 00, 15, 23 cote a cote, ⛔ agrandies
+
+  ── (5a) LA GATE, ET --liste-mutants ──
+    rc=0 · BILAN : 16 OK, 0 KO
+      [OK ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px 5 image(s) citee(s) · pixels 1600x1067 et 1067x1600 et 320x320 (GIF89a, 24 images, 1 NETSCAPE2.0) et 320x320 (GIF89a, 24 images, 1 NETSCAPE2.0) et 320x320 (GIF89a, 24 images, 1 NETSCAPE2.0) · ⛔ 0 APPn hors JFIF, 0 COM, 0 extension GIF hors liste blanche
+      [OK ] (c6) toute image citee existe, < 600000 o                2026-08-30-1804- 171807 o · 2026-08-30-1818- 206956 o · 2026-08-30-1853- 551967 o · 2026-08-30-1910- 542301 o · 2026-08-30-1911- 520906 o
+      [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent             27 mutant(s), 27 cible(s), cle a cle
+       1  la photo passe APRES la phrase ⇒ l'ordre statue est inverse
+       2  ajoute « a **CPU** monitor » a la phrase ⇒ le message qu'on refuse, CASSE par du gras — seul le texte APLATI le voit
+       3  ajoute une balise `<img` COUPEE SUR DEUX LIGNES ⇒ du HTML que la gate ne lit pas, et dont le `>` n'est pas sur la ligne du `<`
+       4  gonfle la vitrine au-dela du plafond ⇒ ⛔ plus une vitrine
+       5  remplace la photo active par une version AVEC `APP1 Exif`
+       6  alourdit la photo de contexte au-dela du plafond
+       7  retire « French » de la legende ⇒ l'ecran francais n'est plus assume
+       8  fait demarrer l'ecran en francais ⇒ le defaut anglais disparait
+       9  retire la known issue des ~40 s a froid
+      10  deplace « not implemented » sur la ligne suivante de NVIDIA
+      11  casse le lien du journal ⇒ l'engineering log devient introuvable
+      12  plante le 1er motif de la table de dn415 ⇒ une occurrence sous un chemin que son manifeste cle
+      13  tronque la commande d'installation des modules ⇒ une vitrine qui fait installer la MOITIE de ce que l'agent importe
+      14  vide la cible du mutant 1 ⇒ un controle garde par ZERO mutant
+      15  declare dans `CIBLES` un controle INEXISTANT ⇒ une cible PERIMEE que « N rouges » ne voit pas
+      16  declare une cible pour un mutant qui N'EXISTE PAS
+      17  insere une EXTENSION DE COMMENTAIRE `21 FE` dans le 1er GIF cite ⇒ du texte hors pixels, que la liste blanche refuse
+      18  insere une extension d'APPLICATION ETRANGERE `XMP DataXMP` dans le 1er GIF cite ⇒ ⛔ pas la boucle NETSCAPE2.0
+      19  porte la LARGEUR DE L'ECRAN LOGIQUE du 1er GIF cite a PIXELS_MAX + 1 ⇒ grand cote au-dela du plafond
+      20  TRONQUE le 1er GIF cite juste AVANT son trailer 0x3B ⇒ une structure qui ne se termine pas
+      21  ajoute un SOUS-BLOC DE CHARGE a la NETSCAPE2.0 du 1er GIF cite ⇒ la boucle transporte autre chose que la boucle
+      22  ajoute un SOUS-BLOC DE CHARGE au 1er controle graphique 0xF9 du 1er GIF cite ⇒ plus que ses 4 octets
+      23  porte la LARGEUR DU 1er DESCRIPTEUR D'IMAGE 0x2C du 1er GIF cite a PIXELS_MAX + 1, l'ecran logique restant valide
+      24  insere une extension d'ETIQUETTE INCONNUE 0x77 dans le 1er GIF cite ⇒ ni controle, ni application, ni commentaire
+      25  RETIRE tous les blocs du 1er GIF cite entre sa table globale et son trailer ⇒ un GIF a 0 image
+      26  insere un OCTET DE TETE INCOHERENT 0x42 avant le 1er bloc du 1er GIF cite
+      27  remplace les 6 OCTETS MAGIQUES du 1er GIF cite par le debut de la signature PNG ⇒ ni JPEG ni GIF
+
+  ── (5b) LE MUTANT 6, LE MUTANT 5, ET LES ONZE MUTANTS GIF (17 a 27) ──
+    mutant 6 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c6) toute image citee existe, < 600000 o                ⛔ 2026-08-30-1818- 600001 o
+    mutant 5 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ 0-1804-desknode-etat-actif-gros-plan.jpg ⛔ porte APP1
+    mutant 17 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte extension de commentaire 0xFE
+    mutant 18 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte extension d'application 'XMP DataXMP'
+    mutant 19 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ ecran logique 1601x320, grand cote > 1600
+    mutant 20 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ pas un GIF lisible : coupe AVANT le trailer 0x3B
+    mutant 21 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte NETSCAPE2.0 malformee (11+3+51 octets de sous-blocs)
+    mutant 22 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte controle graphique 0xF9 malforme (4+51 octets de sous-blocs)
+    mutant 23 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ image 1601x320, grand cote > 1600
+    mutant 24 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte extension inconnue 0x77
+    mutant 25 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ pas un GIF lisible : 0 image avant le trailer
+    mutant 26 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ pas un GIF lisible : octet de tete incoherent 0x42 a l'octet 781
+    mutant 27 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ ni JPEG (SOI FF D8) ni GIF (GIF87a/GIF89a) : octets b'\x89PNG\r\n'
+
+  ── (5c) TEMOIN (c6) : UN GIF CITE ALOURDI AU-DELA DE 600 000 o (copie jetable) ──
+    docs/demo/2026-08-30-1853-desknode-toucher.gif : 551967 ⇒ 680000 o (zeros APRES le trailer : (c5) ⛔ les lit pas, (c6) les pese)
+    rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c6) toute image citee existe, < 600000 o                ⛔ 2026-08-30-1853- 680000 o
+
+  ── (5d) LA RECIPROQUE : CHAQUE BRANCHE AFFAIBLIE ⇒ SON MUTANT SORT VERT (copie jetable) ──
+    (un mutant qui rougit prouve mutant ⇒ rouge ; ⛔ que la branche est gardee. Ici on AFFAIBLIT
+     la branche dans une copie de la gate : si le mutant sort rc=0, c'est bien CETTE branche qui le voit.)
+    netscape-forme             gate affaiblie sans mutant rc=0 (16 OK, 0 KO) · mutant 21 rc=0 (16 OK, 0 KO)
+    controle-forme             gate affaiblie sans mutant rc=0 (16 OK, 0 KO) · mutant 22 rc=0 (16 OK, 0 KO)
+    image-dimensions           gate affaiblie sans mutant rc=0 (16 OK, 0 KO) · mutant 23 rc=0 (16 OK, 0 KO)
+    etiquette-inconnue         gate affaiblie sans mutant rc=0 (16 OK, 0 KO) · mutant 24 rc=0 (16 OK, 0 KO)
+    zero-image                 gate affaiblie sans mutant rc=0 (16 OK, 0 KO) · mutant 25 rc=0 (16 OK, 0 KO)
+    octet-incoherent           gate affaiblie sans mutant rc=0 (16 OK, 0 KO) · mutant 26 rc=0 (16 OK, 0 KO)
+    ni-jpeg-ni-gif             gate affaiblie sans mutant rc=0 (16 OK, 0 KO) · mutant 27 rc=0 (16 OK, 0 KO)
+    poids-c6                   gate affaiblie sans mutant rc=0 (16 OK, 0 KO) · mutant 6  rc=0 (16 OK, 0 KO)
+  EMPREINTE desknode APRES (contenu) : f883f8438033580a · git status : 7159070630e063ef
+  === fin 2026-09-14T12:43:30+02:00 ===
+
+── 8. CE QUE CE RELEVE ⛔ NE DIT PAS ──────────────────────────────────────────
+  - ⛔ Que la passe complete tient apres ces correctifs : `run_gates.sh` et les
+    49 tirs isoles ne sont PAS rejoues ici (consigne : seules les gates des
+    fichiers touches) ; la verification complete est a la charge de la suite.
+  - ⛔ Que le tracker dit le bon temoin : sa ligne `dn8-9` cite encore
+    « temoin `tcCF3vogwSV` 400 » ; elle se reecrit a la cloture, ⛔ ici.
+  - ⛔ Que les chiffres fins se lisent a la taille affichee (§ 4).
+
+── 9. LE SCRIPT (tel que joue) ─────────────────────────────────────────────────
+  | #!/usr/bin/env bash
+  | # dn8-9 / T5 — les correctifs de la revue : releves et temoins. ⛔ Rien n'est ecrit dans un arbre :
+  | # toutes les sorties et copies jetables vont sous $O, un chemin ABSOLU du scratchpad.
+  | #   t5.sh <sortie ABSOLUE>
+  | set -u
+  | DN=/home/nasbarok/projects/desknode
+  | SCR=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/ba75ee1d-8eb1-407f-8a65-b318463cbc01/scratchpad/dn89
+  | O="$1"
+  | case "$O" in /*) ;; *) echo "⛔ chemin de sortie RELATIF refuse : $O" >&2; exit 9 ;; esac
+  | mkdir -p "$O" || exit 9
+  | G=tools/verif_vitrine_dn84.py
+  | cd "$DN" || exit 9
+  | echo "=== dn8-9 / T5 — debut $(date -Iseconds) ==="
+  | echo "EMPREINTE desknode AVANT (contenu) : $( (git ls-files -z | xargs -0 sha256sum) | sha256sum | cut -c1-16) · git status : $(git status --porcelain | sha256sum | cut -c1-16)"
+  | echo "sha256[:16] gate $(sha256sum $G | cut -c1-16) · README $(sha256sum README.md | cut -c1-16)"
+  |
+  | echo
+  | echo "── (1) LE TEMOIN D'oembed : UN IDENTIFIANT BIEN FORME, ⛔ UN IDENTIFIANT MAL FORME ──"
+  | URL=$(python3 - "$DN/README.md" <<'PY'
+  | import re, sys
+  | txt = open(sys.argv[1], encoding="utf-8").read()
+  | m = re.search(r"(?m)^## +Demo\s*$", txt)
+  | suite = re.search(r"(?m)^## ", txt[m.end():])
+  | sec = txt[m.end():m.end() + suite.start()] if suite else txt[m.end():]
+  | print(" ".join(re.findall(r"(?<!!)\[[^\]]*\]\((https?://[^)\s]+)\)", sec)))
+  | PY
+  | )
+  | ID=${URL##*/}
+  | echo "  URL lue dans la section ## Demo de la vitrine : $URL · identifiant $ID"
+  | python3 - "$ID" <<'PY'
+  | import base64, sys
+  | vrai = sys.argv[1]
+  | for i in (vrai, vrai[:-1] + "V", vrai[:-1] + "Q"):
+  |     octets = base64.urlsafe_b64decode(i + "=")
+  |     reste = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".index(i[-1]) & 0b11
+  |     print("  %s ⇒ base64url %s · 2 bits de poids faible du dernier caractere = %s%s"
+  |           % (i, octets.hex(), format(reste, "02b"),
+  |              "  (⛔ doivent valoir 00 : identifiant MAL FORME)" if reste else "  (bien forme)"))
+  | PY
+  | code() {  # $1 etiquette, $2 url — curl -q : ⛔ .curlrc ; ⛔ cookie ; ⛔ en-tete d'authentification
+  |   local c
+  |   c=$(curl -q -sS --max-time 30 -o "$O/$1.corps" -w '%{http_code}' "$2" 2>"$O/$1.err")
+  |   printf '  %-22s %s  corps [%s]  ⇐ %s\n' "$1" "$c" "$(head -c 60 "$O/$1.corps" | tr -d '\n' | cut -c1-40)" "$2"
+  | }
+  | code oembed-vrai "https://www.youtube.com/oembed?url=https://youtu.be/$ID&format=json"
+  | code oembed-bien-forme "https://www.youtube.com/oembed?url=https://youtu.be/${ID%?}Q&format=json"
+  | code oembed-mal-forme "https://www.youtube.com/oembed?url=https://youtu.be/${ID%?}V&format=json"
+  |
+  | echo
+  | echo "── (2)(3) LE RESUME QUE verser.py DEVAIT PRODUIRE, POUR T0 ET T4 (script corrige) ──"
+  | python3 - "$SCR" <<'PY'
+  | import json, os, re, sys
+  | S = sys.argv[1]
+  | for et in ("T0", "T4"):
+  |     print("  === %s ===" % et)
+  |     for l in open(os.path.join(S, et, "resume.txt"), encoding="utf-8"):
+  |         for p in ("gh api repos/nasbarok/desknode/releases (brut) : ",
+  |                   "gh api repos/nasbarok/desknode/tags (brut) : "):
+  |             if not l.startswith(p):
+  |                 continue
+  |             d = json.loads(l[len(p):])            # ⚠️ le prefixe EXACT, « (brut) » compris
+  |             print("  %s%d objet(s)" % (p.replace("(brut)", "(RESUME)"), len(d)))
+  |             for o in d:
+  |                 if "assets" in o:
+  |                     print("    tag_name=%s · draft=%s · prerelease=%s · published_at=%s · %d asset(s) : %s"
+  |                           % (o["tag_name"], o["draft"], o["prerelease"], o["published_at"], len(o["assets"]),
+  |                              ", ".join("%s(%s o)" % (a["name"], a["size"]) for a in o["assets"])))
+  |                 else:
+  |                     print("    name=%s · commit=%s" % (o["name"], o["commit"]["sha"]))
+  |     rx = re.compile(r"^(verif_\S+\.py)(?: --cockpit)?\s+rc=(\S+)\s+([\d.]+) s\s+(.*)$")
+  |     print("  gates SANS ligne BILAN (filtre corrige : `^BILAN` en TETE du champ, ⛔ « BILAN » contenu) :")
+  |     for fic in ("gates.tsv", "gates-dn56.tsv"):
+  |         for l in open(os.path.join(S, et, fic), encoding="utf-8"):
+  |             m = rx.match(l.rstrip("\n"))
+  |             if not m or m.group(4).startswith("BILAN"):
+  |                 continue
+  |             txt = open(os.path.join(S, et, "gates", m.group(1)[:-3] + ".txt"), encoding="utf-8").read()
+  |             lignes = txt.split("\n")
+  |             der = [x for x in lignes if x.strip()][-1:] or [""]
+  |             print("     %-30s rc=%-2s ✅ %-3d ❌ %-2d [OK %-3d [KO %-2d · derniere : %s"
+  |                   % (m.group(1)[:-3], m.group(2), sum("✅" in x for x in lignes), sum("❌" in x for x in lignes),
+  |                      len(re.findall(r"\[OK", txt)), len(re.findall(r"\[KO", txt)), der[0].strip()[:70]))
+  | PY
+  |
+  | echo
+  | echo "── (4) LES IMAGES A LA TAILLE AFFICHEE (x1, 320 px) ──"
+  | for f in docs/demo/*.gif; do
+  |   n=$(basename "$f" .gif)
+  |   ffmpeg -nostdin -v error -i "$f" -vf "select=eq(n\,0)+eq(n\,15)+eq(n\,23),tile=3x1" -frames:v 1 -y "$O/x1-$n.png"
+  |   echo "  $f ⇒ $O/x1-$n.png ($(ffprobe -v error -show_entries stream=width,height -of csv=p=0 "$O/x1-$n.png")) : images 00, 15, 23 cote a cote, ⛔ agrandies"
+  | done
+  |
+  | echo
+  | echo "── (5a) LA GATE, ET --liste-mutants ──"
+  | python3 $G > "$O/gate.txt" 2>&1; echo "  rc=$? · $(grep -E '^BILAN' "$O/gate.txt")"
+  | grep -E '\] \((c5|c6|c16)\)' "$O/gate.txt" | sed 's/^/  /'
+  | python3 $G --liste-mutants 2>&1 | sed 's/^/  /'
+  |
+  | echo
+  | echo "── (5b) LE MUTANT 6, LE MUTANT 5, ET LES ONZE MUTANTS GIF (17 a 27) ──"
+  | for m in 6 5 17 18 19 20 21 22 23 24 25 26 27; do
+  |   python3 $G --mutant $m > "$O/mutant-$m.txt" 2>&1; rc=$?
+  |   echo "  mutant $m : rc=$rc · $(grep -E '^BILAN' "$O/mutant-$m.txt")"
+  |   grep -E '\[KO' "$O/mutant-$m.txt" | sed 's/^/      /'
+  | done
+  |
+  | copie() {  # $1 = repertoire cible ABSOLU
+  |   rm -rf "$1"; mkdir -p "$1"
+  |   tar -C "$DN" --exclude='__pycache__' -cf - tools docs installeur README.md | tar -C "$1" -xf -
+  | }
+  | PREMIER=$(grep -oE 'docs/demo/[^)]*\.gif' "$DN/README.md" | head -1)
+  |
+  | echo
+  | echo "── (5c) TEMOIN (c6) : UN GIF CITE ALOURDI AU-DELA DE 600 000 o (copie jetable) ──"
+  | C="$O/copie-c6"; copie "$C"
+  | python3 - "$C/$PREMIER" <<'PY'
+  | import sys
+  | p = sys.argv[1]
+  | b = open(p, "rb").read()
+  | open(p, "wb").write(b + b"\x00" * (680000 - len(b)))
+  | print("  %s : %d ⇒ 680000 o (zeros APRES le trailer : (c5) ⛔ les lit pas, (c6) les pese)" % (p.split("/copie-c6/")[1], len(b)))
+  | PY
+  | python3 "$C/$G" > "$O/temoin-c6.txt" 2>&1; echo "  rc=$? · $(grep -E '^BILAN' "$O/temoin-c6.txt")"
+  | grep -E '\[KO' "$O/temoin-c6.txt" | sed 's/^/      /'
+  | rm -rf "$C"
+  |
+  | echo
+  | echo "── (5d) LA RECIPROQUE : CHAQUE BRANCHE AFFAIBLIE ⇒ SON MUTANT SORT VERT (copie jetable) ──"
+  | echo "  (un mutant qui rougit prouve mutant ⇒ rouge ; ⛔ que la branche est gardee. Ici on AFFAIBLIT"
+  | echo "   la branche dans une copie de la gate : si le mutant sort rc=0, c'est bien CETTE branche qui le voit.)"
+  | affaiblir() {  # $1 etiquette, $2 mutant, $3 ancien (litteral python), $4 nouveau
+  |   local C="$O/copie-$1"; copie "$C"
+  |   python3 - "$C/$G" "$3" "$4" <<'PY'
+  | import sys
+  | p, a, n = sys.argv[1], sys.argv[2].encode().decode("unicode_escape"), sys.argv[3].encode().decode("unicode_escape")
+  | s = open(p, encoding="utf-8").read()
+  | assert s.count(a) == 1, "ancre absente ou multiple : %r" % a[:60]
+  | open(p, "w", encoding="utf-8").write(s.replace(a, n))
+  | PY
+  |   [ $? -eq 0 ] || { echo "  $1 : ⛔ affaiblissement NON APPLIQUE"; rm -rf "$C"; return; }
+  |   python3 "$C/$G" > "$O/aff-$1-sans.txt" 2>&1; local r0=$?
+  |   python3 "$C/$G" --mutant "$2" > "$O/aff-$1-m$2.txt" 2>&1; local r1=$?
+  |   printf '  %-26s gate affaiblie sans mutant rc=%s (%s) · mutant %-2s rc=%s (%s)\n' "$1" "$r0" \
+  |     "$(grep -E '^BILAN' "$O/aff-$1-sans.txt" | sed 's/BILAN : //')" "$2" "$r1" \
+  |     "$(grep -E '^BILAN' "$O/aff-$1-m$2.txt" | sed 's/BILAN : //')"
+  |   rm -rf "$C"
+  | }
+  | affaiblir netscape-forme 21 'elif len(blocs) == 2 and len(blocs[1]) == 3 \\\n                        and blocs[1][0] == 0x01:' 'elif True:'
+  | affaiblir controle-forme 22 'if len(blocs) == 1 and len(blocs[0]) == 4:' 'if True:'
+  | affaiblir image-dimensions 23 'grand = max([g["ecran"]] + g["images"], key=max)' 'grand = g["ecran"]'
+  | affaiblir etiquette-inconnue 24 '            else:\n                g["intrus"].append(NOMS_EXTENSIONS_GIF.get(' '            elif etiquette not in NOMS_EXTENSIONS_GIF:\n                pass\n            else:\n                g["intrus"].append(NOMS_EXTENSIONS_GIF.get('
+  | affaiblir zero-image 25 'if not g["images"]:\n        return None, "0 image avant le trailer"' 'if False:\n        return None, "0 image avant le trailer"'
+  | affaiblir octet-incoherent 26 'return None, "octet de tete incoherent 0x%02X a l\x27octet %d" % (tete, i)' 'i += 1'
+  | affaiblir ni-jpeg-ni-gif 27 '    if brut[:6] not in MAGIE_GIF:\n        return ("%s' '    if brut[:6] not in MAGIE_GIF:\n        return None, "ACCEPTE"\n        return ("%s'
+  | affaiblir poids-c6 6 '        (f6 if len(b) >= PLAFOND_PHOTO else d6).append(\n            "%s %d o" % (os.path.basename(rel)[:16], len(b)))\n' '        d6.append("affaibli")\n'
+  |
+  | echo "EMPREINTE desknode APRES (contenu) : $( (git ls-files -z | xargs -0 sha256sum) | sha256sum | cut -c1-16) · git status : $(git status --porcelain | sha256sum | cut -c1-16)"
+  | echo "=== fin $(date -Iseconds) ==="

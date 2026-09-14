@@ -1,0 +1,424 @@
+==============================================================================
+dn8-9 / T1 — LA RECETTE DES TROIS GIF, ET CE QUE L'ŒIL EN A LU
+  Jouee le 2026-09-14 de 10:28:53 a 10:37:38 (+02:00), sous le scratchpad de
+  session (⛔ jamais dans un arbre), PENDANT la passe T0 : `nice`, aucune
+  ecriture d'arbre — les empreintes de fin de T0 egalent celles du debut.
+  Versee ici APRES T0.
+  ⚠️ RECETTE REJOUABLE PAR L'OWNER SEUL, ET C'EST DECLARE, ⛔ PAS MASQUE :
+     la source est `compagnon_project:docs/dashboard_desktop_project/desknode.mp4`,
+     un fichier NON SUIVI du cockpit (depot prive), ⛔ distribue nulle part.
+     Un inconnu peut lire la recette ; il ne peut pas la rejouer.
+==============================================================================
+
+── 1. LA SOURCE, RELUE AVANT LA PREMIERE EXTRACTION (AC8.9.1) ────────────────
+  2026-09-14T10:28:53+02:00 — avant la premiere planche :
+    sha256  da5f4a087845b6899a386a4e59034e6b99d1b0f17a9d93eb1ad1fbee4aff1bd8
+    ⇒ EGAL a la valeur du dossier (da5f4a08…bd8) : c'est le montage mesure,
+      l'extraction est autorisee.
+    taille  29 267 308 o · mtime 2026-09-13 22:53:08 +0200 (= 20:53:08 UTC,
+            soit 64 min AVANT la mise en ligne relevee a 21:57 UTC)
+    `git -C cockpit status --porcelain -- docs/dashboard_desktop_project/` :
+            `?? docs/dashboard_desktop_project/desknode.mp4` (NON SUIVI)
+    ffprobe : video h264 1920x1080 50/1 i/s, 3 892 images, 77,840 s ;
+              audio aac 48 kHz stereo, 77,845 s ; conteneur 77,845 s,
+              3 007 752 bit/s
+  2026-09-14T10:37:24+02:00 — relu une 2e fois par la recette elle-meme (§ 5),
+    qui s'ARRETE (rc=4) si le sha256 differe : IDENTIQUE.
+  ⚠️ CE QUE CE RELEVE NE PROUVE PAS : que le sha256 a ete relu par l'owner
+     AVANT L'ENVOI. Ce geste n'est ⛔ pas observable d'ici ; il est DECLARE au
+     tracker et au ledger, ⛔ jamais coche. Le seul indice : la duree publique
+     (78 s, `T2`) est coherente avec 77,845 s, et le fichier n'a pas ete
+     modifie depuis 20:53 UTC le 2026-09-13.
+  ⚠️ ffmpeg 6.1.1-3ubuntu5 (paquet Ubuntu). La recette est DETERMINISTE sur
+     cette version (§ 5, deux tirs, octets identiques) ; ⛔ rien n'est dit
+     d'une autre version.
+
+── 2. LES BORNES, AFFINEES DANS LES FENETRES ARBITREES ───────────────────────
+  Planches au scratchpad (`t1/planche-*.jpg` a 2 i/s puis 1 i/s ;
+  `t1/fine-*.jpg` a 8 i/s, cadrees), REGARDEES :
+  (a) toucher — fenetre arbitree ~8–18 s
+      9,5 s : etat Ambient, 0 doigt · 10,0 s : le doigt entre · 11,875 s :
+      bascule Ambient ⇒ Active · 12,75–13,25 s : doigt sur la cellule CPU ·
+      13,5 s : vue detail CPU (courbe) · 14,125 s : le doigt revient.
+      ⇒ BORNES RETENUES : 9,875 s ⇒ 13,875 s (4 s) : le doigt, les deux
+        touchers et la vue detail tiennent dans l'extrait.
+  (b) reseau en direct — fenetre arbitree ~44–64 s
+      43,0–45,0 s : vue detail AMBIANCE · 46,0 s : retour Active · 46,5–48,75 s :
+      RESEAU ↓ 0,0 Mb/s · 48,875 s : ↓ 1889,6 · 49,125 s : ↓ 2046,6 ·
+      50,0 s : ↓ 2280,2 · 50,875 s : ↓ 1893,3 · 52 s et apres : redescend.
+      ⇒ BORNES RETENUES : 47,5 s ⇒ 51,5 s (4 s) : ~1,4 s a zero, puis le saut.
+  (c) courbe reseau — fenetre arbitree ~68–77 s
+      68,5–69,375 s : doigt sur la cellule RESEAU · 69,5 s : transition ·
+      69,625–77,125 s : vue detail RESEAU stable, courbe, MAX 5,5 Gb/s ·
+      77,25 s : le doigt revient · 77,75 s : retour a la vue Active.
+      ⇒ BORNES RETENUES : 69,625 s ⇒ 73,625 s (4 s) : la vue detail seule.
+
+── 3. LE CADRAGE, PROPRE A CHAQUE EXTRAIT ────────────────────────────────────
+  Lu sur des images plein cadre quadrillees tous les 120 px (`t1/grille-*.png`) :
+  (a) toucher : la dalle est PETITE et centree (x ≈ 640–1380, y ≈ 60–880)
+      ⇒ crop 940x940 a (540, 0).
+  (b)(c) reseau et courbe : la dalle est PLEIN CADRE (x ≈ 460–1320, y ≈ 20–1040)
+      ⇒ crop 1080x1080 a (350, 0).
+  Puis, pour les trois : mise a l'echelle 320 px de large (lanczos).
+
+── 4. LES REGLAGES — LE REPERE DEPASSAIT LE PLAFOND, LES TENTATIVES SONT RELEVEES
+  Repere du dossier : 4 s · 320 px · 8 i/s · 64 couleurs · sans tramage.
+  1er tir de la recette (`essai1`, 10:33:01) avec ce repere et le cadrage § 3 :
+      toucher 873 108 o · reseau 757 431 o · courbe 722 729 o
+      ⇒ ⛔ LES TROIS DEPASSENT 600 000 o. Le repere du CC (559 728 a
+        567 736 o) a ete mesure sur d'AUTRES extraits et un autre cadrage ;
+        ⛔ il ne se transpose pas. ⇒ reduction, ⛔ JAMAIS du plafond.
+  Tentatives relevees (poids en octets ; ⛔ aucune n'est committee) :
+      extrait  reglage                                         poids
+      reseau   8 i/s · 64 c · echelle bicubic (defaut)         731 342
+      reseau   8 i/s · 64 c · echelle bilinear                 667 656
+      reseau   8 i/s · 64 c · echelle area                     690 795
+      reseau   8 i/s · 64 c · lanczos · palette stats=diff     745 595
+      reseau   8 i/s · 64 c · bicubic · palette stats=diff     686 170
+      reseau   8 i/s · 64 c · depart 44 s, crop x=420          765 380
+      reseau   8 i/s · 64 c · lanczos + debruitage hqdn3d      612 272
+      reseau   8 i/s · 64 c · lanczos + hqdn3d fort            541 854
+      reseau   8 i/s · 48 c · lanczos                          666 019
+      reseau   8 i/s · 32 c · lanczos                          540 087
+      reseau   6 i/s · 64 c · lanczos                          633 550
+      reseau   6 i/s · 48 c · lanczos                          542 301  ← retenu
+      toucher  8 i/s · 64 c · lanczos + hqdn3d                 768 852
+      toucher  8 i/s · 32 c · crop 940                         605 684
+      toucher  8 i/s · 48 c · crop 940                         707 202
+      toucher  6 i/s · 32 c · crop 940                         478 238
+      toucher  8 i/s · 64 c · crop 1080                        848 190
+      toucher  8 i/s · 32 c · crop 1080                        596 891
+      toucher  6 i/s · 64 c · crop 940                         671 174
+      toucher  6 i/s · 48 c · crop 940                         551 967  ← retenu
+      courbe   8 i/s · 64 c · lanczos + hqdn3d                 557 305
+      courbe   8 i/s · 48 c                                    634 267
+      courbe   8 i/s · 32 c                                    510 022
+      courbe   6 i/s · 48 c                                    520 906  ← retenu
+  ⇒ REGLAGE RETENU, LE MEME POUR LES TROIS : 4 s · 320 px · 6 i/s · 48
+    couleurs · sans tramage · palette generee PAR EXTRAIT. Motifs :
+    · seuls les leviers DECLARES par le dossier bougent (cadence 8 ⇒ 6,
+      couleurs 64 ⇒ 48), la duree reste 4 s ;
+    · ⛔ le debruitage n'est PAS retenu : il tenait le plafond a 8 i/s, mais
+      c'est un filtre de plus, hors des leviers declares ;
+    · 8 i/s · 32 couleurs tenait pour reseau et courbe, ⛔ pas pour toucher
+      (605 684 o) : un reglage UNIQUE est une recette plus simple a relire ;
+    · marges : toucher 48 033 o (8,0 %), reseau 57 699 o (9,6 %), courbe
+      79 094 o (13,2 %) — contre ~5 % au repere du CC.
+    ⚠️ Lisibilite comparee a l'œil sur une meme image (`essais/cmp-*.png`) :
+       48 c · 6 i/s et 32 c · 8 i/s rendent tous deux les chiffres lisibles.
+
+── 5. LA RECETTE ET SA SORTIE (`bash t1.sh final`, 10:37:24 ; script au § 8) ──
+  Commandes `ffmpeg` EXACTES, imprimees par le script AVANT d'etre jouees
+  (le chemin de sortie `final/` est au scratchpad) :
+  === dn8-9 / T1 — debut 2026-09-14T10:37:24+02:00 ===
+  ── (0) LA SOURCE, RELUE AVANT LA PREMIERE EXTRACTION ──
+    sha256  : da5f4a087845b6899a386a4e59034e6b99d1b0f17a9d93eb1ad1fbee4aff1bd8
+    attendu : da5f4a087845b6899a386a4e59034e6b99d1b0f17a9d93eb1ad1fbee4aff1bd8
+    ⇒ IDENTIQUE : c'est le montage mesure
+    taille  : 29267308 o
+    ffprobe : codec_name=h264|width=1920|height=1080|r_frame_rate=50/1 codec_name=aac|r_frame_rate=0/0 duration=77.845000 
+
+  ── 2026-08-30-1853-desknode-toucher — debut 9.875 s · duree 4 s · crop 940:940:540:0 ──
+    palette : ffmpeg -nostdin -v error -ss 9.875 -t 4 -i /home/nasbarok/projects/compagnon_project/docs/dashboard_desktop_project/desknode.mp4 -an -vf crop=940:940:540:0,fps=6,scale=320:-1:flags=lanczos,palettegen=max_colors=48:stats_mode=full -y final/2026-08-30-1853-desknode-toucher.palette.png
+      rc=0
+    gif     : ffmpeg -nostdin -v error -ss 9.875 -t 4 -i /home/nasbarok/projects/compagnon_project/docs/dashboard_desktop_project/desknode.mp4 -i final/2026-08-30-1853-desknode-toucher.palette.png -an -lavfi [0:v]crop=940:940:540:0,fps=6,scale=320:-1:flags=lanczos[v];[v][1:v]paletteuse=dither=none -loop 0 -y final/2026-08-30-1853-desknode-toucher.gif
+      rc=0
+    poids   : 551967 o  (plafond strict : 600000)
+    sha256  : 0fd75bb969764414db53c2600da5757bcd1c6d7fda86e5acbebeaa8e2292c687
+    blocs   : 2026-08-30-1853-desknode-toucher.gif 551967 GIF89a (320, 320) images 24 tailles [(320, 320)] F9 24 NETSCAPE 1 intrus [] fin 551966 apres_trailer 0
+    ffprobe : codec_name=gif|codec_type=video|width=320|height=320|nb_read_frames=24 
+
+  ── 2026-08-30-1910-desknode-reseau-en-direct — debut 47.5 s · duree 4 s · crop 1080:1080:350:0 ──
+    palette : ffmpeg -nostdin -v error -ss 47.5 -t 4 -i /home/nasbarok/projects/compagnon_project/docs/dashboard_desktop_project/desknode.mp4 -an -vf crop=1080:1080:350:0,fps=6,scale=320:-1:flags=lanczos,palettegen=max_colors=48:stats_mode=full -y final/2026-08-30-1910-desknode-reseau-en-direct.palette.png
+      rc=0
+    gif     : ffmpeg -nostdin -v error -ss 47.5 -t 4 -i /home/nasbarok/projects/compagnon_project/docs/dashboard_desktop_project/desknode.mp4 -i final/2026-08-30-1910-desknode-reseau-en-direct.palette.png -an -lavfi [0:v]crop=1080:1080:350:0,fps=6,scale=320:-1:flags=lanczos[v];[v][1:v]paletteuse=dither=none -loop 0 -y final/2026-08-30-1910-desknode-reseau-en-direct.gif
+      rc=0
+    poids   : 542301 o  (plafond strict : 600000)
+    sha256  : 617e4967f62bc1b304e37d8a1f06f28f9966fbce874bbb9aea24b2a7c01477c1
+    blocs   : 2026-08-30-1910-desknode-reseau-en-direct.gif 542301 GIF89a (320, 320) images 24 tailles [(320, 320)] F9 24 NETSCAPE 1 intrus [] fin 542300 apres_trailer 0
+    ffprobe : codec_name=gif|codec_type=video|width=320|height=320|nb_read_frames=24 
+
+  ── 2026-08-30-1911-desknode-courbe-reseau — debut 69.625 s · duree 4 s · crop 1080:1080:350:0 ──
+    palette : ffmpeg -nostdin -v error -ss 69.625 -t 4 -i /home/nasbarok/projects/compagnon_project/docs/dashboard_desktop_project/desknode.mp4 -an -vf crop=1080:1080:350:0,fps=6,scale=320:-1:flags=lanczos,palettegen=max_colors=48:stats_mode=full -y final/2026-08-30-1911-desknode-courbe-reseau.palette.png
+      rc=0
+    gif     : ffmpeg -nostdin -v error -ss 69.625 -t 4 -i /home/nasbarok/projects/compagnon_project/docs/dashboard_desktop_project/desknode.mp4 -i final/2026-08-30-1911-desknode-courbe-reseau.palette.png -an -lavfi [0:v]crop=1080:1080:350:0,fps=6,scale=320:-1:flags=lanczos[v];[v][1:v]paletteuse=dither=none -loop 0 -y final/2026-08-30-1911-desknode-courbe-reseau.gif
+      rc=0
+    poids   : 520906 o  (plafond strict : 600000)
+    sha256  : e7a3e69ff3ae651648fbc50b62d147c7c858a8ec8fca314095808a4a9c7cd87d
+    blocs   : 2026-08-30-1911-desknode-courbe-reseau.gif 520906 GIF89a (320, 320) images 24 tailles [(320, 320)] F9 24 NETSCAPE 1 intrus [] fin 520905 apres_trailer 0
+    ffprobe : codec_name=gif|codec_type=video|width=320|height=320|nb_read_frames=24 
+
+  === fin 2026-09-14T10:37:31+02:00 ===
+
+  ⇒ REJOUEE a 10:37:31 dans un autre repertoire (`bash t1.sh rejeu`) : les trois
+    GIF sont IDENTIQUES OCTET POUR OCTET (`cmp` rc=0, memes sha256). La recette
+    est DETERMINISTE sur ce poste et cette version de ffmpeg.
+  ⇒ Les trois fichiers de `docs/demo/` sont une COPIE de `final/` (10:53:42),
+    sha256 relus dans l'arbre :
+      0fd75bb969764414db53c2600da5757bcd1c6d7fda86e5acbebeaa8e2292c687  docs/demo/2026-08-30-1853-desknode-toucher.gif           551 967 o
+      617e4967f62bc1b304e37d8a1f06f28f9966fbce874bbb9aea24b2a7c01477c1  docs/demo/2026-08-30-1910-desknode-reseau-en-direct.gif  542 301 o
+      e7a3e69ff3ae651648fbc50b62d147c7c858a8ec8fca314095808a4a9c7cd87d  docs/demo/2026-08-30-1911-desknode-courbe-reseau.gif     520 906 o
+    ⇒ SOMME 1 615 174 o, chacun STRICTEMENT < 600 000 o.
+  ⚠️ `essai1` (10:33:01, § 4) est le MEME script avec `fps=8`,
+     `max_colors=64` et une planche 8x4 : la seule difference est la ligne
+     de reglage, changee apres le constat de depassement.
+
+── 6. LA STRUCTURE DE CHAQUE GIF, LUE BLOC PAR BLOC ──────────────────────────
+  Lecteur : `brouillon_gif.py` (verse au § 8) — le brouillon du lecteur que
+  `(c5)` porte desormais ; la gate AMENDEE relit les memes fichiers dans `T3`.
+  ⚠️ Temoin du lecteur, ⛔ ecrit par ffmpeg : les GIF de test de LVGL (dans une
+     copie de `managed_components/`, hors depot) sortent avec leurs extensions
+     de commentaire NOMMEES (trois `totoro_*.gif` : 15 `0xFE` chacun ;
+     `bulb.gif` : 1) et 1 `NETSCAPE2.0` ; les deux `totoro_one_frame*.gif` : 0.
+                                        toucher    reseau     courbe
+    version                             GIF89a     GIF89a     GIF89a
+    ecran logique                       320x320    320x320    320x320
+    images                              24         24         24
+    dimensions des images               320x320    320x320    320x320
+    blocs de controle graphique 0xF9    24         24         24
+    extensions NETSCAPE2.0              1          1          1
+    extensions de commentaire 0xFE      0          0          0
+    autre extension (liste noire)       0          0          0
+    trailer 0x3B a l'octet              551966     542300     520905
+    octets APRES le trailer             0          0          0
+    ffprobe : codec gif, 320x320, 24 images lues (les trois)
+    ⇒ MUETS PAR CONSTRUCTION : le format n'a pas de piste son, et la recette
+      porte `-an` ; `ffprobe` ne rend AUCUN flux audio.
+
+── 7. CE QUE L'ŒIL A LU SUR DES IMAGES EXTRAITES DES GIF ─────────────────────
+  Images extraites DU GIF (⛔ de la source), agrandies x2 au plus proche voisin :
+  `final/<nom>.image00.png` (1re image) et `.image23.png` (24e), plus la planche
+  6x4 des 24 images (`final/<nom>.planche.png`). REGARDEES par l'agent le
+  2026-09-14 entre 10:38 et 10:40. Chiffres RECOPIES tels que la dalle les
+  ecrit (virgule decimale, interface francaise) :
+
+  (a) 2026-08-30-1853-desknode-toucher.gif
+      image 00 (etat Ambient) : horloge **18:53** · « DIM. 30 AOÛT » ·
+        CPU 20,4 % / 2,8 GHz / 53,5 °C · GPU 1,0 % / 67,0 °C / 60 W ·
+        RAM 49,0 % (15,6 / 31,9 Go) · reseau 0,2 Mb/s / 3,6 Mb/s ·
+        disque 11,4 Mo/s / 1313 tr/min · ambiance 26,5 °C / 50,7 %
+      images 13-15 (etat Active, 6 cellules nommees CPU, GPU, RAM, RÉSEAU,
+        DISQUE, AMBIANCE) : horloge 18:53 · CPU 18,0 % / 2,3 GHz / 52,3 °C ·
+        GPU 6,0 % / 66,0 °C / 60 W · « MENU » en bas a gauche ; images 18-20 :
+        le doigt sur la cellule CPU ; image 22 : la vue detail CPU s'ouvre
+      image 23 (vue detail CPU) : « CPU » · 17,2 % · 2,4 GHz · c.max 44,6 % ·
+        52,3 °C · courbe · « source : liaison PC (dn_link) … cpu » ·
+        « état : VIVANTE » · « régime : RÉELLE » · MIN 11,6 % · MAX 83,0 %
+      ⇒ HHMM = **1853**, lu sur la dalle dans l'extrait (images 00-03 avant
+        le doigt, 13-17 en etat Active).
+
+  (b) 2026-08-30-1910-desknode-reseau-en-direct.gif
+      image 00 : horloge **19:10** · « DIM. 30 AOÛT » · CPU 7,0 % / 2,4 GHz /
+        41,5 °C · GPU 0,0 % / 45,0 °C / 50 W · RAM 55,2 % (17,6 / 31,9 Go) ·
+        RÉSEAU ↓ 0,0 Mb/s ↑ 0,0 Mb/s · DISQUE 0,0 Mo/s / 981 tr/min ·
+        AMBIANCE 24,6 °C / 54,9 %
+      planche, RÉSEAU ↓ dans l'ordre : 0,0 (images 00-07) · 1889,6 · 2046,6 ·
+        2280,2 · 1893,3 Mb/s ; ↑ : 0,0 · 25,5 · 39,2 · 41,6 · 48,0 Mb/s
+      image 23 : horloge 19:10 · CPU 17,3 % / 3,2 GHz / 44,5 °C · GPU 2,0 % /
+        45,0 °C / 52 W · RAM 56,8 % (18,1 / 31,9 Go) · RÉSEAU ↓ 1893,3 Mb/s
+        ↑ 48,0 Mb/s · DISQUE 0,0 Mo/s / 1085 tr/min · AMBIANCE 24,7 °C / 54,2 %
+      ⇒ HHMM = **1910**, lu sur la dalle dans l'extrait (les 24 images).
+      ⚠️ ↓ est la grandeur DESCENDANTE : `firmware/desknode/main/dn_ui.c`,
+         cellule RÉSEAU, « le descendant vivait en grandeur 0 » et la
+         grandeur 0 porte `.icone = LV_SYMBOL_DOWN` ⇒ la legende de la vitrine
+         dit « download ».
+
+  (c) 2026-08-30-1911-desknode-courbe-reseau.gif
+      image 00 : « RÉSEAU » · ↓ 1,8 Mb/s ↑ 84,8 Mb/s · courbe · « source :
+        liaison PC (dn_link) … net » · « état : VIVANTE » · « régime :
+        RÉELLE » · « MIN/MAX (les DEUX courbes) sur : 50 min » ·
+        MIN 0,0 Mb/s · MAX 5,5 Gb/s
+      planche, ↓/↑ dans l'ordre : 1,8/84,8 · 1,1/1,1 · 1,0/0,8 · 0,8/0,6 ·
+        0,3/0,2 Mb/s ; MIN 0,0 Mb/s et MAX 5,5 Gb/s sur les 24 images
+      image 23 : ↓ 0,3 Mb/s ↑ 0,2 Mb/s · MIN 0,0 Mb/s · MAX 5,5 Gb/s
+      ⛔ AUCUNE HORLOGE sur les 24 images : la vue detail n'en affiche pas.
+      ⇒ HHMM = **1911**, DECLARE ⛔ lu dans l'extrait : pris sur l'image la
+        plus proche qui affiche l'horloge, dans le MEME plan (bandes du haut,
+        `t1/horloge-courbe-avant.png` et `-apres.png`, 8 i/s) :
+          · AVANT l'extrait : 67,875 s ⇒ « 19:11 » (dernière image lisible ;
+            de 68,0 a 69,375 s le doigt couvre l'horloge) — a 1,75 s du debut ;
+          · APRES l'extrait : 77,75 s ⇒ « 19:11 » — a 4,125 s de la fin.
+        Les deux voisines disent 19:11.
+      🔴 ET CE N'EST PAS 19:10 : le CC du 2026-09-13 a lu le tournage « 18:52 ⇒
+         19:10 ». L'horloge lit **19:11 des 67 s** (bande `pile-haut-b.png` :
+         19:10 a 48, 50, 64 et 66 s ; 19:11 a 67 et 68 s). Pourquoi le CC a
+         lu 19:10 comme borne haute n'est ⛔ pas etabli ici. ⇒ le tournage
+         court au moins de 18:52 a 19:11.
+
+── 8. LES SCRIPTS (tels que joues) ───────────────────────────────────────────
+  (a) `t1.sh` :
+  | #!/usr/bin/env bash
+  | # dn8-9 / T1 — la recette des trois GIF. Sorties sous le scratchpad ; ⛔ rien dans un arbre.
+  | #   t1.sh <sortie>   (sortie = repertoire neuf du scratchpad)
+  | # ⚠️ La source vit dans le cockpit, NON SUIVIE, et ⛔ n'est distribuee nulle part :
+  | #    cette recette n'est rejouable QUE par l'owner.
+  | set -u
+  | SRC=/home/nasbarok/projects/compagnon_project/docs/dashboard_desktop_project/desknode.mp4
+  | SHA_ATTENDU=da5f4a087845b6899a386a4e59034e6b99d1b0f17a9d93eb1ad1fbee4aff1bd8
+  | LECTEUR=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/ba75ee1d-8eb1-407f-8a65-b318463cbc01/scratchpad/dn89/brouillon_gif.py
+  | O="$1"; mkdir -p "$O" || exit 9
+  | echo "=== dn8-9 / T1 — debut $(date -Iseconds) ==="
+  | echo "── (0) LA SOURCE, RELUE AVANT LA PREMIERE EXTRACTION ──"
+  | SHA=$(sha256sum "$SRC" | cut -d' ' -f1)
+  | echo "  sha256  : $SHA"
+  | echo "  attendu : $SHA_ATTENDU"
+  | if [ "$SHA" != "$SHA_ATTENDU" ]; then
+  |   echo "  ⛔ SOURCE ALTEREE : AUCUNE extraction (AC8.9.1) — arret"; exit 4
+  | fi
+  | echo "  ⇒ IDENTIQUE : c'est le montage mesure"
+  | echo "  taille  : $(stat -c '%s o' "$SRC")"
+  | echo "  ffprobe : $(ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate -of compact=p=0 "$SRC" | tr '\n' ' ')"
+  |
+  | # nom | debut (s) | duree (s) | crop (w:h:x:y)
+  | EXTRAITS=(
+  |   "2026-08-30-1853-desknode-toucher|9.875|4|940:940:540:0"
+  |   "2026-08-30-1910-desknode-reseau-en-direct|47.5|4|1080:1080:350:0"
+  |   "2026-08-30-1911-desknode-courbe-reseau|69.625|4|1080:1080:350:0"
+  | )
+  | for e in "${EXTRAITS[@]}"; do
+  |   IFS='|' read -r NOM DEB DUR CROP <<< "$e"
+  |   PAL="$O/$NOM.palette.png"; GIF="$O/$NOM.gif"
+  |   echo
+  |   echo "── $NOM — debut $DEB s · duree $DUR s · crop $CROP ──"
+  |   C1=(ffmpeg -nostdin -v error -ss "$DEB" -t "$DUR" -i "$SRC" -an
+  |       -vf "crop=$CROP,fps=6,scale=320:-1:flags=lanczos,palettegen=max_colors=48:stats_mode=full"
+  |       -y "$PAL")
+  |   C2=(ffmpeg -nostdin -v error -ss "$DEB" -t "$DUR" -i "$SRC" -i "$PAL" -an
+  |       -lavfi "[0:v]crop=$CROP,fps=6,scale=320:-1:flags=lanczos[v];[v][1:v]paletteuse=dither=none"
+  |       -loop 0 -y "$GIF")
+  |   echo "  palette : ${C1[*]}"
+  |   "${C1[@]}"; echo "    rc=$?"
+  |   echo "  gif     : ${C2[*]}"
+  |   "${C2[@]}"; echo "    rc=$?"
+  |   echo "  poids   : $(stat -c '%s' "$GIF") o  (plafond strict : 600000)"
+  |   echo "  sha256  : $(sha256sum "$GIF" | cut -d' ' -f1)"
+  |   echo "  blocs   : $(python3 "$LECTEUR" "$GIF" | sed "s#$O/##")"
+  |   echo "  ffprobe : $(ffprobe -v error -count_frames -show_entries stream=codec_type,codec_name,width,height,nb_read_frames -of compact=p=0 "$GIF" | tr '\n' ' ')"
+  |   # Les images DU GIF (⛔ de la source) : planche 6x4 a la taille native, et une image a x2.
+  |   ffmpeg -nostdin -v error -i "$GIF" -vf "tile=6x4" -frames:v 1 -y "$O/$NOM.planche.png"
+  |   ffmpeg -nostdin -v error -i "$GIF" -vf "select=eq(n\,23),scale=640:-1:flags=neighbor" -frames:v 1 -y "$O/$NOM.image23.png"
+  |   ffmpeg -nostdin -v error -i "$GIF" -vf "select=eq(n\,0),scale=640:-1:flags=neighbor" -frames:v 1 -y "$O/$NOM.image00.png"
+  | done
+  | echo
+  | echo "=== fin $(date -Iseconds) ==="
+
+  (b) `brouillon_gif.py` (le lecteur de structure du § 6) :
+  | #!/usr/bin/env python3
+  | # brouillon dn8-9 — lecteur de blocs GIF (sera recopie dans tools/verif_vitrine_dn84.py)
+  | import struct
+  | import sys
+  |
+  | PIXELS_MAX = 1600
+  | MAGIE_GIF = (b"GIF87a", b"GIF89a")
+  | APPLI_GIF_PERMISE = b"NETSCAPE2.0"
+  |
+  |
+  | def structure_gif(brut):
+  |     if brut[:6] not in MAGIE_GIF or len(brut) < 13:
+  |         return None
+  |     w, h, packe = struct.unpack("<HHB", brut[6:11])
+  |     i = 13 + (3 * 2 ** ((packe & 7) + 1) if packe & 0x80 else 0)
+  |     info = {"version": brut[:6].decode("ascii"), "ecran": (w, h),
+  |             "images": [], "controles": 0, "netscape": 0, "intrus": [],
+  |             "debut_blocs": i, "fin": None}
+  |
+  |     def sous_blocs(j):
+  |         blocs = []
+  |         while j < len(brut):
+  |             n = brut[j]
+  |             j += 1
+  |             if n == 0:
+  |                 return j, blocs
+  |             if j + n > len(brut):
+  |                 return None, blocs
+  |             blocs.append(brut[j:j + n])
+  |             j += n
+  |         return None, blocs
+  |
+  |     while True:
+  |         if i >= len(brut):
+  |             return None
+  |         b = brut[i]
+  |         if b == 0x3B:
+  |             info["fin"] = i
+  |             break
+  |         if b == 0x2C:
+  |             if i + 11 > len(brut):
+  |                 return None
+  |             _x, _y, iw, ih, p = struct.unpack("<HHHHB", brut[i + 1:i + 10])
+  |             i += 10 + (3 * 2 ** ((p & 7) + 1) if p & 0x80 else 0)
+  |             i, _ = sous_blocs(i + 1)
+  |             if i is None:
+  |                 return None
+  |             info["images"].append((iw, ih))
+  |         elif b == 0x21:
+  |             if i + 2 > len(brut):
+  |                 return None
+  |             etiquette = brut[i + 1]
+  |             i, blocs = sous_blocs(i + 2)
+  |             if i is None:
+  |                 return None
+  |             if etiquette == 0xF9:
+  |                 info["controles"] += 1
+  |             elif etiquette == 0xFF and blocs and blocs[0] == APPLI_GIF_PERMISE:
+  |                 info["netscape"] += 1
+  |             elif etiquette == 0xFF:
+  |                 info["intrus"].append("application %r" % (blocs[0] if blocs else b"",))
+  |             elif etiquette == 0xFE:
+  |                 info["intrus"].append("commentaire 0xFE")
+  |             elif etiquette == 0x01:
+  |                 info["intrus"].append("texte brut 0x01")
+  |             else:
+  |                 info["intrus"].append("inconnue 0x%02X" % etiquette)
+  |         else:
+  |             return None
+  |     if not info["images"]:
+  |         return None
+  |     return info
+  |
+  |
+  | if __name__ == "__main__":
+  |     for p in sys.argv[1:]:
+  |         b = open(p, "rb").read()
+  |         g = structure_gif(b)
+  |         if g is None:
+  |             print(p, "ILLISIBLE")
+  |             continue
+  |         print(p, len(b), g["version"], g["ecran"], "images", len(g["images"]),
+  |               "tailles", sorted(set(g["images"])), "F9", g["controles"],
+  |               "NETSCAPE", g["netscape"], "intrus", g["intrus"],
+  |               "fin", g["fin"], "apres_trailer", len(b) - g["fin"] - 1)
+
+  (c) Les planches du § 2 et les bandes du § 7, une par commande (au scratchpad) :
+  | planche <nom> <debut> <duree> <fps> <tuiles> :
+  |   ffmpeg -nostdin -v error -threads 4 -ss <debut> -t <duree> -i <source>
+  |     -vf "fps=<fps>,scale=384:-1,drawtext=…%{pts\:hms\:<debut>}…,tile=<tuiles>" -frames:v 1 planche-<nom>.jpg
+  |   planche toucher 8 10 2 5x4 · planche reseau 44 20 1 5x4 · planche courbe 68 9.84 2 5x4
+  | fin <nom> <debut> 5 <crop> : meme forme, `crop=<crop>,fps=8,scale=240:-1`, tuiles 8x5
+  |   fin toucher 9.5 · fin reseau 46.5 · fin courbe 68.5 (crops du § 3)
+  | grilles : `-ss <t> -frames:v 1 -vf "drawgrid=w=120:h=120:t=2:c=yellow@0.5,scale=960:-1"`
+  |   t = 10.0 11.0 12.5 13.8 · 47.5 49.0 50.5 51.5 · 68.8 70.0 72.5 74.0
+  | bandes du haut : `-ss <t> -frames:v 1 -vf "crop=1080:220:420:0"`
+  |   t = 40 42 43 44.0 44.5 45.0 46.0 (pile-haut-a) · 48.0 50.0 64.0 66.0 67.0 68.0 77.6 (pile-haut-b)
+  | horloge de la courbe : `-ss 67.75 -t 2 -vf "crop=560:120:440:0,fps=8,…,tile=2x8"` et `-ss 77.25 … tile=2x3`
+
+── 9. CE QUE CE RELEVE ⛔ NE DIT PAS ─────────────────────────────────────────
+  - ⛔ Que la video EN LIGNE est ce montage. Le sha256 relu ici est celui du
+    fichier du cockpit le 2026-09-14 ; la relecture par l'owner AVANT L'ENVOI
+    (2026-09-13) n'est ⛔ pas observable — declaree au tracker et au ledger,
+    ⛔ cochee nulle part. Indices seulement : duree publique 78 s (`T2`) contre
+    77,845 s, fichier non modifie depuis 20:53 UTC le 2026-09-13.
+  - ⛔ La non-monetisation, ni l'absence de licence Creative Commons au
+    televersement : DECLAREES PAR L'OWNER, ⛔ observables d'une session non
+    authentifiee.
+  - ⛔ Qu'un inconnu lit les chiffres. Le verdict « lisible » est l'œil de
+    l'agent sur des images agrandies x2 ; GitHub affiche le GIF a 320 px, sa
+    taille native. Relu en revue, ⛔ garde par aucun controle.
+  - ⛔ Que la forme `AAAA-MM-JJ-HHMM-<slug>` de `docs/demo/` soit gardee :
+    convention DE FAIT, gardee par AUCUNE gate (`verif_photos_dn63.py` ne lit
+    que `docs/cablage/`).
+  - ⛔ Que la recette se rejoue a l'identique avec un autre ffmpeg que
+    6.1.1-3ubuntu5, ni ailleurs que chez l'owner (la source n'est pas
+    distribuee).
+  - ⛔ Que les bornes soient les « meilleures » : elles sont RETENUES dans les
+    fenetres arbitrees, sur des planches regardees, avec leurs motifs (§ 2).

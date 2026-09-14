@@ -1,0 +1,458 @@
+==============================================================================
+dn8-9 / T3 — LA GATE AMENDEE, SES MUTANTS, LES TEMOINS, LE RENDU GITHUB
+  Joue le 2026-09-14 de 11:11:31 a 11:11:37 (`t3.sh`), puis
+  `verif_campagne_dn56.py` DETACHE de 11:11:47 a 11:24:29 (+02:00), sur
+  l'arbre ECRIT (gate, vitrine, CHANGELOG, roadmap, GIF, T0/T1/T2), ⛔ avant
+  le tracker. Sorties sous le scratchpad, versees ici APRES.
+  ⚠️ C'est le TROISIEME tir de `t3.sh` : le § 0 dit pourquoi les deux premiers
+     ne comptent pas.
+==============================================================================
+
+── 0. ⚠️ INCIDENT DE MESURE, NOMME ET ⛔ PAS EFFACE ────────────────────────────
+  Un 1er tir de `t3.sh` (10:56:49 ⇒ 10:56:52) recevait son repertoire de
+  sortie en chemin RELATIF (`T3`), et le script fait `cd desknode` avant
+  d'ecrire. ⇒ les §(1)-(4) ont echoue a ecrire (« No such file »), puis
+  `copie()` a cree `desknode/T3/` par `mkdir -p` : **23 fichiers de temoins
+  ont ete ecrits DANS L'ARBRE desknode**, NON SUIVIS (`?? T3/`) — sorties de
+  gate, `premier.orig.gif`, `gate-base.py`, deux HTML de rendu. Les copies
+  jetables elles-memes ont ete creees puis supprimees sous `desknode/T3/`.
+  ⇒ a 10:57:16, `desknode/T3/` a ete DEPLACE au scratchpad
+    (`T3-tir-relatif-dans-l-arbre/`, 23 fichiers), `git status` relu
+    (plus de `T3/`), puis `t3.sh` rejoue avec un chemin ABSOLU (§ 1).
+  ⇒ empreinte des fichiers SUIVIS : `04ee6c97876e77e5` avant et apres les
+    deux tirs ; ⛔ aucun fichier suivi touche, ⛔ aucune gate ne tournait en
+    meme temps. Le tir fautif ne compte pour RIEN ci-dessous.
+  Lecon : un script de mesure qui fait `cd` recoit des chemins ABSOLUS.
+
+── 0 bis. ⚠️ LE LIBELLE DE (c5) FAISAIT 74 CARACTERES — VU PAR `dn56`, ⛔ PAR LA GATE
+  2e tir de `t3.sh` (10:57:16, chemin absolu) : tout VERT, 16/0, mutants
+  17-20 rouges. Puis `verif_campagne_dn56.py` (10:57:42 ⇒ 11:10:24, rc=0,
+  **8 OK / 0 KO**, 711 mutants) imprimait, dans son (c4) « la cle de campagne
+  reste lisible a colonne fixe » :
+      [hors portee] tools/verif_vitrine_dn84.py            1 libelle(s) >= 58 sur 17
+  ⇒ a `T0` : « 0 libelle(s) >= 58 sur 17 ». Le libelle amende « (c5) JPEG
+    (APP0 JFIF seul) ou GIF (0xF9, NETSCAPE2.0) lisibles, <= 1600 px » faisait
+    **74** caracteres, au-dela de la colonne de `dire()` (`LARGEUR_LIBELLE` =
+    58). dn84 est HORS de la portee de la cle ⇒ ⛔ aucun KO, ⛔ aucun compte ne
+    bouge : c'est EXACTEMENT le defaut qu'un « 8 OK / 0 KO » ne montre pas.
+  ⇒ a 11:11:31, libelle ramene a « (c5) JPEG (JFIF seul) ou GIF (liste
+    blanche), <= 1600 px » (**56** caracteres formate), avec un commentaire
+    qui le dit ; `t3.sh` et `verif_campagne_dn56.py` REJOUES en entier sur la
+    gate corrigee (§ 1, § 2). Les sorties des tirs perimes restent au
+    scratchpad (`T3-libelle-74/`, `T3-dn56-libelle-74.txt`).
+
+── 1. LE RELEVE (`bash t3.sh <absolu>/T3`, tel que joue ; script au § 5) ───────
+  ⚠️ Lecture du § (4) : « LES 16 AUTRES MUTANTS » du libelle imprime = les 16
+     mutants d'ORIGINE ; le 5 est deja au § (3), d'ou 15 lignes.
+
+  === dn8-9 / T3 — debut 2026-09-14T11:11:31+02:00 ===
+  EMPREINTE desknode AVANT (contenu) : 371d77a8a466a594
+  sha256 README.md + gate : 8c32abd36d250fbb 5cdd3f0f15acb958 
+
+  ── (1) LA GATE SUR L'ARBRE ECRIT ──
+    rc=0 · BILAN : 16 OK, 0 KO
+      [OK ] (c1) nom → photo → phrase → licences → materiel          l.1,3,5,7,9 — dans cet ordre
+      [OK ] (c3) ⛔ HTML brut, setext, lien de reference              0 construction hors de portee
+      [OK ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px 5 image(s) citee(s) · pixels 1600x1067 et 1067x1600 et 320x320 (GIF89a, 24 images, 1 NETSCAPE2.0) et 320x320 (GIF89a, 24 images, 1 NETSCAPE2.0) et 320x320 (GIF89a, 24 images, 1 NETSCAPE2.0) · ⛔ 0 APPn hors JFIF, 0 COM, 0 extension GIF hors liste blanche
+      [OK ] (c6) toute image citee existe, < 600000 o                2026-08-30-1804- 171807 o · 2026-08-30-1818- 206956 o · 2026-08-30-1853- 551967 o · 2026-08-30-1910- 542301 o · 2026-08-30-1911- 520906 o
+      [OK ] (c7) contexte apres la photo active, legende assumee     prototype · bare wiring · no enclosure · French
+      [OK ] (c14) chaque controle est vise par >= 1 mutant           16 controle(s) lu(s) a l'AST, 16 cible(s) declaree(s)
+      [OK ] (c15) chaque cible de mutant est un controle REEL        16 cible(s) confrontee(s)
+      [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent             20 mutant(s), 20 cible(s), cle a cle
+
+  ── (2) --liste-mutants ──
+       1  la photo passe APRES la phrase ⇒ l'ordre statue est inverse
+       2  ajoute « a **CPU** monitor » a la phrase ⇒ le message qu'on refuse, CASSE par du gras — seul le texte APLATI le voit
+       3  ajoute une balise `<img` COUPEE SUR DEUX LIGNES ⇒ du HTML que la gate ne lit pas, et dont le `>` n'est pas sur la ligne du `<`
+       4  gonfle la vitrine au-dela du plafond ⇒ ⛔ plus une vitrine
+       5  remplace la photo active par une version AVEC `APP1 Exif`
+       6  alourdit la photo de contexte au-dela du plafond
+       7  retire « French » de la legende ⇒ l'ecran francais n'est plus assume
+       8  fait demarrer l'ecran en francais ⇒ le defaut anglais disparait
+       9  retire la known issue des ~40 s a froid
+      10  deplace « not implemented » sur la ligne suivante de NVIDIA
+      11  casse le lien du journal ⇒ l'engineering log devient introuvable
+      12  plante le 1er motif de la table de dn415 ⇒ une occurrence sous un chemin que son manifeste cle
+      13  tronque la commande d'installation des modules ⇒ une vitrine qui fait installer la MOITIE de ce que l'agent importe
+      14  vide la cible du mutant 1 ⇒ un controle garde par ZERO mutant
+      15  declare dans `CIBLES` un controle INEXISTANT ⇒ une cible PERIMEE que « N rouges » ne voit pas
+      16  declare une cible pour un mutant qui N'EXISTE PAS
+      17  insere une EXTENSION DE COMMENTAIRE `21 FE` dans le 1er GIF cite ⇒ du texte hors pixels, que la liste blanche refuse
+      18  insere une extension d'APPLICATION ETRANGERE `XMP DataXMP` dans le 1er GIF cite ⇒ ⛔ pas la boucle NETSCAPE2.0
+      19  porte la LARGEUR DE L'ECRAN LOGIQUE du 1er GIF cite a PIXELS_MAX + 1 ⇒ grand cote au-dela du plafond
+      20  TRONQUE le 1er GIF cite juste AVANT son trailer 0x3B ⇒ une structure qui ne se termine pas
+
+  ── (3) LES MUTANTS DE (c5) : 5 (JPEG) ET 17-20 (GIF) — rc, BILAN, KO ──
+    mutant 5 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ 0-1804-desknode-etat-actif-gros-plan.jpg ⛔ porte APP1
+    mutant 17 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte extension de commentaire 0xFE
+    mutant 18 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte extension d'application 'XMP DataXMP'
+    mutant 19 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ ecran logique 1601x320, grand cote > 1600
+    mutant 20 : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ pas un GIF lisible (blocs/trailer 0x3B)
+
+  ── (4) LES 16 AUTRES MUTANTS — toujours rc=1 ──
+    mutant 1  rc=1 · KO : c1  · BILAN : 15 OK, 1 KO
+    mutant 2  rc=1 · KO : c2  · BILAN : 15 OK, 1 KO
+    mutant 3  rc=1 · KO : c3  · BILAN : 15 OK, 1 KO
+    mutant 4  rc=1 · KO : c4  · BILAN : 15 OK, 1 KO
+    mutant 6  rc=1 · KO : c6  · BILAN : 15 OK, 1 KO
+    mutant 7  rc=1 · KO : c7  · BILAN : 15 OK, 1 KO
+    mutant 8  rc=1 · KO : c8  · BILAN : 15 OK, 1 KO
+    mutant 9  rc=1 · KO : c9  · BILAN : 15 OK, 1 KO
+    mutant 10 rc=1 · KO : c10  · BILAN : 15 OK, 1 KO
+    mutant 11 rc=1 · KO : c11  · BILAN : 15 OK, 1 KO
+    mutant 12 rc=1 · KO : c12  · BILAN : 15 OK, 1 KO
+    mutant 13 rc=1 · KO : c13  · BILAN : 15 OK, 1 KO
+    mutant 14 rc=1 · KO : c14  · BILAN : 15 OK, 1 KO
+    mutant 15 rc=1 · KO : c15  · BILAN : 15 OK, 1 KO
+    mutant 16 rc=1 · KO : c16  · BILAN : 15 OK, 1 KO
+
+  ── (5) TEMOINS SUR COPIE JETABLE (⛔ jamais dans l'arbre) ──
+    (5a) ni JPEG ni GIF (PNG cite) : rc=1 · BILAN : 15 OK, 1 KO
+          [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ docs/demo/temoin-ni-jpeg-ni-gif.png ⛔ ni JPEG (SOI FF D8) ni GIF (GIF87a/GIF89a) : octets b'\x89PNG\r\n'
+    (5b) vitrine de T0 dans la copie : 0 ligne(s) .gif · sha256 5867e98c09711381 (base : 5867e98c09711381)
+         la gate AMENDEE sur la vitrine de T0 : rc=0 · BILAN : 16 OK, 0 KO
+         mutant 17 : rc=3 · BILAN : 0 · ⛔ MUTANT 17 NON EXERCE : la vitrine ne cite AUCUN GIF — la faute n'a nulle part ou etre replantee
+         mutant 18 : rc=3 · BILAN : 0 · ⛔ MUTANT 18 NON EXERCE : la vitrine ne cite AUCUN GIF — la faute n'a nulle part ou etre replantee
+         mutant 19 : rc=3 · BILAN : 0 · ⛔ MUTANT 19 NON EXERCE : la vitrine ne cite AUCUN GIF — la faute n'a nulle part ou etre replantee
+         mutant 20 : rc=3 · BILAN : 0 · ⛔ MUTANT 20 NON EXERCE : la vitrine ne cite AUCUN GIF — la faute n'a nulle part ou etre replantee
+    (5c) gate de BASE sur la vitrine de T0 : rc=0 · BILAN : 16 OK, 0 KO
+         mutant 5 sur la vitrine de T0 : base rc=1 [KO ] (c5) · amendee rc=1 [KO ] (c5) 
+         mutant 6 sur la vitrine de T0 : base rc=1 [KO ] (c6) · amendee rc=1 [KO ] (c6) 
+    (5d) 1er GIF cite : docs/demo/2026-08-30-1853-desknode-toucher.gif
+         texte-brut           rc=1 · BILAN : 15 OK, 1 KO
+              [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte extension de texte brut 0x01
+         etiquette-inconnue   rc=1 · BILAN : 15 OK, 1 KO
+              [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte extension inconnue 0x77
+         image-trop-large     rc=1 · BILAN : 15 OK, 1 KO
+              [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ image 1601x320, grand cote > 1600
+         tete-incoherente     rc=1 · BILAN : 15 OK, 1 KO
+              [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ pas un GIF lisible (blocs/trailer 0x3B)
+          source examples/libs/gif/bulb.gif · 17693 o · sha256 12928774865ca06d
+         gif-lvgl             rc=1 · BILAN : 15 OK, 1 KO
+              [KO ] (c5) JPEG (JFIF seul) ou GIF (liste blanche), <= 1600 px ⛔ emo/2026-08-30-1853-desknode-toucher.gif ⛔ porte extension de commentaire 0xFE
+    copies jetables SUPPRIMEES
+
+  ── (6) LE RENDU GITHUB DE LA VITRINE (POST /markdown, mode gfm, context nasbarok/desknode) ──
+    rc=0 · 11636 o de HTML
+    id="user-content-demo" : 0
+    ids user-content- (tous) : 0
+    <h2> Demo : <h2 dir="auto">Demo</h2>
+    <img> : 5 au total ; vers docs/demo/ :
+      src="docs/demo/2026-08-30-1853-desknode-toucher.gif"
+      src="docs/demo/2026-08-30-1910-desknode-reseau-en-direct.gif"
+      src="docs/demo/2026-08-30-1911-desknode-courbe-reseau.gif"
+    <a href="https://youtu.be/tcCF3vogwSU" : 1
+      <a href="https://youtu.be/tcCF3vogwSU" rel="nofollow">Watch the 78-second demo video on YouTube</a>
+    images Markdown : 5 · <img> rendus : 5
+    liens http Markdown : 2 · <a href="http…"> rendus hors images : 2
+    balises neutralisees (&lt; dans le HTML) : 1
+    ⚠️ POST /markdown n'emet PAS les ancres de titre (mesure dn8-7 T2 § 4) si le compte ci-dessus est 0 :
+       regle de slug confrontee aux ids que GitHub rend pour la vitrine au tag v0.1.0-beta (GET, lecture seule)
+    rc=0 · 16473 o
+      vitrine au tag : 8 titres, 8 ids rendus, slugs calcules absents du rendu : 0 []
+      vitrine ecrite : slug de `## Demo` = 'demo' · present : True · titres : ['desknode', 'what-it-shows', 'demo', 'two-hardware-tiers', 'install', 'language', 'known-issues', 'status-and-help', 'more']
+  EMPREINTE desknode APRES (contenu) : 371d77a8a466a594
+  === fin 2026-09-14T11:11:37+02:00 ===
+
+── 2. `verif_campagne_dn56.py` AU COMPTE, SUR LA GATE CORRIGEE ────────────────
+  EMPREINTE avant dn56-T3 : 371d77a8a466a594 · hors suivi (git status --porcelain) : c5c146143cb77713 · gate sha256[:16] 5cdd3f0f15acb958 · 2026-09-14T11:11:47+02:00
+  rc=0 761.84 s 2026-09-14T11:24:29+02:00
+  Sortie integrale (tir detache, `timeout 900 python3 tools/verif_campagne_dn56.py`) :
+    ==============================================================================
+    dn5-6 — LES CAMPAGNES DE MUTANTS SONT REJOUEES
+    ==============================================================================
+
+    ── (c1) LES CIBLES SONT DECOUVERTES, ⛔ JAMAIS ENUMEREES ─────────
+      [OK ] des gates declarent une campagne de mutants                23 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_lhm_ps_dn83.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_reception_dn85.py, tools/verif_temoin_filtre_dn447.py, tools/verif_vitrine_dn84.py
+
+    ── (c2) CHAQUE MUTANT ROUGIT, AVEC UN BILAN ET UN [KO ] NOMME ────
+      [OK ] toute cible repond, et aucun mutant ne meurt               711 mutant(s) confronte(s) sur 23 cible(s)
+      [OK ] tout mutant rend rc=1                                      aucun mutant devenu MUET
+      [OK ] tout mutant rouge a bien imprime un BILAN                  aucune sortie en amont
+      [OK ] tout mutant rouge porte au moins un [KO ] nomme            chaque mutant vise un controle
+
+    ── (c3) LES EXCEPTIONS SONT DECLAREES ET ⛔ NE PEUVENT PAS ROT ───
+      · tools/verif_langues_dn442.py#17 ⇒ porteur **dn4-42-l-ecran-parle-deux-langues**
+          MESURE le 2026-09-05 : `--mutant 17` sort en rc=1 SANS ligne BILAN et SANS aucun [KO ] — `MUTANT 17 INAPPLICABLE : le motif est introuvable`. Son ancr
+      [OK ] aucune exception n'a survecu au defaut qu'elle excuse      1 exception(s) declaree(s), 1 encore justifiee(s)
+
+    ── (c4) LA CLE DE CAMPAGNE RESTE LISIBLE A COLONNE FIXE ──────────
+      [OK ] toute cible s'analyse a l'AST                              2 fichier(s) lu(s) dans la portee de la cle
+         [hors portee] tools/verif_affiliation_dn65.py        0 libelle(s) >= 58 sur 29
+         [hors portee] tools/verif_banc_langue_dn73.py        0 libelle(s) >= 58 sur 25
+         [hors portee] tools/verif_boitier_dn64.py            0 libelle(s) >= 58 sur 33
+         [hors portee] tools/verif_bom_dn61.py                0 libelle(s) >= 58 sur 25
+         [hors portee] tools/verif_cablage_dn62.py            0 libelle(s) >= 58 sur 37
+         [hors portee] tools/verif_demarrage_dn443.py         34 libelle(s) >= 58 sur 60
+         [hors portee] tools/verif_dossier_d5_dn45.py         0 libelle(s) >= 58 sur 9
+         [hors portee] tools/verif_entree_dn82.py             0 libelle(s) >= 58 sur 26
+         [hors portee] tools/verif_flash_dn72.py              0 libelle(s) >= 58 sur 35
+         [hors portee] tools/verif_harnais_dn81.py            0 libelle(s) >= 58 sur 17
+         [hors portee] tools/verif_installeur_dn71.py         0 libelle(s) >= 58 sur 33
+         [hors portee] tools/verif_langue_dalle_dn73.py       0 libelle(s) >= 58 sur 31
+         [hors portee] tools/verif_langues_dn442.py           10 libelle(s) >= 58 sur 32
+         [hors portee] tools/verif_lhm_ps_dn83.py             0 libelle(s) >= 58 sur 18
+         [hors portee] tools/verif_page_dn722.py              0 libelle(s) >= 58 sur 31
+         [hors portee] tools/verif_photos_dn63.py             0 libelle(s) >= 58 sur 32
+         [hors portee] tools/verif_placement_dn74.py          0 libelle(s) >= 58 sur 21
+         [hors portee] tools/verif_preconditions_dn76.py      0 libelle(s) >= 58 sur 27
+         [hors portee] tools/verif_prerequis_dn75.py          0 libelle(s) >= 58 sur 24
+         [hors portee] tools/verif_reception_dn85.py          0 libelle(s) >= 58 sur 16
+         [hors portee] tools/verif_temoin_filtre_dn447.py     0 libelle(s) >= 58 sur 7
+         [hors portee] tools/verif_vitrine_dn84.py            0 libelle(s) >= 58 sur 17
+      [OK ] cle valide (aucun libelle >= 58)                           44 libelle(s) lu(s) a l'AST, le plus long fait 56
+
+    ⛔ CE QUE CETTE GATE NE PROUVE PAS : « N mutants, N vus rougir »
+       prouve `mutant ⇒ rouge`, ⛔ PAS `controle ⇒ couvert`. Un controle
+       qu'AUCUN mutant ne vise reste garde par rien, et ⛔ elle ne le
+       verra pas. Elle garde que les campagnes DEJA ECRITES ne
+       pourrissent pas.
+
+    ==============================================================================
+    BILAN : 8 OK, 0 KO
+    ==============================================================================
+
+── 3. CE QUE LE RELEVE ETABLIT (AC8.9.4, AC8.9.5) ────────────────────────────
+  ⇒ `verif_vitrine_dn84.py` : **16 OK / 0 KO**, rc=0, `(c5)` nomme **5 images**
+    et leurs pixels (1600x1067 · 1067x1600 · 3 x 320x320 GIF89a, 24 images,
+    1 NETSCAPE2.0) ; `(c14)` 16 controles lus a l'AST · `(c16)` 20 mutants,
+    20 cibles ; `CONTROLES_PREVUS` = 16, INCHANGE.
+  ⇒ mutants 17, 18, 19, 20 : rc=1, `BILAN : 15 OK, 1 KO`, et le seul `[KO ]`
+    est `(c5)`, qui NOMME la faute replantee : « extension de commentaire
+    0xFE » · « extension d'application 'XMP DataXMP' » · « ecran logique
+    1601x320, grand cote > 1600 » · « pas un GIF lisible (blocs/trailer 0x3B) ».
+  ⇒ mutant 5 (APP1 Exif) : rc=1, `(c5)` « porte APP1 » — ROUGE ENCORE.
+  ⇒ les 15 autres mutants d'origine : rc=1, chacun sur SON controle.
+  ⇒ temoins sur copie jetable (supprimees en fin de tir) :
+    · un PNG cite ⇒ rc=1, `(c5)` « ni JPEG (SOI FF D8) ni GIF (GIF87a/GIF89a) :
+      octets b'\x89PNG\r\n' » ;
+    · la vitrine de `T0` (0 GIF) ⇒ la gate amendee 16/0, et les mutants 17-20
+      sortent rc=3 « NON EXERCE », **0 ligne BILAN** — ⛔ jamais comptes verts ;
+    · le chemin JPEG A L'IDENTIQUE : sur la vitrine de `T0`, la gate de BASE et
+      la gate amendee rendent 16/0, et les mutants 5 et 6 rougissent le meme
+      controle dans les deux ;
+    · les regles de la liste blanche qu'AUCUN mutant ne vise, vues rougir en
+      TEMOIN (⛔ pas des mutants) : texte brut 0x01, etiquette inconnue 0x77,
+      IMAGE (⛔ ecran) de 1601 px, octet de tete incoherent, et un GIF ⛔ ecrit
+      par ffmpeg (`bulb.gif` de LVGL) ⇒ « extension de commentaire 0xFE ».
+  ⇒ `verif_campagne_dn56.py` (§ 2) : **8 OK / 0 KO**, rc=0 — le compte de `T0` ; 711 mutants
+    confrontes (707 a `T0` + les 4 neufs), dn84 « 0 libelle(s) >= 58 sur 17 ».
+  ⇒ rendu GitHub (`POST /markdown`) : `<h2>Demo</h2>` · 5 `<img>` pour 5 images
+    Markdown, dont 3 `src="docs/demo/…gif"` dans l'ordre toucher ⇒ reseau en
+    direct ⇒ courbe · 1 `<a href="https://youtu.be/tcCF3vogwSU">` · 2 liens
+    http Markdown = 2 liens rendus · 1 seul `&lt;`, celui de
+    `http://127.0.0.1:<port>` dans un bloc de code (pre-existant) ⇒ **0 balise
+    supprimee**.
+    ⚠️ **ECART AU DOSSIER, DECLARE** : le dossier attend `id="user-content-demo"`
+       dans ce rendu. `POST /markdown` n'emet AUCUNE ancre de titre (**0** id,
+       deja mesure par `mesures/dn8-7/T2-ecriture-et-temoins.txt` § 4, re-mesure
+       ici). ⇒ methode de repli de dn8-7, VALIDEE avant usage : la regle de slug
+       est confrontee aux ids que GitHub rend pour la vitrine du tag
+       `v0.1.0-beta` (GET, lecture seule) — **8 titres, 8 ids, 0 ecart** — puis
+       appliquee a la vitrine ecrite : `## Demo` ⇒ `demo`, present.
+
+── 4. CE QUE CE RELEVE ⛔ NE DIT PAS ──────────────────────────────────────────
+  - ⛔ Que la legende de `## Demo` assume le prototype et l'ecran francais :
+    relue en revue, gardee par AUCUN controle (`(c7)` ne lit que la legende
+    des photos). Elle porte « prototype », « bare wiring », « no enclosure »
+    et « French » — constat de lecture, ⛔ contrainte.
+  - ⛔ Que le rendu SUR github.com (la page du depot) montre les GIF animes :
+    `POST /markdown` rend le HTML (`data-animated-image`) ; l'affichage de la
+    page elle-meme, depot prive, n'est pas releve.
+  - ⛔ Que la liste blanche soit exhaustive au sens de la norme GIF89a : elle
+    refuse ce qu'elle ne nomme pas ; un GIF legitime avec une extension
+    d'application autre (ex. un profil ICC) sortirait ROUGE — c'est voulu.
+  - ⛔ Les octets apres le trailer : ⛔ lus, et ⛔ exerces (aveuglement declare
+    dans la docstring de la gate).
+
+── 5. LE SCRIPT (tel que joue : `bash t3.sh /…/scratchpad/dn89/T3`) ───────────
+  | #!/usr/bin/env bash
+  | # dn8-9 / T3 — la gate amendee, ses mutants, les temoins sur COPIE JETABLE, le rendu GitHub.
+  | #   t3.sh <sortie>      (sortie = repertoire neuf du scratchpad ; ⛔ rien n'est ecrit dans l'arbre)
+  | set -u
+  | DN=/home/nasbarok/projects/desknode
+  | BASE=d8da714e67ba4248c7ebb4f6a3a198349fc939e4
+  | O="$1"; mkdir -p "$O" || exit 9
+  | cd "$DN" || exit 9
+  | G=tools/verif_vitrine_dn84.py
+  | echo "=== dn8-9 / T3 — debut $(date -Iseconds) ==="
+  | echo "EMPREINTE desknode AVANT (contenu) : $( (git ls-files -z | xargs -0 sha256sum) | sha256sum | cut -c1-16)"
+  | echo "sha256 README.md + gate : $(sha256sum README.md $G | cut -c1-16 | tr '\n' ' ')"
+  |
+  | echo
+  | echo "── (1) LA GATE SUR L'ARBRE ECRIT ──"
+  | python3 $G > "$O/gate.txt" 2>&1; rc=$?
+  | echo "  rc=$rc · $(grep -E '^BILAN' "$O/gate.txt")"
+  | grep -E '^\s*\[(OK|KO) *\] \(c5\)|^\s*\[(OK|KO) *\] \(c6\)|^\s*\[(OK|KO) *\] \(c1\)|^\s*\[(OK|KO) *\] \(c3\)|^\s*\[(OK|KO) *\] \(c7\)|^\s*\[(OK|KO) *\] \(c1[456]\)' "$O/gate.txt" | sed 's/^/  /'
+  |
+  | echo
+  | echo "── (2) --liste-mutants ──"
+  | python3 $G --liste-mutants 2>&1 | sed 's/^/  /'
+  |
+  | echo
+  | echo "── (3) LES MUTANTS DE (c5) : 5 (JPEG) ET 17-20 (GIF) — rc, BILAN, KO ──"
+  | for m in 5 17 18 19 20; do
+  |   python3 $G --mutant $m > "$O/mutant-$m.txt" 2>&1; rc=$?
+  |   echo "  mutant $m : rc=$rc · $(grep -E '^BILAN' "$O/mutant-$m.txt")"
+  |   grep -E '\[KO' "$O/mutant-$m.txt" | sed 's/^/      /'
+  | done
+  |
+  | echo
+  | echo "── (4) LES 16 AUTRES MUTANTS — toujours rc=1 ──"
+  | for m in 1 2 3 4 6 7 8 9 10 11 12 13 14 15 16; do
+  |   python3 $G --mutant $m > "$O/mutant-$m.txt" 2>&1; rc=$?
+  |   printf '  mutant %-2s rc=%s · KO : %s · %s\n' "$m" "$rc" "$(grep -oE '\[KO *\] \(c[0-9]+\)' "$O/mutant-$m.txt" | grep -oE 'c[0-9]+' | tr '\n' ' ')" "$(grep -E '^BILAN' "$O/mutant-$m.txt")"
+  | done
+  |
+  | echo
+  | echo "── (5) TEMOINS SUR COPIE JETABLE (⛔ jamais dans l'arbre) ──"
+  | copie() {  # $1 = repertoire cible
+  |   rm -rf "$1"; mkdir -p "$1"
+  |   tar -C "$DN" --exclude='__pycache__' -cf - tools docs installeur README.md | tar -C "$1" -xf -
+  | }
+  | # (5a) NI JPEG NI GIF : la vitrine de la copie cite un PNG (octets magiques PNG, fichier present).
+  | C="$O/copie-png"; copie "$C"
+  | python3 - "$C" <<'PY'
+  | import struct, sys, zlib, os
+  | c = sys.argv[1]
+  | def bloc(t, d):
+  |     return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+  | png = b"\x89PNG\r\n\x1a\n" + bloc(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 0, 0, 0, 0)) \
+  |     + bloc(b"IDAT", zlib.compress(b"\x00\x00")) + bloc(b"IEND", b"")
+  | open(os.path.join(c, "docs/demo/temoin-ni-jpeg-ni-gif.png"), "wb").write(png)
+  | p = os.path.join(c, "README.md")
+  | t = open(p, encoding="utf-8").read()
+  | ancre = "\n## Two hardware tiers"
+  | assert ancre in t
+  | t = t.replace(ancre, "\n![temoin](docs/demo/temoin-ni-jpeg-ni-gif.png)\n" + ancre, 1)
+  | open(p, "w", encoding="utf-8").write(t)
+  | PY
+  | python3 "$C/$G" > "$O/temoin-png.txt" 2>&1; rc=$?
+  | echo "  (5a) ni JPEG ni GIF (PNG cite) : rc=$rc · $(grep -E '^BILAN' "$O/temoin-png.txt")"
+  | grep -E '\[KO' "$O/temoin-png.txt" | sed 's/^/      /'
+  | # (5b) MUTANT NEUF SANS GIF : la vitrine de la copie est celle de T0 (git show BASE:README.md).
+  | C="$O/copie-t0"; copie "$C"
+  | git show "$BASE:README.md" > "$C/README.md"
+  | echo "  (5b) vitrine de T0 dans la copie : $(grep -c '\.gif' "$C/README.md") ligne(s) .gif · sha256 $(sha256sum "$C/README.md" | cut -c1-16) (base : $(git show "$BASE:README.md" | sha256sum | cut -c1-16))"
+  | python3 "$C/$G" > "$O/temoin-t0-gate.txt" 2>&1; rc=$?
+  | echo "       la gate AMENDEE sur la vitrine de T0 : rc=$rc · $(grep -E '^BILAN' "$O/temoin-t0-gate.txt")"
+  | for m in 17 18 19 20; do
+  |   python3 "$C/$G" --mutant $m > "$O/temoin-t0-mutant-$m.txt" 2>&1; rc=$?
+  |   printf '       mutant %s : rc=%s · BILAN : %s · %s\n' "$m" "$rc" "$(grep -cE '^BILAN' "$O/temoin-t0-mutant-$m.txt")" "$(grep -E 'NON EXERCE' "$O/temoin-t0-mutant-$m.txt" | head -1)"
+  | done
+  | # (5c) LE CHEMIN JPEG, A L'IDENTIQUE : l'ancienne gate et la gate amendee sur la vitrine de T0.
+  | git show "$BASE:$G" > "$O/gate-base.py"
+  | cp "$O/gate-base.py" "$C/tools/verif_vitrine_dn84_base.py"
+  | python3 "$C/tools/verif_vitrine_dn84_base.py" > "$O/temoin-t0-gate-base.txt" 2>&1; rcb=$?
+  | echo "  (5c) gate de BASE sur la vitrine de T0 : rc=$rcb · $(grep -E '^BILAN' "$O/temoin-t0-gate-base.txt")"
+  | for m in 5 6; do
+  |   python3 "$C/tools/verif_vitrine_dn84_base.py" --mutant $m > "$O/t0-base-m$m.txt" 2>&1; rb=$?
+  |   python3 "$C/$G" --mutant $m > "$O/t0-neuf-m$m.txt" 2>&1; rn=$?
+  |   echo "       mutant $m sur la vitrine de T0 : base rc=$rb $(grep -oE '\[KO *\] \(c[0-9]+\)' "$O/t0-base-m$m.txt" | tr '\n' ' ')· amendee rc=$rn $(grep -oE '\[KO *\] \(c[0-9]+\)' "$O/t0-neuf-m$m.txt" | tr '\n' ' ')"
+  | done
+  | # (5d) LES REGLES DE LA LISTE BLANCHE QU'AUCUN MUTANT NE VISE — temoins, ⛔ pas des mutants :
+  | #      texte brut 0x01, etiquette inconnue, image (⛔ ecran) trop large, octet de tete incoherent,
+  | #      et un GIF ⛔ ecrit par ffmpeg (lvgl, avec commentaires) pose a la place du 1er GIF.
+  | C="$O/copie-regles"; copie "$C"
+  | PREMIER=$(grep -oE 'docs/demo/[^)]*\.gif' "$DN/README.md" | head -1)
+  | echo "  (5d) 1er GIF cite : $PREMIER"
+  | cp "$C/$PREMIER" "$O/premier.orig.gif"
+  | for t in texte-brut etiquette-inconnue image-trop-large tete-incoherente gif-lvgl; do
+  |   cp "$O/premier.orig.gif" "$C/$PREMIER"
+  |   python3 - "$C/$PREMIER" "$t" <<'PY'
+  | import struct, sys, shutil, hashlib
+  | p, t = sys.argv[1], sys.argv[2]
+  | b = open(p, "rb").read()
+  | pk = b[10]
+  | i = 13 + (3 * 2 ** ((pk & 7) + 1) if pk & 0x80 else 0)
+  | if t == "texte-brut":
+  |     b = b[:i] + b"\x21\x01\x0c" + bytes(12) + b"\x02hi\x00" + b[i:]
+  | elif t == "etiquette-inconnue":
+  |     b = b[:i] + b"\x21\x77\x02ab\x00" + b[i:]
+  | elif t == "image-trop-large":
+  |     j = i                          # le 1er descripteur 0x2C, trouve en MARCHANT les blocs
+  |     while b[j] == 0x21:
+  |         j += 2
+  |         while b[j] != 0:
+  |             j += b[j] + 1
+  |         j += 1
+  |     assert b[j] == 0x2C, b[j:j + 10]
+  |     b = b[:j + 5] + struct.pack("<H", 1601) + b[j + 7:]
+  | elif t == "tete-incoherente":
+  |     b = b[:i] + b"\x42" + b[i:]
+  | elif t == "gif-lvgl":
+  |     src = "/tmp/claude-1000/dn-rollback/firmware/desknode/managed_components/lvgl__lvgl/examples/libs/gif/bulb.gif"
+  |     b = open(src, "rb").read()
+  |     print("        source %s · %d o · sha256 %s" % (src.split("/lvgl__lvgl/")[1], len(b), hashlib.sha256(b).hexdigest()[:16]))
+  | open(p, "wb").write(b)
+  | PY
+  |   python3 "$C/$G" > "$O/temoin-regle-$t.txt" 2>&1; rc=$?
+  |   printf '       %-20s rc=%s · %s\n' "$t" "$rc" "$(grep -E '^BILAN' "$O/temoin-regle-$t.txt")"
+  |   grep -E '\[KO' "$O/temoin-regle-$t.txt" | sed 's/^/          /'
+  | done
+  | rm -rf "$O/copie-png" "$O/copie-t0" "$O/copie-regles"
+  | echo "  copies jetables SUPPRIMEES"
+  |
+  | echo
+  | echo "── (6) LE RENDU GITHUB DE LA VITRINE (POST /markdown, mode gfm, context nasbarok/desknode) ──"
+  | gh api -X POST /markdown -f mode=gfm -f context=nasbarok/desknode -F text=@README.md > "$O/rendu-README.html" 2> "$O/rendu.err"; rc=$?
+  | echo "  rc=$rc · $(stat -c %s "$O/rendu-README.html") o de HTML"
+  | echo "  id=\"user-content-demo\" : $(grep -c 'id="user-content-demo"' "$O/rendu-README.html")"
+  | echo "  ids user-content- (tous) : $(grep -o 'id="user-content-[^"]*"' "$O/rendu-README.html" | wc -l)"
+  | echo "  <h2> Demo : $(grep -oE '<h2[^>]*>Demo</h2>' "$O/rendu-README.html" | head -1)"
+  | echo "  <img> : $(grep -o '<img ' "$O/rendu-README.html" | wc -l) au total ; vers docs/demo/ :"
+  | grep -oE '<img [^>]*src="[^"]*docs/demo/[^"]*"' "$O/rendu-README.html" | grep -oE 'src="[^"]*"' | sed 's/^/    /'
+  | grep -oE 'data-canonical-src="[^"]*docs/demo/[^"]*"' "$O/rendu-README.html" | sed 's/^/    /'
+  | echo "  <a href=\"https://youtu.be/tcCF3vogwSU\" : $(grep -c '<a href="https://youtu.be/tcCF3vogwSU"' "$O/rendu-README.html")"
+  | grep -oE '<a href="https://youtu.be/[^"]*"[^>]*>[^<]*</a>' "$O/rendu-README.html" | sed 's/^/    /'
+  | python3 - "$DN/README.md" "$O/rendu-README.html" <<'PY'
+  | import re, sys
+  | md = open(sys.argv[1], encoding="utf-8").read()
+  | html = open(sys.argv[2], encoding="utf-8").read()
+  | imgs_md = re.findall(r"!\[[^\]]*\]\(([^)\s]+)\)", md)
+  | liens_md = re.findall(r"(?<!!)\[[^\]]*\]\((https?://[^)\s]+)\)", md)
+  | imgs_html = re.findall(r"<img [^>]*>", html)
+  | print("  images Markdown : %d · <img> rendus : %d" % (len(imgs_md), len(imgs_html)))
+  | print("  liens http Markdown : %d · <a href=\"http…\"> rendus hors images : %d"
+  |       % (len(liens_md), len([a for a in re.findall(r'<a href="(https?://[^"]*)"', html)
+  |                               if "camo.githubusercontent" not in a and "/blob/" not in a and "/raw/" not in a])))
+  | print("  balises neutralisees (&lt; dans le HTML) : %d" % html.count("&lt;"))
+  | PY
+  | echo "  ⚠️ POST /markdown n'emet PAS les ancres de titre (mesure dn8-7 T2 § 4) si le compte ci-dessus est 0 :"
+  | echo "     regle de slug confrontee aux ids que GitHub rend pour la vitrine au tag v0.1.0-beta (GET, lecture seule)"
+  | gh api "repos/nasbarok/desknode/readme?ref=v0.1.0-beta" -H "Accept: application/vnd.github.html" > "$O/tag-README.html" 2>"$O/tag.err"; echo "  rc=$? · $(stat -c %s "$O/tag-README.html") o"
+  | git show v0.1.0-beta:README.md > "$O/tag-README.md"
+  | python3 - "$O/tag-README.md" "$O/tag-README.html" "$DN/README.md" <<'PY'
+  | import re, sys
+  | def slug(titre):
+  |     t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", titre)
+  |     t = re.sub(r"<[^>]+>", "", t).strip().lower()
+  |     t = re.sub(r"[^\w\- ]", "", t)
+  |     return t.replace(" ", "-")
+  | def titres(md):
+  |     out, dans = [], False
+  |     for l in md.splitlines():
+  |         if re.match(r"^ {0,3}(```|~~~)", l):
+  |             dans = not dans
+  |         if not dans:
+  |             m = re.match(r"^ {0,3}#{1,6}\s+(.*?)\s*#*\s*$", l)
+  |             if m:
+  |                 out.append(m.group(1))
+  |     return out
+  | md = open(sys.argv[1], encoding="utf-8").read()
+  | rendus = re.findall(r'id="user-content-([^"]*)"', open(sys.argv[2], encoding="utf-8").read())
+  | calc = [slug(t) for t in titres(md)]
+  | manque = [c for c in calc if c not in rendus]
+  | print("    vitrine au tag : %d titres, %d ids rendus, slugs calcules absents du rendu : %d %s"
+  |       % (len(calc), len(rendus), len(manque), manque))
+  | neuf = [slug(t) for t in titres(open(sys.argv[3], encoding="utf-8").read())]
+  | print("    vitrine ecrite : slug de `## Demo` = %r · present : %s · titres : %s"
+  |       % (slug("Demo"), "demo" in neuf, neuf))
+  | PY
+  | echo "EMPREINTE desknode APRES (contenu) : $( (git ls-files -z | xargs -0 sha256sum) | sha256sum | cut -c1-16)"
+  | echo "=== fin $(date -Iseconds) ==="
