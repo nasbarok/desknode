@@ -1,0 +1,394 @@
+==============================================================================
+dn8-7 / T2 — L'ARBRE ECRIT ET SES TEMOINS
+  Joue le 2026-09-14 de 01:30:19 a 01:30:29 (+02:00) sur l'arbre ECRIT, ⛔ non committe
+  (10 fichiers modifies + `docs/releases/v0.1.0-beta.md` en intention d'ajout,
+  voir § 1-bis). Sortie brute en § 4, chemin du scratchpad abrege en `$S`.
+==============================================================================
+
+── 1. LES VERDICTS ──────────────────────────────────────────────────────────
+  (1) `verif_flash_dn72.py` = 30 OK / 0 KO sur l'arbre ecrit, ET SES MUTANTS
+      SONT VUS ROUGIR : 6 ⇒ (c6) taille, 16 ⇒ (c15), 17 ⇒ (c16) revision
+      (ajoute : c'est lui qui vise la revision), 18 ⇒ (c17) porteur,
+      30 ⇒ (c6) empreinte — chacun rc=1, 29 OK / 1 KO, le KO NOMME sa cible.
+      ⚠️ Le mutant 16 vise (c15) « avertissement hors Windows », ⛔ pas la
+         revision : le dossier le citait parmi les temoins de la charge. Il
+         rougit, mais il ne garde rien de ce que cette marche ecrit ; c'est le
+         mutant 17 qui garde (c16).
+      ⚠️ Mutants 6 et 30 : ils mutent la PREMIERE ligne `RE_PROV_LIGNE` de la
+         table (`bootloader.bin`). L'ancienne ligne `desknode.bin` est citee
+         APRES la table, sous `>` : aucune ligne de table ne la precede, et
+         aucune ne la suit — c'est ce qui les laisse rouges.
+  (1-bis) ⚠️ `docs/releases/v0.1.0-beta.md` est pose en INTENTION D'AJOUT
+      (`git add -N`, ⛔ pas un commit) : les gates de prose peuplent leurs
+      fichiers par `git ls-files`, et un fichier non suivi leur echappait.
+      Mesure : `verif_licences_dn52.py` (c1) passe de 19 a 20 fichiers de
+      prose, 227 ⇒ 230 liens locaux, toujours 34 OK / 0 KO ;
+      `verif_reception_dn85.py` 16 / 0.
+  (2) CHANGELOG.md : `git diff --numstat` = « 65 0 » ⇒ AUCUNE ligne retiree
+      (git aligne l'ancien `## [Unreleased]` sur le neuf et AJOUTE le titre
+      `## [0.1.0-beta] - 2026-09-14`). Deux titres de niveau 2 : l.7
+      `[Unreleased]` VIDE, l.9 `[0.1.0-beta] - 2026-09-14`. Premiere entree de
+      `### Added` = `dn8-7`. ⛔ Aucune entree `dn8-6` ni `dn4-48`.
+  (3) index.html : 3229 lignes avant ET apres ; numstat 4 / 4 — les QUATRE
+      lignes des deux phrases, et rien d'autre. ⚠️ La 1re ligne de chaque
+      phrase change aussi (« and there is » ⇒ « and although a » ; « et il
+      n'existe » ⇒ « et si un ») : elle porte le debut de la phrase.
+  (4) 🔴 LE RENDU GITHUB — LA METHODE DU DOSSIER EST REFUTEE PAR LA MESURE.
+      `POST /markdown` (mode gfm, context nasbarok/desknode) rend les cinq
+      fichiers (rc=0) mais emet **0** attribut `id="user-content-…"` : ses
+      titres sortent en `<h2 dir="auto">Install</h2>`, sans ancre. ⇒ les
+      fragments ⛔ ne se lisent pas la. METHODE DE REPLI, VALIDEE AVANT
+      USAGE : la regle de slug (minuscules, ponctuation retiree hors tiret et
+      espace, espace ⇒ tiret, doublons suffixes) est confrontee aux ids que
+      GitHub REND pour les memes fichiers a `ref=main` (`GET contents`,
+      `Accept: application/vnd.github.html`, lecture seule) : 77 titres,
+      3 ecarts — les trois sur des titres qui COMMENCENT par un emoji (le
+      slug calcule garde un tiret initial). ⛔ Aucun des cinq fragments cites
+      n'en porte. Appliquee a l'arbre ecrit, elle rend PRESENTS :
+      `#010-beta---2026-09-14` (CHANGELOG), `#install` et `#known-issues`
+      (README), `#what-this-project-is-honestly` (CONTRIBUTING),
+      `#binary-releases` (LICENSING). ⇒ la preuve qui FAIT FOI est portee par
+      l'etape `liens` du script de publication, sur le rendu `contents` a
+      `ref=v0.1.0-beta` (T3 § 4).
+      Le CHANGELOG rendu montre les deux titres LIES :
+      `[Unreleased]` ⇒ compare/v0.1.0-beta...HEAD, `[0.1.0-beta]` ⇒
+      releases/tag/v0.1.0-beta — les definitions de liens resolvent.
+  (5) L'ARCHIVE `git archive --format=zip HEAD` — ⚠️ HEAD = 0086ea6, la base :
+      l'arbre ecrit n'est pas committe. 869 fichiers, 23 115 268 o (= la
+      mesure du dossier), `agent/dn_agent.py`, `installeur/DeskNode-installeur.bat`
+      (CRLF 209 / 209) et `tools/dn_agent_tour.ps1` PRESENTS, `tools/dn_agent.py`
+      ABSENT. ⇒ depuis cette archive, le verbe `permanence` sort en 3
+      (`tools/dn_agent_tour.ps1` : `$AGENT = Join-Path $RACINE 'dn_agent.py'`,
+      puis `if (-not (Test-Path $AGENT))` ⇒ `exit 3`), et
+      `installeur/dn_installeur.py::localiser_pilote()` retombe, sans tache
+      planifiee, sur la copie du depot. Tir reel anterieur : mesures/dn8-3/
+      T3-port-lhm-bout-en-bout.txt, temoin (b) « SANS -Lhm, DEPUIS LE DEPOT ⇒
+      rc=3 ». L'archive de l'arbre ECRIT (tag du C1-temoin, 870 fichiers dont
+      les notes) est relevee dans T3, temoin (h).
+
+── 2. LES VERDICTS DU BALAYAGE, OCCURRENCE PAR OCCURRENCE ───────────────────
+  motif : no tag|no release|aucun tag|aucune release|ni tag|neither tag|
+          tag is still to come|no release yet|v0\.1\.0-beta
+  fichiers suivis hors mesures/ ; « au present rendu faux » ⇒ ANNOTEE ;
+  « mesure datee » ⇒ LAISSEE ; les lignes ecrites par la marche ⇒ NEUVE.
+
+  CHANGELOG.md:11 « Work towards the first public release »   ANNOTEE (l.13-16) : pre-release d'un depot prive
+  CHANGELOG.md:22,28,30,32                                    NEUVE (entree dn8-7)
+  CHANGELOG.md:423 « no tag and no release — measured on 2026-09-08 »
+                                                              LAISSEE : mesure datee ; sa suite (« a publicly
+                                                              reachable source is a declared gap ») reste vraie
+  CHANGELOG.md:937,938                                        NEUVE (definitions de liens)
+  CONTRIBUTING.md:214 « a release tag is still to come »       ANNOTEE (l.216-219) : le tag existe, ce que rend
+                                                              `git describe --tags` ; ⛔ section de statut intacte
+  LICENSING.md:73 « Measured on 2026-09-02 … no tag »          LAISSEE : mesure datee ; « Once the repository is
+                                                              public and tagged » reste une condition non remplie
+  SECURITY.md:50 « There is no release yet »                   ANNOTEE (l.54-55), ⛔ aucune promesse ajoutee
+  docs/dn5-1-ecart-promesses.md:41 « Le tag … reste à dn8 »    ANNOTEE dans la case (et « pas encore vue sur la
+                                                              dalle », rendue fausse le 2026-09-13, avec)
+  docs/dn5-1-ecart-promesses.md:96 « tag : dn8 »               ANNOTEE dans la case porteur
+  docs/journal-de-bord.md:27                                  LAISSEE : annotation datee de dn8-4
+  docs/journal-de-bord.md:48 « Il sera scindé avant la v0.1.0-beta »
+                                                              LAISSEE : corps = README@baf4265 octet pour octet
+                                                              (preuve de scission) ; l'annonce est deja declaree
+                                                              ACCOMPLIE par l'en-tete l.27
+  docs/releases/v0.1.0-beta.md (toutes)                       NEUVE
+  docs/roadmap.md:125,156                                     NEUVE (ligne dn8-7, annotation du 2026-09-14)
+  firmware/desknode/main/dn_langue.h:194                      LAISSEE : forme future d'une chaine, toujours
+                                                              vraie ; ⛔ un octet sous firmware/ (NFR19)
+  installeur/charge/PROVENANCE.md:171 « aucun tag et aucune release »
+                                                              ANNOTEE (l.175-183) ; l.23,26,178,205 NEUVES
+  installeur/index.html:940,952 (T0)                          REECRITES, texte seul, lignes egales (§ 1 (3))
+  tools/verif_harnais_dn81.py:169,176,805                     LAISSEE : couples de TEMOIN de normalisation,
+                                                              ⛔ une affirmation sur le depot ; ⛔ tools/
+  tools/verif_licences_dn52.py:1196 « que la ligne 2 … prevoit de poser »
+                                                              LAISSEE : commentaire de code, ⛔ tools/ ; il
+                                                              devient passe au tag, et c'est declare ici
+  ⚠️ Hors motif, rendues fausses et annotees quand meme :
+     PROVENANCE.md « Ce qui les relie à `40be2c8` » (annotation (i)),
+     « faute d'une release » (annotation du cout) ; CHANGELOG « Cause not yet
+     investigated », « Not perceptible in use », les deux entrees du refus dur
+     de LHM (### Changed et ### Known issues) ; CONTRIBUTING « The cause is
+     not yet understood » ; roadmap « the least defined entry » (annotee).
+
+── 3. CE QUE CE RELEVE NE DIT PAS ───────────────────────────────────────────
+  · ⛔ que les ancres rendues sur le TAG existent : c'est l'etape `liens` de
+    la publication. Le slug est valide sur 77 titres de `main`, ⛔ sur le tag.
+  · ⛔ que le texte anglais soit juste a l'oeil d'un lecteur : aucune gate ne
+    juge la prose, seulement ses motifs.
+
+── 4. LA SORTIE BRUTE (`rtk proxy bash t2.sh`) ─────────────────────────────
+  === dn8-7 / T2 — debut 2026-09-14T01:30:19+02:00 ===
+  HEAD desknode : 0086ea6579ddf012ffb2752ddf72306a5939779f
+  git status --porcelain :
+     M CHANGELOG.md
+     M CONTRIBUTING.md
+     M README.md
+     M SECURITY.md
+     M docs/dn5-1-ecart-promesses.md
+     A docs/releases/v0.1.0-beta.md
+     M docs/roadmap.md
+     M installeur/charge/PROVENANCE.md
+     M installeur/charge/desknode.bin
+     M installeur/charge/manifest.json
+     M installeur/index.html
+
+  ── 1. verif_flash_dn72.py SUR L'ARBRE ECRIT, PUIS SES MUTANTS 6 · 16 · 18 · 30 (+17) ──
+    verif_flash_dn72.py : rc=0  BILAN : 30 OK, 0 KO
+      ── (c6)(c7)(c8)(c9) LA CHARGE EST CELLE QUI EST ANNONCEE ─────────
+        [OK ] (c6) chaque morceau fait sa taille ET son empreinte        4 morceau(x) confrontes a `PROVENANCE.md` (taille + sha256)
+        [OK ] (c7) la version annoncee EST celle du binaire servi        55006c1 (projet desknode), lue a l'offset 0x30
+      ── (c16)(c17) LA PROVENANCE, ET CE QUE PERSONNE NE MECANISE ──────
+        [OK ] (c16) la page pointe la source de CETTE revision           `PROVENANCE.md` nomme 55006c1
+        [OK ] (c17) la non-mecanisation est ECRITE, avec ses porteurs    2 porteur(s) nomme(s)
+      ── (c27)…(c30) LES ETATS, LE PORT REEL, LA CHARGE, L'EFFACEMENT ──
+        [OK ] (c30) l'effacement au 1er flash est epingle et ECRIT       `false`, et `PROVENANCE.md` dit pourquoi
+    --mutant 6 (cible c6) : rc=1  BILAN : 29 OK, 1 KO
+          [KO ] (c6) chaque morceau fait sa taille ET son empreinte        ⛔ bootloader.bin : 20848 o servis, 20856 o publies — une provenance qui a pourri est pire
+    --mutant 16 (cible c15) : rc=1  BILAN : 29 OK, 1 KO
+          [KO ] (c15) l'avertissement hors Windows precede le flash        ⛔ absent, ou place APRES le bouton — un flash qui REUSSIT vers une dalle qui n'aura jamai
+    --mutant 17 (cible c16) : rc=1  BILAN : 29 OK, 1 KO
+          [KO ] (c16) la page pointe la source de CETTE revision           ⛔ la page ne mene pas a la provenance — « le depot » en general ⛔ n'est pas un pointe
+    --mutant 18 (cible c17) : rc=1  BILAN : 29 OK, 1 KO
+          [KO ] (c17) la non-mecanisation est ECRITE, avec ses porteurs    ⛔ porteur(s) refuse(s) : à nommer** (*« la CI construit le firmwa — ⛔ un ecart sans p
+    --mutant 30 (cible c6) : rc=1  BILAN : 29 OK, 1 KO
+          [KO ] (c6) chaque morceau fait sa taille ET son empreinte        ⛔ bootloader.bin : sha256 servi d1bf1fd347b3…, publie 01bf1fd347b3… — une provenance 
+
+  ── 2. CHANGELOG.md : CE QUE LE DIFF RETIRE ──
+    git diff --numstat HEAD -- CHANGELOG.md : 65	0	CHANGELOG.md
+    lignes RETIREES (git diff -U0, hors en-tetes) :
+    titres de niveau 2 apres ecriture :
+      7:## [Unreleased]
+      9:## [0.1.0-beta] - 2026-09-14
+    sous-sections de [0.1.0-beta] :
+      18: ### Added
+      531: ### Changed
+      699: ### Fixed
+      809: ### Verified
+      830: ### Known issues
+    premiere entree de ### Added :
+      20: - 🆕 **The first release exists, and what it distributes has a source** (`dn8-7`, 2026-09-14).
+    definitions de liens :
+      937:[Unreleased]: https://github.com/nasbarok/desknode/compare/v0.1.0-beta...HEAD
+      938:[0.1.0-beta]: https://github.com/nasbarok/desknode/releases/tag/v0.1.0-beta
+    entrees dn8-6 / dn4-48 dans ### Added|Changed|Fixed (motif « (`dnX-Y`, 2026- ») :
+      (fin)
+
+  ── 3. installeur/index.html : NOMBRE DE LIGNES, ET CE QUI A CHANGE ──
+    HEAD : 3229 lignes · arbre : 3229 lignes
+    numstat : 4	4	installeur/index.html
+      -          builds this firmware, these binaries were made <b>by hand</b>, and there is
+      -          <b>neither tag nor release</b> — so no publicly reachable source yet. Both gaps have a
+      +          builds this firmware, these binaries were made <b>by hand</b>, and although a
+      +          <b>tag and a release now exist</b>, the repository is still private — so no publicly reachable source yet. Both gaps have a
+      -          construit ce firmware, ces binaires ont été faits <b>à la main</b>, et il n'existe
+      -          <b>ni tag ni release</b> — donc pas encore de source publiquement atteignable. Les
+      +          construit ce firmware, ces binaires ont été faits <b>à la main</b>, et si un
+      +          <b>tag et une release existent désormais</b>, le dépôt reste privé — donc pas encore de source publiquement atteignable. Les
+
+  ── 4. LE RENDU GITHUB (POST /markdown, mode gfm) ET LES FRAGMENTS CITES ──
+    docs/releases/v0.1.0-beta.md : rc=0 · 5160 o de HTML
+    CHANGELOG.md : rc=0 · 109912 o de HTML
+    README.md : rc=0 · 9400 o de HTML
+    CONTRIBUTING.md : rc=0 · 90657 o de HTML
+    LICENSING.md : rc=0 · 12586 o de HTML
+    ids « user-content- » dans le HTML de POST /markdown : 0
+    ⇒ l'endpoint /markdown ⛔ n'emet PAS les ancres de titre. Methode de repli, VALIDEE avant usage :
+      la regle de slug est confrontee aux ids que GitHub rend pour les MEMES fichiers a ref=main
+      (GET contents, Accept: application/vnd.github.html — lecture seule), puis appliquee a l'arbre ecrit.
+      README.md        a ref=main :  57 titres,  58 ids rendus, slugs calcules absents du rendu : 3 ['-portabilité--ce-qui-est-couvert-et-ce-qui-ne-lest-pas', '-ce-qui-na-pas-été-vérifié--et-le-vrai--pas-plus', '-le-port-est-exclusif--agent--boucle-de-flash--un-seul-geste-dn4-17']
+      CHANGELOG.md     a ref=main :   7 titres,   7 ids rendus, slugs calcules absents du rendu : 0 []
+      CONTRIBUTING.md  a ref=main :   7 titres,   7 ids rendus, slugs calcules absents du rendu : 0 []
+      LICENSING.md     a ref=main :   6 titres,   6 ids rendus, slugs calcules absents du rendu : 0 []
+      ⇒ regle de slug confrontee a 77 titres, 3 ecart(s)
+    #010-beta---2026-09-14            dans CHANGELOG.md     (arbre ecrit, slug calcule) : PRESENT
+    #install                          dans README.md        (arbre ecrit, slug calcule) : PRESENT
+    #known-issues                     dans README.md        (arbre ecrit, slug calcule) : PRESENT
+    #what-this-project-is-honestly    dans CONTRIBUTING.md  (arbre ecrit, slug calcule) : PRESENT
+    #binary-releases                  dans LICENSING.md     (arbre ecrit, slug calcule) : PRESENT
+    les titres de niveau 2 du CHANGELOG rendu :
+      <h2 dir="auto"><a href="https://github.com/nasbarok/desknode/compare/v0.1.0-beta...HEAD">Unreleased</a></h2>
+      <h2 dir="auto"><a href="https://github.com/nasbarok/desknode/releases/tag/v0.1.0-beta">0.1.0-beta</a> - 2026-09-14</h2>
+    liens du corps des notes (href rendus) :
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/README.md"
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/CONTRIBUTING.md#what-this-project-is-honestly"
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/installeur/charge/PROVENANCE.md"
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/LICENSING.md#binary-releases"
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/README.md#install"
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/README.md#known-issues"
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/CHANGELOG.md#010-beta---2026-09-14"
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/LICENSING.md"
+      href="https://github.com/nasbarok/desknode/blob/v0.1.0-beta/THIRD-PARTY.md"
+
+  ── 5. L'ARCHIVE git archive --format=zip HEAD (⚠️ HEAD = la base, ⛔ l'arbre ecrit) ──
+    sha256 aea81dbc20e0e9ebe9c17d7d4405edc5238adb33a484faafb6cfc24207583147 · 23115268 o
+    fichiers : 869
+    present  agent/dn_agent.py                        OUI
+    present  installeur/DeskNode-installeur.bat       OUI
+    present  tools/dn_agent_tour.ps1                  OUI
+    .bat CRLF : 209 / 209 lignes
+    ABSENT   tools/dn_agent.py                        OUI — absent
+    ⚠️ l'archive de l'arbre ECRIT (tag du C1-temoin) est dans T3, temoin (h).
+
+  ── 6. LE BALAYAGE (fichiers suivis hors mesures/) ──
+    CHANGELOG.md:11:Work towards the first public release, `v0.1.0-beta`.
+    CHANGELOG.md:22:  listed no release — while the install page's payload was a build of 2026-09-08, made **before**
+    CHANGELOG.md:28:  earlier values stay there as a dated quotation. (2) `v0.1.0-beta` is an **annotated tag** on the
+    CHANGELOG.md:30:  images, `manifest.json` and `desknode-v0.1.0-beta.zip` — the **whole tree** of the tag, made by
+    CHANGELOG.md:32:  notes are versioned in `docs/releases/v0.1.0-beta.md` and **link** to the status, the
+    CHANGELOG.md:423:  there is **no tag and no release** — measured on 2026-09-08, `git tag -l` and `gh release list`
+    CHANGELOG.md:937:[Unreleased]: https://github.com/nasbarok/desknode/compare/v0.1.0-beta...HEAD
+    CHANGELOG.md:938:[0.1.0-beta]: https://github.com/nasbarok/desknode/releases/tag/v0.1.0-beta
+    CONTRIBUTING.md:214:  The version on the display now exists (above); a release tag is still to come
+    CONTRIBUTING.md:216:  *(Annotated on 2026-09-14, `dn8-7`: the release tag now exists, `v0.1.0-beta`. ESP-IDF takes
+    CONTRIBUTING.md:217:  the version from `git describe --tags`, so a build from a clone prints `v0.1.0-beta` at the
+    CONTRIBUTING.md:218:  tagged commit and `v0.1.0-beta-<n>-g<sha>` on a later one — with `-dirty` appended on a
+    LICENSING.md:73:`network_count` **0**, **one** collaborator (its author) and **no tag**. Nobody has
+    SECURITY.md:50:There is no release yet: the version covered is the **default branch, `main`**. Once a first
+    SECURITY.md:54:*Annotated on 2026-09-14: a first release now exists — `v0.1.0-beta`, a pre-release — so the
+    docs/dn5-1-ecart-promesses.md:41:| **3** | `CONTRIBUTING.md` : *« Your **DeskNode version** — it is **displayed on the device**. »* | 🔴 **AUCUNE version n'est affi
+    docs/dn5-1-ecart-promesses.md:96:| **DeskNode version** | ✅ **OUI** — `CONTRIBUTING.md` demande le SHA du bandeau série **et dit comment le lire**. ⚠️ Une versio
+    docs/journal-de-bord.md:27:>   `v0.1.0-beta` »* (en tête du corps) et *« c'est `dn8` qui le scinde (journal vers `docs/`,
+    docs/journal-de-bord.md:48:> la `v0.1.0-beta` : le journal partira dans `docs/`, une vitrine courte restera ici.
+    docs/releases/v0.1.0-beta.md:1:# DeskNode v0.1.0-beta
+    docs/releases/v0.1.0-beta.md:5:**DeskNode** is a physical desktop dashboard: a small touchscreen that sits next to your PC and shows, at a glance, what the machine and th
+    docs/releases/v0.1.0-beta.md:9:What to expect from this project — maintenance, support, feature requests — is written in one place, and these notes do not repeat it: 
+    docs/releases/v0.1.0-beta.md:13:- **The firmware payload that the install page writes on the board**: `bootloader.bin`, `partition-table.bin`, `desknode.bin` and `living_
+    docs/releases/v0.1.0-beta.md:14:- **`desknode-v0.1.0-beta.zip`, the whole tree of this tag**, made with `git archive`. It carries the Windows agent (`agent/`) and the ins
+    docs/releases/v0.1.0-beta.md:19:`desknode.bin` was built from commit `55006c19182b3ff1ccc017044057347841ede475`, and the `firmware/` directory of the tag `v0.1.0-beta` is
+    docs/releases/v0.1.0-beta.md:23:Follow [*Install* on the front page](https://github.com/nasbarok/desknode/blob/v0.1.0-beta/README.md#install).
+    docs/releases/v0.1.0-beta.md:27:They are listed once, on the front page: [*Known issues*](https://github.com/nasbarok/desknode/blob/v0.1.0-beta/README.md#known-issues).
+    docs/releases/v0.1.0-beta.md:37:[`CHANGELOG.md`, section *0.1.0-beta*](https://github.com/nasbarok/desknode/blob/v0.1.0-beta/CHANGELOG.md#010-beta---2026-09-14).
+    docs/releases/v0.1.0-beta.md:41:Firmware GPL-3.0-or-later · Windows agent MIT · docs and hardware CC-BY-SA-4.0: [`LICENSING.md`](https://github.com/nasbarok/desknode/bl
+    docs/roadmap.md:125:| `dn8-7` | **The first release exists, and what it distributes has a source.** Shipped on 2026-09-14. Measured that day: **0 tag and 0 release**, and
+    docs/roadmap.md:156:`v0.1.0-beta`, an annotated tag with its GitHub pre-release. The sentence *"when
+    firmware/desknode/main/dn_langue.h:194:    /*    `v0.1.0-beta-NNNN-g<sha7>-dirty`, 319 px avec 13 hex sans `-dirty`. */ \
+    installeur/charge/PROVENANCE.md:23:> ⇒ ce que la release `v0.1.0-beta` distribue est le binaire **vu sur la dalle**, ⛔ pas celui-là.
+    installeur/charge/PROVENANCE.md:26:> rendent la même chaîne que tant qu'aucun tag n'existe.
+    installeur/charge/PROVENANCE.md:171:- **Il n'y a ⛔ aucun tag et ⛔ aucune release** — mesuré le 2026-09-08 : `git tag -l` est
+    installeur/charge/PROVENANCE.md:178:> *(ii)* **Un tag et une release existent** : le tag annoté `v0.1.0-beta` et sa pre-release GitHub
+    installeur/charge/PROVENANCE.md:205:> ci-dessus), et *« faute d'une release »* a cessé d'être vrai : la release `v0.1.0-beta` porte
+    tools/verif_harnais_dn81.py:169:    ("marqueur", "aucun tag et aucune release", "⛔ aucun tag et ⛔ aucune release"),
+    tools/verif_harnais_dn81.py:176:    ("negation", "aucun tag", "un tag"),
+    tools/verif_harnais_dn81.py:805:            ("temoin creux", "aucun tag", "il n'y a aucun tag ici"),)
+    tools/verif_licences_dn52.py:1196:    #    de branche ou un tag DEPLACABLE (`v0.1.0-beta`, que la ligne 2 de la
+    + fichiers NON suivis de l'arbre ecrit :
+  === fin 2026-09-14T01:30:29+02:00 ===
+
+── 5. LE SCRIPT (tel que joue) ─────────────────────────────────────────────
+  | #!/usr/bin/env bash
+  | # dn8-7 / T2 — l'arbre ecrit et ses temoins : gate de la charge + mutants, CHANGELOG, page, rendu GitHub,
+  | # archive, balayage. Usage : t2.sh   (sorties sous $O — ⛔ jamais dans l'arbre)
+  | set -u
+  | S=$S
+  | O=$S/T2; rm -rf "$O"; mkdir -p "$O"
+  | DN=/home/nasbarok/projects/desknode
+  | cd "$DN" || exit 9
+  | echo "=== dn8-7 / T2 — debut $(date -Iseconds) ==="
+  | echo "HEAD desknode : $(git rev-parse HEAD)"
+  | echo "git status --porcelain :"; git status --porcelain | sed 's/^/  /'
+  |
+  | echo; echo "── 1. verif_flash_dn72.py SUR L'ARBRE ECRIT, PUIS SES MUTANTS 6 · 16 · 18 · 30 (+17) ──"
+  | python3 tools/verif_flash_dn72.py > "$O/flash.txt" 2>&1; echo "  verif_flash_dn72.py : rc=$?  $(grep -E '^BILAN' "$O/flash.txt")"
+  | grep -E '\((c6|c7|c16|c17|c30)\)' "$O/flash.txt" | sed 's/^/    /'
+  | for n in 6 16 17 18 30; do
+  |   python3 tools/verif_flash_dn72.py --mutant $n > "$O/mutant-$n.txt" 2>&1; rc=$?
+  |   cible=$(python3 -c "import sys; sys.path.insert(0,'tools'); import verif_flash_dn72 as v; print(','.join(v.CIBLES[$n]))")
+  |   echo "  --mutant $n (cible $cible) : rc=$rc  $(grep -E '^BILAN' "$O/mutant-$n.txt")"
+  |   grep -E '\[KO' "$O/mutant-$n.txt" | cut -c1-160 | sed 's/^/      /'
+  | done
+  |
+  | echo; echo "── 2. CHANGELOG.md : CE QUE LE DIFF RETIRE ──"
+  | echo "  git diff --numstat HEAD -- CHANGELOG.md : $(git diff --numstat HEAD -- CHANGELOG.md)"
+  | echo "  lignes RETIREES (git diff -U0, hors en-tetes) :"
+  | git diff -U0 HEAD -- CHANGELOG.md | grep -E '^-' | grep -vE '^--- ' | sed 's/^/    [/; s/$/]/'
+  | echo "  titres de niveau 2 apres ecriture :"; grep -nE '^## ' CHANGELOG.md | sed 's/^/    /'
+  | echo "  sous-sections de [0.1.0-beta] :"; awk '/^## \[0.1.0-beta\]/{f=1} f&&/^### /{print "    "NR": "$0}' CHANGELOG.md
+  | echo "  premiere entree de ### Added :"; awk '/^### Added/{f=1;next} f&&/^- /{print "    "NR": "substr($0,1,120); exit}' CHANGELOG.md
+  | echo "  definitions de liens :"; grep -nE '^\[[^]]+\]: ' CHANGELOG.md | sed 's/^/    /'
+  | echo "  entrees dn8-6 / dn4-48 dans ### Added|Changed|Fixed (motif « (\`dnX-Y\`, 2026- ») :"
+  | grep -nE '\(`(dn8-6|dn4-48)`, 2026-' CHANGELOG.md | sed 's/^/    /' ; echo "    (fin)"
+  |
+  | echo; echo "── 3. installeur/index.html : NOMBRE DE LIGNES, ET CE QUI A CHANGE ──"
+  | echo "  HEAD : $(git show HEAD:installeur/index.html | wc -l) lignes · arbre : $(wc -l < installeur/index.html) lignes"
+  | git diff --numstat HEAD -- installeur/index.html | sed 's/^/  numstat : /'
+  | git diff -U0 HEAD -- installeur/index.html | grep -E '^[-+][^-+]' | sed 's/^/    /'
+  |
+  | echo; echo "── 4. LE RENDU GITHUB (POST /markdown, mode gfm) ET LES FRAGMENTS CITES ──"
+  | for f in docs/releases/v0.1.0-beta.md CHANGELOG.md README.md CONTRIBUTING.md LICENSING.md; do
+  |   n=$(echo "$f" | tr '/' '_')
+  |   gh api -X POST /markdown -f mode=gfm -f context=nasbarok/desknode -F text=@"$f" > "$O/rendu-$n.html" 2> "$O/rendu-$n.err"
+  |   echo "  $f : rc=$? · $(wc -c < "$O/rendu-$n.html") o de HTML"
+  | done
+  | echo "  ids « user-content- » dans le HTML de POST /markdown : $(cat "$O"/rendu-*.html | grep -c 'id="user-content-')"
+  | echo "  ⇒ l'endpoint /markdown ⛔ n'emet PAS les ancres de titre. Methode de repli, VALIDEE avant usage :"
+  | echo "    la regle de slug est confrontee aux ids que GitHub rend pour les MEMES fichiers a ref=main"
+  | echo "    (GET contents, Accept: application/vnd.github.html — lecture seule), puis appliquee a l'arbre ecrit."
+  | for f in README.md CHANGELOG.md CONTRIBUTING.md LICENSING.md; do
+  |   gh api "repos/nasbarok/desknode/contents/$f?ref=main" -H "Accept: application/vnd.github.html" > "$O/main-$f.html" 2>&1
+  |   git show "origin/main:$f" > "$O/main-$f.md" 2>/dev/null
+  | done
+  | python3 - "$O" <<'PY'
+  | import os, re, sys
+  | O = sys.argv[1]
+  | def slug(titre):
+  |     t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", titre)          # lien inline : son texte
+  |     t = re.sub(r"<[^>]+>", "", t).strip().lower()
+  |     t = re.sub(r"[^\w\- ]", "", t)                              # ponctuation hors tiret et espace
+  |     return t.replace(" ", "-")
+  | def titres(md):
+  |     out, dans = [], False
+  |     for l in md.splitlines():
+  |         if re.match(r"^ {0,3}(```|~~~)", l):
+  |             dans = not dans
+  |         if not dans:
+  |             m = re.match(r"^ {0,3}#{1,6}\s+(.*?)\s*#*\s*$", l)
+  |             if m:
+  |                 out.append(m.group(1))
+  |     return out
+  | def dedoublonne(slugs):
+  |     vus, res = {}, []
+  |     for s in slugs:
+  |         n = vus.get(s, 0); res.append(s if n == 0 else "%s-%d" % (s, n)); vus[s] = n + 1
+  |     return res
+  | tot = ecarts = 0
+  | for f in ("README.md", "CHANGELOG.md", "CONTRIBUTING.md", "LICENSING.md"):
+  |     md = open(os.path.join(O, "main-%s.md" % f), encoding="utf-8").read()
+  |     rendus = re.findall(r'id="user-content-([^"]*)"', open(os.path.join(O, "main-%s.html" % f), encoding="utf-8").read())
+  |     calc = dedoublonne([slug(t) for t in titres(md)])
+  |     manque = [c for c in calc if c not in rendus]
+  |     tot += len(calc); ecarts += len(manque)
+  |     print("    %-16s a ref=main : %3d titres, %3d ids rendus, slugs calcules absents du rendu : %d %s"
+  |           % (f, len(calc), len(rendus), len(manque), manque[:3]))
+  | print("    ⇒ regle de slug confrontee a %d titres, %d ecart(s)" % (tot, ecarts))
+  | for f, frag in (("CHANGELOG.md", "010-beta---2026-09-14"), ("README.md", "install"), ("README.md", "known-issues"),
+  |                 ("CONTRIBUTING.md", "what-this-project-is-honestly"), ("LICENSING.md", "binary-releases")):
+  |     md = open(os.path.join("/home/nasbarok/projects/desknode", f), encoding="utf-8").read()
+  |     calc = dedoublonne([slug(t) for t in titres(md)])
+  |     print("  #%-32s dans %-16s (arbre ecrit, slug calcule) : %s" % (frag, f, "PRESENT" if frag in calc else "⛔ ABSENT"))
+  | PY
+  | echo "  les titres de niveau 2 du CHANGELOG rendu :"
+  | grep -oE '<h2[^>]*>.{0,200}</h2>' "$O/rendu-CHANGELOG.md.html" | head -3 | sed 's/^/    /'
+  | grep -oE 'id="user-content-[^"]*beta[^"]*"|id="user-content-unreleased"' "$O/rendu-CHANGELOG.md.html" | sed 's/^/    /'
+  | echo "  liens du corps des notes (href rendus) :"
+  | grep -oE 'href="https://github.com/[^"]*"' "$O/rendu-docs_releases_v0.1.0-beta.md.html" | sed 's/^/    /'
+  |
+  | echo; echo "── 5. L'ARCHIVE git archive --format=zip HEAD (⚠️ HEAD = la base, ⛔ l'arbre ecrit) ──"
+  | git archive --format=zip -o "$O/head.zip" HEAD
+  | echo "  sha256 $(sha256sum "$O/head.zip" | cut -c1-64) · $(wc -c < "$O/head.zip") o"
+  | python3 - "$O/head.zip" <<'EOF'
+  | import sys, zipfile
+  | z = zipfile.ZipFile(sys.argv[1]); noms = [i.filename for i in z.infolist() if not i.is_dir()]
+  | print("  fichiers : %d" % len(noms))
+  | for rel in ("agent/dn_agent.py", "installeur/DeskNode-installeur.bat", "tools/dn_agent_tour.ps1"):
+  |     print("  present  %-40s %s" % (rel, "OUI" if rel in noms else "⛔ NON"))
+  | bat = z.read("installeur/DeskNode-installeur.bat"); L = bat.split(b"\n")[:-1]
+  | print("  .bat CRLF : %d / %d lignes" % (sum(1 for l in L if l.endswith(b"\r")), len(L)))
+  | print("  ABSENT   %-40s %s" % ("tools/dn_agent.py", "⛔ PRESENT" if "tools/dn_agent.py" in noms else "OUI — absent"))
+  | EOF
+  | echo "  ⚠️ l'archive de l'arbre ECRIT (tag du C1-temoin) est dans T3, temoin (h)."
+  |
+  | echo; echo "── 6. LE BALAYAGE (fichiers suivis hors mesures/) ──"
+  | git grep -n -i -E "no tag|no release|aucun tag|aucune release|ni tag|neither tag|tag is still to come|no release yet|v0\.1\.0-beta" -- . ':!mesures' | cut -c1-170 | sed 's/^/  /'
+  | echo "  + fichiers NON suivis de l'arbre ecrit :"
+  | git ls-files --others --exclude-standard -z | xargs -0 grep -n -i -E "no tag|no release|aucun tag|aucune release|ni tag|neither tag|tag is still to come|no release yet" 2>/dev/null | cut -c1-170 | sed 's/^/  /'
+  | echo "=== fin $(date -Iseconds) ==="

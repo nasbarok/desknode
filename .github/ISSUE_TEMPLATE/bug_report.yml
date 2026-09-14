@@ -48,6 +48,7 @@ body:
         "Stop the agent and hand the port back" on the install page.
         A build from a ZIP prints `1` (the MENU shows `version ?`), a build from a modified tree prints the SHA followed by `-dirty`: say which one you saw.
         For a bug in the Windows agent or the install page, the version is the commit you cloned (`git rev-parse --short HEAD`).
+        The `v0.1.0-beta` release binary shows `version 55006c1`; a build from a clone at or after that tag shows `v0.1.0-beta` or `v0.1.0-beta-<n>-g<sha>`.
         Details: [Reporting a bug](https://github.com/nasbarok/desknode/blob/main/CONTRIBUTING.md#reporting-a-bug).
       placeholder: 6a91fa3
     validations:

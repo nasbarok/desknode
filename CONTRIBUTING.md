@@ -213,6 +213,11 @@ Please include:
 
   The version on the display now exists (above); a release tag is still to come
   (`dn8` — see [`docs/roadmap.md`](docs/roadmap.md)).
+  *(Annotated on 2026-09-14, `dn8-7`: the release tag now exists, `v0.1.0-beta`. ESP-IDF takes
+  the version from `git describe --tags`, so a build from a clone prints `v0.1.0-beta` at the
+  tagged commit and `v0.1.0-beta-<n>-g<sha>` on a later one — with `-dirty` appended on a
+  modified tree — where the paragraph above says `<sha>`. The release's own `desknode.bin`, built
+  before the tag, shows `version 55006c1`.)*
 - Your **Windows version**, and the make of your GPU. ⚠️ GPU metrics come from
   **AMD only** today: NVIDIA is **not implemented** — there is no NVML in the agent
   — and Intel Arc and integrated GPUs are untested. If yours shows `--`, that is
@@ -223,8 +228,16 @@ Two things are already known, so no need to report them:
 
 - For roughly **40 seconds after a cold start**, touch input can be unreliable.
   The cause is not yet understood.
+  *(Annotated on 2026-09-14, `dn8-7`: the window itself has been characterised since
+  2026-08-20 — about 1 cold start in 6, across the whole I²C bus, recovering on its own — and
+  its cause is **not established**. The wording of reference is the front page's
+  [Known issues](README.md#known-issues).)*
 - Opening a detail page takes **335.8 ms** on average — n = 80, spread 281.2 to
   400.9 — where the target was 300 ms.
+
+*(Annotated on 2026-09-14, `dn8-7`: a third one belongs to this list. Activating the agent from a
+downloaded copy of the repository is expected to fail with exit code `3` — see the front page's
+[Known issues](README.md#known-issues).)*
 
 ## Building the firmware
 

@@ -45,6 +45,8 @@ If you **downloaded** the `.bat` instead of cloning the repository, Windows may 
 
 A standalone executable for the agent, so that none of the above is needed, is planned for **V0.2**.
 
+⚠️ Activating the agent from a downloaded copy of the repository is expected to fail today: see [Known issues](#known-issues).
+
 **Building the firmware from source** (ESP-IDF, on Linux or WSL): see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Language
@@ -54,6 +56,7 @@ The screen starts in **English**. **French** can be selected on the install page
 ## Known issues
 
 - **Cold start: the whole I²C bus degrades for ~40 s.** On about **1 cold start in 6**, multi-byte transactions fail across the **whole I²C bus** for roughly the first 40 seconds — the touch controller's reads failed **55.5 %** of the time, so touch is unresponsive — then recover **on their own**. On a *DeskNode + Ambiance* build, the room sensors can stay empty until **about a minute** after power-on. The root cause is **not established**.
+- **Activating the agent from a downloaded copy is expected to fail.** On a clone or a downloaded archive of this repository, the install page's *Activate the agent* step should be refused with exit code `3`: the launcher expects the agent **next to itself** (`tools/dn_agent.py`), a layout that only the author's own deployment script produces. This was established on 2026-09-14 by reading `tools/dn_agent_tour.ps1` (and by an earlier run of that launcher from a copy of the repository); it has ⛔ not yet been observed on a downloaded copy. The standalone executable planned for **V0.2** is what removes that step.
 - **Navigation is slower than targeted.** Opening a detail page takes **335.8 ms** on average against a **300 ms** target (n = 80, range 281.2–400.9 ms, measured 2026-08-22).
 - **Portability:**
   - the agent runs on **Windows only**;

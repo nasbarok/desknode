@@ -1,0 +1,1325 @@
+==============================================================================
+dn8-7 / T5 — LES TEMOINS DES CORRECTIFS DE REVUE DU SCRIPT DE PUBLICATION
+  Joue le 2026-09-14 de 02:52:20 a 02:52:56 (+02:00), APRES la revue de la passe
+  d'implementation. Meme mise en place que T3 (clone JETABLE, C1-temoin =
+  l'arbre ecrit CORRIGE, remotes NUS, JSON fabriques, `gh` intercepte) ; chaque
+  faute est REPLANTEE sur sa propre branche jetable du clone. ⛔ T3 n'est pas
+  retouche : ses temoins restent ceux du script d'avant la revue (§ 4 = le diff).
+  Sortie brute en § 3 (chemin du scratchpad abrege en `$S`, seule transformation).
+==============================================================================
+
+── 1. UN TEMOIN PAR CONSTAT DE REVUE ────────────────────────────────────────
+  constat                                         faute replantee                              attendu / rendu
+  la cellule « révision du dépôt » n'est gardee   R1 cellule remise a `40be2c8` ; la gate de   KO NOMME / rc=1 « cellule(s) ['40be2c8'] ·
+    par rien ((c16) = sous-chaine)                   la charge SUR CETTE VARIANTE rend 30/0,    binaire de C1 '55006c1' » · TENU
+                                                     (c16) OK « PROVENANCE.md nomme 55006c1 »
+  les liens `blob/TAG/…#ancre` des notes ne sont  R2 titre `## [0.1.0-beta] - 2026-09-15`      KO NOMME sur le lien / rc=1
+    lus qu'apres la poussee                          (+ KO date)                                « CHANGELOG.md#010-beta---2026-09-14 :
+                                                                                                ancre ABSENTE » · TENU
+  la date ecrite dans C1 n'est pas confrontee     R3 1re ligne des notes datee 2026-09-13,     KO / rc=1 (liens OK, date KO) · TENU
+    au jour de publication                           CHANGELOG juste
+  `git diff --quiet 55006c1 C1 -- firmware/`      R4 commit jetable sur                        KO / rc=1 « rc=1 firmware/ de C1 ≠ la
+    n'etait joue par aucune etape                    firmware/desknode/main/CMakeLists.txt      source du binaire » · TENU
+  un remote portant d'AUTRES tags passait         R5 `v0.0.1` pose sur le remote nu            garde rc=1, pousser rc=1 « 1 tag(s)
+                                                                                                distant(s) … l'etape 1 exige ZERO »,
+                                                                                                0 tag pousse · TENU ; (b) conserve · TENU
+  le filtre par PREFIXE cachait                   R6 hook post-receive qui pose                KO / rc=1 « refs/tags/v0.1.0-beta.1 » ;
+    `refs/tags/v0.1.0-beta.1`                        refs/tags/v0.1.0-beta.1                    temoin nominal (rd.git) rc=0 · TENU
+  `--archive` n'etait pas lie au tag              R7 archive de HEAD~1, meme prefixe et nom    rc=1, 0 appel gh · TENU ;
+                                                                                                archive fraiche : rc=0, 1 appel · TENU
+  `etape_ci` : traceback sur gh rc≠0, headSha     R8 headSha a zero (JSON)                     rc=1 « headSha du run = C1 » KO · TENU
+    jamais confronte, journal jamais lu              `gh run view` rc=1 (intercepte)            rc=1 KO NOMME « gh run view 94 : rc=1 » · TENU
+                                                     `gh run list` rc=1 (intercepte)            rc=1 KO NOMME · TENU
+                                                     chemin nominal (liste, vue, --log)         rc=0 ; duree 1001 s ; BILAN et 2 lignes
+                                                                                                NON-JOUABLE imprimees · TENU
+                                                     failure / cancelled / in_progress (JSON)   1 / 1 / 4 · TENU
+  ⇒ 21 verdicts « TENU », 0 « NON TENU », 0 traceback. R0 : `garde` sur le
+    C1-temoin CORRIGE rend rc=0, toutes les gardes neuves OK.
+
+── 2. CE QUE CES TEMOINS ⛔ NE PROUVENT PAS ─────────────────────────────────
+  · ⛔ aucune requete ecrite vers GitHub : `ls-remote origin` et `releases`
+    relus AVANT et APRES identiques, `git tag` de desknode vide (§ 3).
+  · La garde de date lit `datetime.date.today()` : jouee un autre jour que le
+    2026-09-14, R0 rougirait aussi — c'est l'intention (les fichiers de C1
+    seraient faux), et c'est le motif pour lequel ce temoin est DATE.
+  · `ancres` est une MODELISATION du rendu GitHub (docstring de
+    `verif_reception_dn85.py`) : la garde avant le tag le dit ; la preuve sur
+    le rendu reel reste l'etape `liens`, apres la poussee.
+  · Le journal de CI de R8 est FABRIQUE : le format reel des lignes de
+    `gh run view --log` sera vu au premier run du tag ; la recherche se fait
+    par sous-chaine (« BILAN : », « NON-JOUABLE »), ⛔ par colonne.
+  · Les messages `git apply` « trailing whitespace » de la mise en place
+    viennent des captures T0/T2 (blancs de fin des sorties de gates, verses
+    tels quels) : l'application reussit, et la comparaison fichier par fichier
+    ne montre que `tools/dn-agent.bat` (fins de ligne du fichier de travail,
+    meme blob — voir T3 § 2).
+
+── 3. LA SORTIE BRUTE (`rtk proxy bash temoins-revue.sh`) ──────────────────
+  === dn8-7 / T5 — debut 2026-09-14T02:52:20+02:00 ===
+  --- GitHub AVANT (lecture seule) ---
+    ls-remote origin : 7246f5248d1625a2a351bbb374c03f0585a008c3 HEAD 3db180cbd6789cde32bb093dd565d1ab3c4f298f refs/heads/dn4-5-le-module-vit-tout-seul 7246f5248d1625a2a351bbb374c03f0585a008c3 refs/heads/main d11977f8d80eee890f37bf79843cfe782b612338 refs/pull/1/head 6a80de8ccab4fb3715ebfdeae830ecbe801a5069 refs/pull/2/head 
+    releases : []
+
+  ── MISE EN PLACE (identique a T3) ─────────────────────────────────────────
+  <stdin>:8550: trailing whitespace.
+    verif_affiliation_dn65.py          rc=0       1.72 s  BILAN : 23 OK, 0 KO 
+  <stdin>:8551: trailing whitespace.
+    verif_banc_langue_dn73.py          rc=0       2.43 s  BILAN : 81 OK, 0 KO 
+  <stdin>:8552: trailing whitespace.
+    verif_bme680_retard_dn45.py        rc=0       0.04 s  BILAN : 15 OK, 0 KO 
+  <stdin>:8553: trailing whitespace.
+    verif_boitier_dn64.py --cockpit    rc=0       0.31 s  BILAN : 29 OK, 0 KO 
+  <stdin>:8554: trailing whitespace.
+    verif_bom_dn61.py                  rc=0       0.05 s  BILAN : 24 OK, 0 KO 
+  warning: squelched 49 whitespace errors
+  warning: 54 lines add whitespace errors.
+    C1-temoin = 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+      ⛔ DIFFERE : tools/dn-agent.bat
+      (fin du diff arbre ecrit ⇄ C1-temoin)
+
+  ── R0. TEMOIN POSITIF : garde sur le C1-temoin (toutes les gardes neuves OK) ──
+    $ python3 $S/publier.py garde --depot $S/T5w/work --remote $S/T5w/rd.git --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 1. arbre propre                                            status vide
+    | [OK ] 1. HEAD = C1 (en entier)                                   3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 1. verif_flash_dn72.py a C1                                rc=0 ['BILAN : 30 OK, 0 KO']
+    | [OK ] 1. cellule « révision du dépôt » = version lue a 0x30      `55006c1` = `55006c1`
+    | [OK ] 1. liens blob/v0.1.0-beta des notes resolus dans C1        10 lien(s) (fichier + ancre, `ancres` importee de verif_reception_dn85)
+    | [OK ] 1. git diff --quiet 55006c1 C1 -- firmware/                rc=0
+    | [OK ] 1. date du CHANGELOG et des notes = aujourd'hui            2026-09-14
+    | [OK ] 1. (b) aucun tag sur le remote                             0 tag distant
+    | [OK ] 1. refs/heads/main distant = attendu                       7246f5248d1625a2a351bbb374c03f0585a008c3
+    rc=0 (attendu 0) ⇒ TENU
+
+  ── R1. CELLULE « révision du dépôt » REMISE A 40be2c8 ⇒ KO NOMME, verif_flash reste 30/0 ─
+    variante = ef02a69c394cd5e08519b7afb6282594b24d05a0 ; la gate de la charge SUR CETTE VARIANTE :
+      ── (c16)(c17) LA PROVENANCE, ET CE QUE PERSONNE NE MECANISE ──────
+        [OK ] (c16) la page pointe la source de CETTE revision           `PROVENANCE.md` nomme 55006c1
+      BILAN : 30 OK, 0 KO
+    $ python3 $S/publier.py garde --depot $S/T5w/work --remote $S/T5w/rd.git --c1 ef02a69c394cd5e08519b7afb6282594b24d05a0 --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 1. arbre propre                                            status vide
+    | [OK ] 1. HEAD = C1 (en entier)                                   ef02a69c394cd5e08519b7afb6282594b24d05a0
+    | [OK ] 1. verif_flash_dn72.py a C1                                rc=0 ['BILAN : 30 OK, 0 KO']
+    | [KO ] 1. cellule « révision du dépôt » = version lue a 0x30      ⛔ cellule(s) ['40be2c8'] · binaire de C1 '55006c1' — la table nomme une AUTRE revision que le binaire servi
+    | [OK ] 1. liens blob/v0.1.0-beta des notes resolus dans C1        10 lien(s) (fichier + ancre, `ancres` importee de verif_reception_dn85)
+    | [OK ] 1. git diff --quiet 55006c1 C1 -- firmware/                rc=0
+    | [OK ] 1. date du CHANGELOG et des notes = aujourd'hui            2026-09-14
+    | [OK ] 1. (b) aucun tag sur le remote                             0 tag distant
+    | [OK ] 1. refs/heads/main distant = attendu                       7246f5248d1625a2a351bbb374c03f0585a008c3
+    rc=1 (attendu 1) ⇒ TENU
+
+  ── R2. TITRE DU CHANGELOG RE-DATE ⇒ KO NOMME SUR LE LIEN, ET SUR LA DATE ──────
+    $ python3 $S/publier.py garde --depot $S/T5w/work --remote $S/T5w/rd.git --c1 dba4d6812c6f353ca432e11def0a1321c289b145 --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 1. arbre propre                                            status vide
+    | [OK ] 1. HEAD = C1 (en entier)                                   dba4d6812c6f353ca432e11def0a1321c289b145
+    | [OK ] 1. verif_flash_dn72.py a C1                                rc=0 ['BILAN : 30 OK, 0 KO']
+    | [OK ] 1. cellule « révision du dépôt » = version lue a 0x30      `55006c1` = `55006c1`
+    | [KO ] 1. liens blob/v0.1.0-beta des notes resolus dans C1        ⛔ CHANGELOG.md#010-beta---2026-09-14 : ancre ABSENTE
+    | [OK ] 1. git diff --quiet 55006c1 C1 -- firmware/                rc=0
+    | [KO ] 1. date du CHANGELOG et des notes = aujourd'hui            ⛔ aujourd'hui 2026-09-14 · `## [0.1.0-beta] - …` ['2026-09-15'] · 1re ligne des notes ['2026-09-14']
+    | [OK ] 1. (b) aucun tag sur le remote                             0 tag distant
+    | [OK ] 1. refs/heads/main distant = attendu                       7246f5248d1625a2a351bbb374c03f0585a008c3
+    rc=1 (attendu 1) ⇒ TENU
+
+  ── R3. 1re LIGNE DES NOTES RE-DATEE (le CHANGELOG, lui, juste) ⇒ KO date ──────
+    $ python3 $S/publier.py garde --depot $S/T5w/work --remote $S/T5w/rd.git --c1 55243d0c22193defc28528271bb5def6742dcea0 --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 1. arbre propre                                            status vide
+    | [OK ] 1. HEAD = C1 (en entier)                                   55243d0c22193defc28528271bb5def6742dcea0
+    | [OK ] 1. verif_flash_dn72.py a C1                                rc=0 ['BILAN : 30 OK, 0 KO']
+    | [OK ] 1. cellule « révision du dépôt » = version lue a 0x30      `55006c1` = `55006c1`
+    | [OK ] 1. liens blob/v0.1.0-beta des notes resolus dans C1        10 lien(s) (fichier + ancre, `ancres` importee de verif_reception_dn85)
+    | [OK ] 1. git diff --quiet 55006c1 C1 -- firmware/                rc=0
+    | [KO ] 1. date du CHANGELOG et des notes = aujourd'hui            ⛔ aujourd'hui 2026-09-14 · `## [0.1.0-beta] - …` ['2026-09-14'] · 1re ligne des notes ['2026-09-13']
+    | [OK ] 1. (b) aucun tag sur le remote                             0 tag distant
+    | [OK ] 1. refs/heads/main distant = attendu                       7246f5248d1625a2a351bbb374c03f0585a008c3
+    rc=1 (attendu 1) ⇒ TENU
+
+  ── R4. UN COMMIT JETABLE QUI TOUCHE firmware/ ⇒ KO ──────────────────────────
+    $ python3 $S/publier.py garde --depot $S/T5w/work --remote $S/T5w/rd.git --c1 525862b2d96ed74fc9ef6c11912bf999f7f590f0 --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 1. arbre propre                                            status vide
+    | [OK ] 1. HEAD = C1 (en entier)                                   525862b2d96ed74fc9ef6c11912bf999f7f590f0
+    | [OK ] 1. verif_flash_dn72.py a C1                                rc=0 ['BILAN : 30 OK, 0 KO']
+    | [OK ] 1. cellule « révision du dépôt » = version lue a 0x30      `55006c1` = `55006c1`
+    | [OK ] 1. liens blob/v0.1.0-beta des notes resolus dans C1        10 lien(s) (fichier + ancre, `ancres` importee de verif_reception_dn85)
+    | [KO ] 1. git diff --quiet 55006c1 C1 -- firmware/                rc=1 ⛔ firmware/ de C1 ≠ la source du binaire
+    | [OK ] 1. date du CHANGELOG et des notes = aujourd'hui            2026-09-14
+    | [OK ] 1. (b) aucun tag sur le remote                             0 tag distant
+    | [OK ] 1. refs/heads/main distant = attendu                       7246f5248d1625a2a351bbb374c03f0585a008c3
+    rc=1 (attendu 1) ⇒ TENU
+
+  ── R5. UN AUTRE TAG SUR LE REMOTE (v0.0.1) ⇒ garde ET pousser arretent ────────
+    $ python3 $S/publier.py garde --depot $S/T5w/work --remote $S/T5w/rautre.git --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 1. arbre propre                                            status vide
+    | [OK ] 1. HEAD = C1 (en entier)                                   3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 1. verif_flash_dn72.py a C1                                rc=0 ['BILAN : 30 OK, 0 KO']
+    | [OK ] 1. cellule « révision du dépôt » = version lue a 0x30      `55006c1` = `55006c1`
+    | [OK ] 1. liens blob/v0.1.0-beta des notes resolus dans C1        10 lien(s) (fichier + ancre, `ancres` importee de verif_reception_dn85)
+    | [OK ] 1. git diff --quiet 55006c1 C1 -- firmware/                rc=0
+    | [OK ] 1. date du CHANGELOG et des notes = aujourd'hui            2026-09-14
+    | [KO ] 1. (b) aucun tag sur le remote                             ⛔ 1 tag(s) distant(s) (refs/tags/v0.0.1) — l'etape 1 exige ZERO — ARRET, ⛔ aucune poussee
+    | [OK ] 1. refs/heads/main distant = attendu                       7246f5248d1625a2a351bbb374c03f0585a008c3
+    rc=1 (attendu 1) ⇒ TENU
+    $ python3 $S/publier.py tag --depot $S/T5w/work --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 2. git tag -a sur C1                                       rc=0 
+    | [OK ] 2. le tag est ANNOTE                                       objet 8d730e5134c013939a2e7d6a9f1482cd8af5d176 de type tag
+    | [OK ] 2. v0.1.0-beta^{commit} = C1                               3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 2. git describe --tags --always --dirty                    v0.1.0-beta
+    rc=0 (attendu 0) ⇒ TENU
+    $ python3 $S/publier.py pousser --depot $S/T5w/work --remote $S/T5w/rautre.git --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 3. tag local annote sur C1 avant poussee                   tag 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [KO ] 3. (b) aucun tag sur le remote                             ⛔ 1 tag(s) distant(s) (refs/tags/v0.0.1) — l'etape 1 exige ZERO — ARRET, ⛔ aucune poussee
+    rc=1 (attendu 1) ⇒ TENU
+    tags sur rautre.git apres : 72383129ac602d6c74cfc3ed632db15f163264ff refs/tags/v0.0.1 7246f5248d1625a2a351bbb374c03f0585a008c3 refs/tags/v0.0.1^{} 
+    (b) conserve — le MEME tag deja present :
+    $ python3 $S/publier.py pousser --depot $S/T5w/work --remote $S/T5w/rb.git --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 3. tag local annote sur C1 avant poussee                   tag 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [KO ] 3. (b) aucun tag sur le remote                             ⛔ v0.1.0-beta DEJA sur le remote (9a4dc68af7a1) — ARRET, ⛔ aucune poussee
+    rc=1 (attendu 1) ⇒ TENU
+
+  ── R6. UNE REF VOISINE (refs/tags/v0.1.0-beta.1) BOUGE PENDANT LA POUSSEE ⇒ KO ─
+    $ python3 $S/publier.py pousser --depot $S/T5w/work --remote $S/T5w/rvoisin.git --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 3. tag local annote sur C1 avant poussee                   tag 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 3. (b) aucun tag sur le remote                             0 tag distant
+    |     $ git push $S/T5w/rvoisin.git refs/tags/v0.1.0-beta
+    |     rc=0
+    |     | To $S/T5w/rvoisin.git
+    |     |  * [new tag]         v0.1.0-beta -> v0.1.0-beta
+    | [OK ] 3. (d) objet tag distant = objet local                     8d730e5134c013939a2e7d6a9f1482cd8af5d176
+    | [OK ] 3. (d) ^{} distant = C1                                    3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 3. (d) refs/heads/main distant INCHANGE                    7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [KO ] 3. (d) aucune autre ref distante n'a bouge                 refs/tags/v0.1.0-beta.1
+    rc=1 (attendu 1) ⇒ TENU
+    temoin nominal (rd.git, sans hook) :
+    $ python3 $S/publier.py pousser --depot $S/T5w/work --remote $S/T5w/rd.git --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --main-attendu 7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 3. tag local annote sur C1 avant poussee                   tag 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 3. (b) aucun tag sur le remote                             0 tag distant
+    |     $ git push $S/T5w/rd.git refs/tags/v0.1.0-beta
+    |     rc=0
+    |     | To $S/T5w/rd.git
+    |     |  * [new tag]         v0.1.0-beta -> v0.1.0-beta
+    | [OK ] 3. (d) objet tag distant = objet local                     8d730e5134c013939a2e7d6a9f1482cd8af5d176
+    | [OK ] 3. (d) ^{} distant = C1                                    3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 3. (d) refs/heads/main distant INCHANGE                    7246f5248d1625a2a351bbb374c03f0585a008c3
+    | [OK ] 3. (d) aucune autre ref distante n'a bouge                 0 ref changee
+    rc=0 (attendu 0) ⇒ TENU
+
+  ── R7. RELEASE AVEC UNE ARCHIVE PERIMEE ⇒ KO, ⛔ AUCUN APPEL gh ────────────────
+    $ python3 $S/publier.py archive --depot $S/T5w/work --sortie $S/T5w/frais/desknode-v0.1.0-beta.zip
+    | [OK ] 4. git archive tir 1                                       rc=0 
+    |     tir 1 : 23208280 o  sha256 fdf620c41f4d27c7af418dc53b06290cbd3d884541331dee839d1802fddbd809
+    | [OK ] 4. git archive tir 2                                       rc=0 
+    |     tir 2 : 23208280 o  sha256 fdf620c41f4d27c7af418dc53b06290cbd3d884541331dee839d1802fddbd809
+    | [OK ] 4. deux tirs, sha256 egaux (deterministe)                  fdf620c41f4d27c7
+    rc=0 (attendu 0) ⇒ TENU
+    archive perimee = git archive de HEAD~1 du clone (la base), meme prefixe, meme nom : 46cc21611c47cda6…
+    | [OK ] 5. arbre propre, charge et notes = celles du tag           status '' · diff rc=0
+    | [KO ] 5. --archive = git archive du TAG, regeneree               ⛔ fournie 46cc21611c47cda6… · regeneree fdf620c41f4d27c7 — une archive PERIMEE ne part pas, ⛔ gh jamais appele
+    | archive perimee : etape_release rc=1 (attendu 1) · appels gh : 0 ⇒ TENU
+    | [OK ] 5. arbre propre, charge et notes = celles du tag           status '' · diff rc=0
+    | [OK ] 5. --archive = git archive du TAG, regeneree               fdf620c41f4d27c7…
+    |     $ gh release create v0.1.0-beta --repo nasbarok/desknode --verify-tag --prerelease --title DeskNode v0.1.0-beta --notes-file $S/T5w/frais/notes-du-tag.md $S/T5w/work/installeur/charge/bootloader.bin $S/T5w/work/installeur/charge/partition-table.bin $S/T5w/work/installeur/charge/desknode.bin $S/T5w/work/installeur/charge/living_pcb_v0.bin $S/T5w/work/installeur/charge/manifest.json $S/T5w/frais/desknode-v0.1.0-beta.zip
+    | [OK ] 5. (e) la commande porte --verify-tag et --prerelease      --verify-tag ET --prerelease presents
+    |     rc=0
+    |     | (intercepte : aucun appel)
+    | [OK ] 5. gh release create                                       rc=0
+    | archive fraiche : etape_release rc=0 (attendu 0) · appels gh : 1 ⇒ TENU
+
+  ── R8. CI : headSha FAUX, ECHEC DE gh, ET LE CHEMIN REEL (gh INTERCEPTE) ───────
+    $ python3 $S/publier.py ci --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --json $S/T5w/run-headsha-faux.json
+    |     source : fichier $S/T5w/run-headsha-faux.json
+    | [KO ] 7. headSha du run = C1                                     0000000000000000000000000000000000000000
+    rc=1 (attendu 1) ⇒ TENU
+    $ python3 $S/publier.py ci --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --json $S/T5w/run-failure.json
+    |     source : fichier $S/T5w/run-failure.json
+    | [OK ] 7. headSha du run = C1                                     3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [KO ] 7. (g) conclusion du run 92                                ⛔ NON VERTE : conclusion 'failure'
+    |     duree : ⛔ illisible (startedAt None, updatedAt None)
+    |     journal : ⛔ non lu (reponse fabriquee, --json)
+    rc=1 (attendu 1) ⇒ TENU
+    $ python3 $S/publier.py ci --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --json $S/T5w/run-cancelled.json
+    |     source : fichier $S/T5w/run-cancelled.json
+    | [OK ] 7. headSha du run = C1                                     3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [KO ] 7. (g) conclusion du run 92                                ⛔ NON VERTE : conclusion 'cancelled'
+    |     duree : ⛔ illisible (startedAt None, updatedAt None)
+    |     journal : ⛔ non lu (reponse fabriquee, --json)
+    rc=1 (attendu 1) ⇒ TENU
+    $ python3 $S/publier.py ci --c1 3d0edb03e05a4d0a7078b61b7e1f81339749d2ed --json $S/T5w/run-en-cours.json
+    |     source : fichier $S/T5w/run-en-cours.json
+    | [OK ] 7. headSha du run = C1                                     3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [KO ] 7. (g) conclusion du run 93                                PAS FINI (status 'in_progress')
+    |     duree : ⛔ illisible (startedAt None, updatedAt None)
+    rc=4 (attendu 4) ⇒ TENU
+    | --- gh run view ECHOUE (rc=1)
+    | [OK ] 7. gh run list                                             1 run(s)
+    | [OK ] 7. un run gates.yml porte le tag                           1 run(s)
+    | [KO ] 7. gh run view 94                                          ⛔ gh run view 94 : rc=1 HTTP 404: Not Found (simule)
+    | etape_ci rc=1 (attendu 1) ⇒ TENU · appels gh intercepte(s) : ['gh run list --repo', 'gh run view 94']
+    | --- gh run list ECHOUE (rc=1)
+    | [KO ] 7. gh run list                                             ⛔ gh run list : rc=1 HTTP 502 (simule)
+    | etape_ci rc=1 (attendu 1) ⇒ TENU · appels gh intercepte(s) : ['gh run list --repo']
+    | --- chemin nominal : liste, vue, journal
+    | [OK ] 7. gh run list                                             1 run(s)
+    | [OK ] 7. un run gates.yml porte le tag                           1 run(s)
+    | [OK ] 7. gh run view 94                                          lu
+    |     source : gh run view 94
+    | [OK ] 7. headSha du run = C1                                     3d0edb03e05a4d0a7078b61b7e1f81339749d2ed
+    | [OK ] 7. (g) conclusion du run 94                                VERTE (success)
+    |     duree : 1001 s
+    | [OK ] 7. gh run view --log                                       rc=0 
+    | [OK ] 7. ligne(s) « BILAN : » du journal                         1
+    |     | gates	Run gates	2026-09-14T10:16:40Z BILAN : 38 VERTE, 0 ROUGE, 11 NON-JOUABLE sur 49 gates (990s)
+    |     NON-JOUABLE : 2 ligne(s)
+    |     | gates	Run gates	2026-09-14T10:16:30Z [NON-JOUABLE] tools/verif_sr03.py rc=2 (attendu) temoin absent
+    |     | gates	Run gates	2026-09-14T10:16:40Z BILAN : 38 VERTE, 0 ROUGE, 11 NON-JOUABLE sur 49 gates (990s)
+    | etape_ci rc=0 (attendu 0) ⇒ TENU · appels gh intercepte(s) : ['gh run list --repo', 'gh run view 94', 'gh run view 94']
+
+  --- GitHub APRES (lecture seule) ---
+    ls-remote origin : 7246f5248d1625a2a351bbb374c03f0585a008c3 HEAD 3db180cbd6789cde32bb093dd565d1ab3c4f298f refs/heads/dn4-5-le-module-vit-tout-seul 7246f5248d1625a2a351bbb374c03f0585a008c3 refs/heads/main d11977f8d80eee890f37bf79843cfe782b612338 refs/pull/1/head 6a80de8ccab4fb3715ebfdeae830ecbe801a5069 refs/pull/2/head 
+    releases : []
+    git tag dans desknode : []
+  === fin 2026-09-14T02:52:56+02:00 ===
+
+── 4. LE DIFF DU SCRIPT : AVANT LA REVUE (source de T3 § 4) ⇒ APRES ───────────
+  | --- publier-avant-revue.py	2026-09-14 02:49:42.688529658 +0200
+  | +++ publier.py	2026-09-14 02:52:20.358469670 +0200
+  | @@ -11,24 +11,30 @@
+  |  
+  |    charge   --source B --sha S --dest D      (a) copie gardee : sha256 relu AVANT et APRES
+  |    garde    --c1 C1 --main-attendu M          1. arbre propre · HEAD = C1 · verif_flash 30/0 ·
+  | -                                                (b) tag absent du remote · main distant = M
+  | +                                                cellule « révision du dépôt » = version LUE dans le binaire de C1 ·
+  | +                                                liens blob/TAG/<fichier>#<ancre> des notes resolus dans C1 ·
+  | +                                                firmware/ de C1 = 55006c1 · date du CHANGELOG et des notes = aujourd'hui ·
+  | +                                                (b) AUCUN tag sur le remote · main distant = M
+  |    tag      --c1 C1                           2. tag ANNOTE sur C1, relu (^{commit}, describe)
+  | -  pousser  --c1 C1 --main-attendu M          3. (b) tag deja distant ⇒ ARRET sans poussee ·
+  | +  pousser  --c1 C1 --main-attendu M          3. (b) un tag distant, quel qu'il soit ⇒ ARRET sans poussee ·
+  |                                                  (c) poussee rc≠0 ⇒ releve, tag local intact ·
+  |                                                  (d) objet distant = objet local, ^{} = C1, main inchange
+  |    archive  --sortie Z                        4. git archive du TAG, joue deux fois, sha egaux
+  |    listing  --archive Z                       (h) ce que l'archive porte, et ce qu'elle ⛔ ne porte pas
+  | -  release  --archive Z                       5. (e) la commande porte --verify-tag ET --prerelease
+  | +  release  --archive Z                       5. l'archive = git archive du TAG regenere (sha256) ·
+  | +                                                (e) la commande porte --verify-tag ET --prerelease
+  |    assets   --archive Z [--json F]            6. (f) size/digest de l'API = table de PROVENANCE.md PARSEE
+  |    telecharger --archive Z --dossier DL       6. sha256 des assets re-telecharges
+  |    liens                                     6. chaque lien du corps resout a ref=TAG
+  | -  ci       [--json F]                        7. (g) conclusion du run gates.yml du tag, CLASSEE
+  | +  ci       --c1 C1 [--json F]                7. (g) conclusion du run gates.yml du tag, CLASSEE ·
+  | +                                                headSha = C1 · duree, BILAN et NON-JOUABLE lus dans --log
+  |  
+  |  Communs : --depot DIR (defaut ~/projects/desknode) · --remote R (defaut origin) ·
+  |            --repo OWNER/NOM (defaut nasbarok/desknode) · --tag T (defaut v0.1.0-beta)
+  |  Sortie  : 0 garde tenue · 1 garde KO (ARRET) · 2 appel invalide · 4 run CI pas fini
+  |  """
+  |  import argparse
+  | +import datetime
+  |  import hashlib
+  |  import json
+  |  import os
+  | @@ -36,6 +42,7 @@
+  |  import shutil
+  |  import subprocess
+  |  import sys
+  | +import tempfile
+  |  import zipfile
+  |  
+  |  TAG = "v0.1.0-beta"
+  | @@ -50,6 +57,10 @@
+  |  ARCHIVE_NOM = "desknode-%s.zip" % TAG
+  |  WORKFLOW = "gates.yml"
+  |  URL_BLOB = "https://github.com/%s/blob/%s/"
+  | +SOURCE_FIRMWARE = "55006c19182b3ff1ccc017044057347841ede475"
+  | +RE_CELLULE_REVISION = re.compile(r"^\|\s*\*\*révision du dépôt\*\*\s*\|\s*\*\*`([^`]+)`\*\*", re.M)
+  | +RE_TITRE_BETA = re.compile(r"^## \[0\.1\.0-beta\] - (\S+)\s*$", re.M)
+  | +RE_DATE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+  |  
+  |  
+  |  def dire(ok, libelle, detail=""):
+  | @@ -73,12 +84,32 @@
+  |  
+  |  
+  |  def outils(depot):
+  | -    """`RE_PROV_LIGNE` et `version_du_binaire` IMPORTES de la gate, ⛔ jamais recopies."""
+  | +    """La gate de la charge : `RE_PROV_LIGNE` (la table de `PROVENANCE.md`) et
+  | +    `version_du_binaire` (le champ `version` lu a 0x30 du descripteur), IMPORTES de
+  | +    `tools/verif_flash_dn72.py`, ⛔ jamais recopies.
+  | +    ⚠️ Correctif de revue du 2026-09-14 : ce que la gate ⛔ NE garde PAS — la cellule
+  | +    « révision du dépôt » (son (c16) est une simple sous-chaine, satisfaite par les
+  | +    annotations) — est garde par `etape_garde`, avec `version_du_binaire` d'ici."""
+  |      sys.path.insert(0, os.path.join(depot, "tools"))
+  |      import verif_flash_dn72 as v  # noqa: E402
+  |      return v
+  |  
+  |  
+  | +def outil_ancres(depot):
+  | +    """`ancres` IMPORTEE de `tools/verif_reception_dn85.py`, ⛔ jamais recopiee."""
+  | +    sys.path.insert(0, os.path.join(depot, "tools"))
+  | +    import verif_reception_dn85 as r  # noqa: E402
+  | +    return r.ancres
+  | +
+  | +
+  | +def montrer(depot, rev, chemin, binaire=False):
+  | +    """`git show <rev>:<chemin>` — (contenu, None) ou (None, motif)."""
+  | +    r = subprocess.run(["git", "-C", depot, "show", "%s:%s" % (rev, chemin)], capture_output=True)
+  | +    if r.returncode != 0:
+  | +        return None, "absent de %s" % rev[:12]
+  | +    return (r.stdout if binaire else r.stdout.decode("utf-8")), None
+  | +
+  | +
+  |  def table_provenance(depot, texte):
+  |      v = outils(depot)
+  |      t = {}
+  | @@ -112,14 +143,18 @@
+  |  
+  |  # ── 1. LES GARDES D'ENTREE ───────────────────────────────────────────────────
+  |  def garde_tag_absent(depot, remote, tag):
+  | +    """⛔ AUCUN tag distant, quel qu'il soit — l'etape 1 du dossier exige
+  | +    `git ls-remote --tags origin` VIDE (correctif de revue du 2026-09-14 : la 1re
+  | +    version n'arretait que sur `tag` lui-meme)."""
+  |      refs, err = refs_distantes(depot, remote)
+  |      if refs is None:
+  |          return False, "ls-remote rc≠0 : %s" % err
+  | -    presents = sorted(n for n in refs if n.startswith("refs/tags/"))
+  | -    vise = [n for n in presents if n in ("refs/tags/" + tag, "refs/tags/%s^{}" % tag)]
+  | -    if vise:
+  | -        return False, "⛔ %s DEJA sur le remote (%s) — ARRET, ⛔ aucune poussee" % (tag, refs["refs/tags/" + tag][:12] if "refs/tags/" + tag in refs else vise[0])
+  | -    return True, "%d tag(s) distant(s), %s absent" % (len(presents), tag)
+  | +    presents = sorted(n for n in refs if n.startswith("refs/tags/") and not n.endswith("^{}"))
+  | +    if "refs/tags/" + tag in refs:
+  | +        return False, "⛔ %s DEJA sur le remote (%s) — ARRET, ⛔ aucune poussee" % (tag, refs["refs/tags/" + tag][:12])
+  | +    if presents:
+  | +        return False, "⛔ %d tag(s) distant(s) (%s) — l'etape 1 exige ZERO — ARRET, ⛔ aucune poussee" % (len(presents), ", ".join(presents)[:80])
+  | +    return True, "0 tag distant"
+  |  
+  |  
+  |  def etape_garde(a):
+  | @@ -131,8 +166,42 @@
+  |      r = subprocess.run([sys.executable, "tools/verif_flash_dn72.py"], cwd=a.depot, capture_output=True, text=True)
+  |      b = [l for l in r.stdout.splitlines() if l.startswith("BILAN")]
+  |      ok &= dire(r.returncode == 0 and b == ["BILAN : 30 OK, 0 KO"], "1. verif_flash_dn72.py a C1", "rc=%d %s" % (r.returncode, b))
+  | +    # ── correctifs de revue du 2026-09-14 : ce que verif_flash_dn72 ⛔ ne garde pas, lu DANS C1 ──
+  | +    prov, e1 = montrer(a.depot, a.c1, PROVENANCE)
+  | +    binaire, e2 = montrer(a.depot, a.c1, CHARGE + "/desknode.bin", binaire=True)
+  | +    cellules = RE_CELLULE_REVISION.findall(prov or "")
+  | +    lue, projet = outils(a.depot).version_du_binaire(binaire) if binaire else (None, e2)
+  | +    ok &= dire(len(cellules) == 1 and lue is not None and cellules[0] == lue,
+  | +               "1. cellule « révision du dépôt » = version lue a 0x30",
+  | +               "`%s` = `%s`" % (cellules[0], lue) if len(cellules) == 1 and cellules[0] == lue
+  | +               else "⛔ cellule(s) %r · binaire de C1 %r — la table nomme une AUTRE revision que le binaire servi"
+  | +                    % (cellules or e1, lue if lue is not None else projet))
+  | +    notes, e3 = montrer(a.depot, a.c1, NOTES)
+  | +    ancres = outil_ancres(a.depot)
+  | +    liens = sorted(set(re.findall(re.escape(URL_BLOB % (a.repo, a.tag)) + r"([^)#\s]+)(?:#([^)\s]+))?", notes or "")))
+  | +    fautes = []
+  | +    for chemin, frag in liens:
+  | +        texte, e = montrer(a.depot, a.c1, chemin)
+  | +        if texte is None:
+  | +            fautes.append("%s : %s" % (chemin, e))
+  | +        elif frag and frag not in ancres(texte):
+  | +            fautes.append("%s#%s : ancre ABSENTE" % (chemin, frag))
+  | +    ok &= dire(notes is not None and bool(liens) and not fautes,
+  | +               "1. liens blob/%s des notes resolus dans C1" % a.tag,
+  | +               "%d lien(s) (fichier + ancre, `ancres` importee de verif_reception_dn85)" % len(liens)
+  | +               if notes is not None and liens and not fautes else "⛔ " + (" · ".join(fautes) or e3 or "aucun lien"))
+  | +    fw = git(a.depot, "diff", "--quiet", SOURCE_FIRMWARE, a.c1, "--", "firmware/").returncode
+  | +    ok &= dire(fw == 0, "1. git diff --quiet 55006c1 C1 -- firmware/", "rc=%d%s" % (fw, "" if fw == 0 else " ⛔ firmware/ de C1 ≠ la source du binaire"))
+  | +    jour = datetime.date.today().isoformat()
+  | +    chg, e4 = montrer(a.depot, a.c1, "CHANGELOG.md")
+  | +    dates_chg = RE_TITRE_BETA.findall(chg or "")
+  | +    premiere = (notes or "").split("\n", 1)[0]
+  | +    dates_notes = RE_DATE.findall(premiere)
+  | +    ok &= dire(dates_chg == [jour] and dates_notes == [jour], "1. date du CHANGELOG et des notes = aujourd'hui",
+  | +               "%s" % jour if dates_chg == [jour] and dates_notes == [jour]
+  | +               else "⛔ aujourd'hui %s · `## [0.1.0-beta] - …` %r · 1re ligne des notes %r" % (jour, dates_chg or e4, dates_notes or premiere[:60]))
+  |      t_ok, t_motif = garde_tag_absent(a.depot, a.remote, a.tag)
+  | -    ok &= dire(t_ok, "1. (b) le tag est absent du remote", t_motif)
+  | +    ok &= dire(t_ok, "1. (b) aucun tag sur le remote", t_motif)
+  |      refs, err = refs_distantes(a.depot, a.remote)
+  |      main = (refs or {}).get("refs/heads/main")
+  |      ok &= dire(main == a.main_attendu, "1. refs/heads/main distant = attendu", "%s" % (main or err))
+  | @@ -168,7 +237,7 @@
+  |      if not dire(typ == "tag" and commit == a.c1, "3. tag local annote sur C1 avant poussee", "%s %s" % (typ, commit)):
+  |          return 1
+  |      t_ok, t_motif = garde_tag_absent(a.depot, a.remote, a.tag)
+  | -    if not dire(t_ok, "3. (b) le tag est absent du remote", t_motif):
+  | +    if not dire(t_ok, "3. (b) aucun tag sur le remote", t_motif):
+  |          return 1
+  |      avant, err = refs_distantes(a.depot, a.remote)
+  |      if avant is None:
+  | @@ -191,7 +260,7 @@
+  |      ok &= dire(apres is not None and apres.get("refs/heads/main") == avant.get("refs/heads/main") == a.main_attendu,
+  |                 "3. (d) refs/heads/main distant INCHANGE", (apres or {}).get("refs/heads/main", err))
+  |      autres = sorted(n for n in set(avant) | set(apres or {})
+  | -                    if not n.startswith(refspec) and avant.get(n) != (apres or {}).get(n))
+  | +                    if n not in (refspec, refspec + "^{}") and avant.get(n) != (apres or {}).get(n))
+  |      ok &= dire(not autres, "3. (d) aucune autre ref distante n'a bouge", ", ".join(autres) or "0 ref changee")
+  |      return 0 if ok else 1
+  |  
+  | @@ -250,6 +319,19 @@
+  |      diff = git(a.depot, "diff", "--quiet", a.tag, "--", CHARGE, NOTES).returncode
+  |      if not dire(st == "" and diff == 0, "5. arbre propre, charge et notes = celles du tag", "status %r · diff rc=%d" % (st[:40], diff)):
+  |          return 1
+  | +    fd, frais = tempfile.mkstemp(suffix=".zip")
+  | +    os.close(fd)
+  | +    try:
+  | +        g = git(a.depot, "archive", "--format=zip", "--prefix=" + PREFIXE, "-o", frais, a.tag)
+  | +        sha_frais = sha256_fichier(frais) if g.returncode == 0 else None
+  | +    finally:
+  | +        os.remove(frais)
+  | +    sha_fourni = sha256_fichier(a.archive)
+  | +    if not dire(sha_frais is not None and sha_frais == sha_fourni, "5. --archive = git archive du TAG, regeneree",
+  | +                "%s…" % sha_fourni[:16] if sha_frais == sha_fourni
+  | +                else "⛔ fournie %s… · regeneree %s — une archive PERIMEE ne part pas, ⛔ gh jamais appele"
+  | +                     % (sha_fourni[:16], (sha_frais or "rc=%d" % g.returncode)[:16])):
+  | +        return 1
+  |      notes = os.path.join(os.path.dirname(os.path.abspath(a.archive)), "notes-du-tag.md")
+  |      with open(notes, "w", encoding="utf-8", newline="") as f:
+  |          f.write(git(a.depot, "show", "%s:%s" % (a.tag, NOTES), check=True).stdout)
+  | @@ -383,24 +465,69 @@
+  |      return 1, "⛔ NON VERTE : conclusion %r" % conclusion
+  |  
+  |  
+  | +def duree_run(run):
+  | +    try:
+  | +        t0 = datetime.datetime.fromisoformat(run["startedAt"].replace("Z", "+00:00"))
+  | +        t1 = datetime.datetime.fromisoformat(run["updatedAt"].replace("Z", "+00:00"))
+  | +        return "%d s" % (t1 - t0).total_seconds()
+  | +    except (KeyError, TypeError, ValueError, AttributeError):
+  | +        return "⛔ illisible (startedAt %r, updatedAt %r)" % (run.get("startedAt"), run.get("updatedAt"))
+  | +
+  | +
+  | +def gh_json(args, libelle):
+  | +    """(objet, None) ou (None, motif NOMME) — ⛔ jamais un traceback."""
+  | +    r = subprocess.run(args, capture_output=True, text=True)
+  | +    if r.returncode != 0:
+  | +        return None, "⛔ %s : rc=%d %s" % (libelle, r.returncode, (r.stderr or r.stdout).strip()[:120])
+  | +    try:
+  | +        return json.loads(r.stdout), None
+  | +    except ValueError as x:
+  | +        return None, "⛔ %s : JSON illisible (%s)" % (libelle, x)
+  | +
+  | +
+  |  def etape_ci(a):
+  | +    journal = None
+  |      if a.json:
+  |          run, source = lire_json(a, None)
+  |      else:
+  | -        r = subprocess.run(["gh", "run", "list", "--repo", a.repo, "--workflow", WORKFLOW, "--branch", a.tag,
+  | -                            "--json", "databaseId,status,conclusion,headSha,event,createdAt"], capture_output=True, text=True)
+  | -        if r.returncode != 0:
+  | -            dire(False, "7. gh run list", r.stderr.strip())
+  | +        runs, err = gh_json(["gh", "run", "list", "--repo", a.repo, "--workflow", WORKFLOW, "--branch", a.tag,
+  | +                             "--json", "databaseId,status,conclusion,headSha,event,createdAt"], "gh run list")
+  | +        if not dire(runs is not None, "7. gh run list", err or "%d run(s)" % len(runs)):
+  |              return 1
+  | -        runs = json.loads(r.stdout)
+  |          if not dire(len(runs) >= 1, "7. un run gates.yml porte le tag", "%d run(s)" % len(runs)):
+  |              return 4
+  | -        v = subprocess.run(["gh", "run", "view", str(runs[0]["databaseId"]), "--repo", a.repo, "--json",
+  | -                            "databaseId,status,conclusion,headSha,event,createdAt,startedAt,updatedAt,url"], capture_output=True, text=True)
+  | -        run, source = json.loads(v.stdout), "gh run view %s" % runs[0]["databaseId"]
+  | +        ident = str(runs[0].get("databaseId"))
+  | +        run, err = gh_json(["gh", "run", "view", ident, "--repo", a.repo, "--json",
+  | +                            "databaseId,status,conclusion,headSha,event,createdAt,startedAt,updatedAt,url"],
+  | +                           "gh run view %s" % ident)
+  | +        if not dire(run is not None, "7. gh run view %s" % ident, err or "lu"):
+  | +            return 1
+  | +        source = "gh run view %s" % ident
+  |      print("    source : %s" % source)
+  | +    if not dire(run.get("headSha") == a.c1, "7. headSha du run = C1", "%s" % run.get("headSha")):
+  | +        return 1
+  |      rc, verdict = classer_run(run)
+  |      dire(rc == 0, "7. (g) conclusion du run %s" % run.get("databaseId"), verdict)
+  | +    print("    duree : %s" % duree_run(run))
+  | +    if rc == 4:
+  | +        return 4
+  | +    if not a.json:
+  | +        r = subprocess.run(["gh", "run", "view", str(run.get("databaseId")), "--repo", a.repo, "--log"],
+  | +                           capture_output=True, text=True)
+  | +        if not dire(r.returncode == 0, "7. gh run view --log", "rc=%d %s" % (r.returncode, r.stderr.strip()[:120])):
+  | +            return 1
+  | +        journal = r.stdout
+  | +    else:
+  | +        print("    journal : ⛔ non lu (reponse fabriquee, --json)")
+  | +    if journal is not None:
+  | +        bilans = [l for l in journal.splitlines() if "BILAN :" in l]
+  | +        nj = [l for l in journal.splitlines() if "NON-JOUABLE" in l]
+  | +        dire(bool(bilans), "7. ligne(s) « BILAN : » du journal", "%d" % len(bilans))
+  | +        for l in bilans:
+  | +            print("    | %s" % l.strip()[-160:])
+  | +        print("    NON-JOUABLE : %d ligne(s)" % len(nj))
+  | +        for l in nj:
+  | +            print("    | %s" % l.strip()[-160:])
+  |      return rc
+  |  
+  |  
+  | @@ -426,7 +553,7 @@
+  |      requis = {"charge": ("source", "sha", "dest"), "garde": ("c1", "main_attendu"), "tag": ("c1",),
+  |                "pousser": ("c1", "main_attendu"), "archive": ("sortie",), "listing": ("archive",),
+  |                "release": ("archive",), "assets": ("archive",), "telecharger": ("archive", "dossier"),
+  | -              "liens": (), "ci": ()}[a.etape]
+  | +              "liens": (), "ci": ("c1",)}[a.etape]
+  |      manque = [r for r in requis if not getattr(a, r)]
+  |      if manque:
+  |          ap.error("%s exige %s" % (a.etape, ", ".join("--" + m.replace("_", "-") for m in manque)))
+
+── 5. LE SCRIPT DE PUBLICATION CORRIGE, `publier.py` (source integrale) ──────
+  | #!/usr/bin/env python3
+  | """dn8-7 — LA PASSE DE PUBLICATION, ECRITE COMME UN SEUL SCRIPT.
+  |
+  | Chaque etape est un appel, jouee DANS L'ORDRE du dossier. Chaque garde est une
+  | fonction qui rend (ok, motif) : elle est jouee AVANT la publication sur un remote
+  | nu jetable et sur des reponses d'API fabriquees (mesures/dn8-7/T3), ⛔ sans toucher
+  | GitHub. Le script ne porte ⛔ AUCUN mode « a blanc » : ce qui ne doit pas atteindre
+  | GitHub pendant les temoins est parametre par la CIBLE (`--remote` = un depot nu du
+  | scratchpad, `--json` = une reponse fabriquee), ⛔ pas par un drapeau qui court-
+  | circuiterait une garde.
+  |
+  |   charge   --source B --sha S --dest D      (a) copie gardee : sha256 relu AVANT et APRES
+  |   garde    --c1 C1 --main-attendu M          1. arbre propre · HEAD = C1 · verif_flash 30/0 ·
+  |                                                 cellule « révision du dépôt » = version LUE dans le binaire de C1 ·
+  |                                                 liens blob/TAG/<fichier>#<ancre> des notes resolus dans C1 ·
+  |                                                 firmware/ de C1 = 55006c1 · date du CHANGELOG et des notes = aujourd'hui ·
+  |                                                 (b) AUCUN tag sur le remote · main distant = M
+  |   tag      --c1 C1                           2. tag ANNOTE sur C1, relu (^{commit}, describe)
+  |   pousser  --c1 C1 --main-attendu M          3. (b) un tag distant, quel qu'il soit ⇒ ARRET sans poussee ·
+  |                                                 (c) poussee rc≠0 ⇒ releve, tag local intact ·
+  |                                                 (d) objet distant = objet local, ^{} = C1, main inchange
+  |   archive  --sortie Z                        4. git archive du TAG, joue deux fois, sha egaux
+  |   listing  --archive Z                       (h) ce que l'archive porte, et ce qu'elle ⛔ ne porte pas
+  |   release  --archive Z                       5. l'archive = git archive du TAG regenere (sha256) ·
+  |                                                 (e) la commande porte --verify-tag ET --prerelease
+  |   assets   --archive Z [--json F]            6. (f) size/digest de l'API = table de PROVENANCE.md PARSEE
+  |   telecharger --archive Z --dossier DL       6. sha256 des assets re-telecharges
+  |   liens                                     6. chaque lien du corps resout a ref=TAG
+  |   ci       --c1 C1 [--json F]                7. (g) conclusion du run gates.yml du tag, CLASSEE ·
+  |                                                 headSha = C1 · duree, BILAN et NON-JOUABLE lus dans --log
+  |
+  | Communs : --depot DIR (defaut ~/projects/desknode) · --remote R (defaut origin) ·
+  |           --repo OWNER/NOM (defaut nasbarok/desknode) · --tag T (defaut v0.1.0-beta)
+  | Sortie  : 0 garde tenue · 1 garde KO (ARRET) · 2 appel invalide · 4 run CI pas fini
+  | """
+  | import argparse
+  | import datetime
+  | import hashlib
+  | import json
+  | import os
+  | import re
+  | import shutil
+  | import subprocess
+  | import sys
+  | import tempfile
+  | import zipfile
+  |
+  | TAG = "v0.1.0-beta"
+  | REPO = "nasbarok/desknode"
+  | TITRE = "DeskNode v0.1.0-beta"
+  | NOTES = "docs/releases/v0.1.0-beta.md"
+  | CHARGE = "installeur/charge"
+  | PROVENANCE = CHARGE + "/PROVENANCE.md"
+  | IMAGES = ("bootloader.bin", "partition-table.bin", "desknode.bin", "living_pcb_v0.bin")
+  | AUTRES = ("manifest.json",)
+  | PREFIXE = "desknode-%s/" % TAG
+  | ARCHIVE_NOM = "desknode-%s.zip" % TAG
+  | WORKFLOW = "gates.yml"
+  | URL_BLOB = "https://github.com/%s/blob/%s/"
+  | SOURCE_FIRMWARE = "55006c19182b3ff1ccc017044057347841ede475"
+  | RE_CELLULE_REVISION = re.compile(r"^\|\s*\*\*révision du dépôt\*\*\s*\|\s*\*\*`([^`]+)`\*\*", re.M)
+  | RE_TITRE_BETA = re.compile(r"^## \[0\.1\.0-beta\] - (\S+)\s*$", re.M)
+  | RE_DATE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
+  |
+  |
+  | def dire(ok, libelle, detail=""):
+  |     print("[%s] %-58s %s" % ("OK " if ok else "KO ", libelle, detail))
+  |     return ok
+  |
+  |
+  | def git(depot, *args, check=False):
+  |     r = subprocess.run(["git", "-C", depot] + list(args), capture_output=True, text=True)
+  |     if check and r.returncode != 0:
+  |         raise SystemExit("git %s : rc=%d %s" % (" ".join(args), r.returncode, r.stderr.strip()))
+  |     return r
+  |
+  |
+  | def sha256_fichier(chemin):
+  |     h = hashlib.sha256()
+  |     with open(chemin, "rb") as f:
+  |         for bloc in iter(lambda: f.read(1 << 20), b""):
+  |             h.update(bloc)
+  |     return h.hexdigest()
+  |
+  |
+  | def outils(depot):
+  |     """La gate de la charge : `RE_PROV_LIGNE` (la table de `PROVENANCE.md`) et
+  |     `version_du_binaire` (le champ `version` lu a 0x30 du descripteur), IMPORTES de
+  |     `tools/verif_flash_dn72.py`, ⛔ jamais recopies.
+  |     ⚠️ Correctif de revue du 2026-09-14 : ce que la gate ⛔ NE garde PAS — la cellule
+  |     « révision du dépôt » (son (c16) est une simple sous-chaine, satisfaite par les
+  |     annotations) — est garde par `etape_garde`, avec `version_du_binaire` d'ici."""
+  |     sys.path.insert(0, os.path.join(depot, "tools"))
+  |     import verif_flash_dn72 as v  # noqa: E402
+  |     return v
+  |
+  |
+  | def outil_ancres(depot):
+  |     """`ancres` IMPORTEE de `tools/verif_reception_dn85.py`, ⛔ jamais recopiee."""
+  |     sys.path.insert(0, os.path.join(depot, "tools"))
+  |     import verif_reception_dn85 as r  # noqa: E402
+  |     return r.ancres
+  |
+  |
+  | def montrer(depot, rev, chemin, binaire=False):
+  |     """`git show <rev>:<chemin>` — (contenu, None) ou (None, motif)."""
+  |     r = subprocess.run(["git", "-C", depot, "show", "%s:%s" % (rev, chemin)], capture_output=True)
+  |     if r.returncode != 0:
+  |         return None, "absent de %s" % rev[:12]
+  |     return (r.stdout if binaire else r.stdout.decode("utf-8")), None
+  |
+  |
+  | def table_provenance(depot, texte):
+  |     v = outils(depot)
+  |     t = {}
+  |     for m in v.RE_PROV_LIGNE.finditer(texte):
+  |         t[m.group(1)] = (int(m.group(2)), int(m.group(3)), m.group(4))  # la DERNIERE l'emporte, comme (c6)
+  |     return t
+  |
+  |
+  | def refs_distantes(depot, remote):
+  |     r = git(depot, "ls-remote", remote)
+  |     if r.returncode != 0:
+  |         return None, r.stderr.strip()
+  |     refs = {}
+  |     for ligne in r.stdout.splitlines():
+  |         sha, _, nom = ligne.partition("\t")
+  |         refs[nom] = sha
+  |     return refs, ""
+  |
+  |
+  | # ── (a) LA CHARGE ────────────────────────────────────────────────────────────
+  | def etape_charge(a):
+  |     avant = sha256_fichier(a.source)
+  |     if not dire(avant == a.sha, "(a) sha256 de la source = binaire de seance",
+  |                 "%s…" % avant[:16] if avant == a.sha
+  |                 else "⛔ %s… ≠ %s… — ARRET `blocked`, ⛔ aucune copie, ⛔ aucun rebuild" % (avant[:16], a.sha[:16])):
+  |         return 1
+  |     shutil.copyfile(a.source, a.dest)
+  |     apres = sha256_fichier(a.dest)
+  |     return 0 if dire(apres == a.sha, "(a) sha256 relu sur la copie", "%s…" % apres[:16]) else 1
+  |
+  |
+  | # ── 1. LES GARDES D'ENTREE ───────────────────────────────────────────────────
+  | def garde_tag_absent(depot, remote, tag):
+  |     """⛔ AUCUN tag distant, quel qu'il soit — l'etape 1 du dossier exige
+  |     `git ls-remote --tags origin` VIDE (correctif de revue du 2026-09-14 : la 1re
+  |     version n'arretait que sur `tag` lui-meme)."""
+  |     refs, err = refs_distantes(depot, remote)
+  |     if refs is None:
+  |         return False, "ls-remote rc≠0 : %s" % err
+  |     presents = sorted(n for n in refs if n.startswith("refs/tags/") and not n.endswith("^{}"))
+  |     if "refs/tags/" + tag in refs:
+  |         return False, "⛔ %s DEJA sur le remote (%s) — ARRET, ⛔ aucune poussee" % (tag, refs["refs/tags/" + tag][:12])
+  |     if presents:
+  |         return False, "⛔ %d tag(s) distant(s) (%s) — l'etape 1 exige ZERO — ARRET, ⛔ aucune poussee" % (len(presents), ", ".join(presents)[:80])
+  |     return True, "0 tag distant"
+  |
+  |
+  | def etape_garde(a):
+  |     ok = True
+  |     st = git(a.depot, "status", "--porcelain")
+  |     ok &= dire(st.returncode == 0 and st.stdout == "", "1. arbre propre", "status vide" if st.stdout == "" else "⛔ %d ligne(s)" % len(st.stdout.splitlines()))
+  |     head = git(a.depot, "rev-parse", "HEAD").stdout.strip()
+  |     ok &= dire(head == a.c1, "1. HEAD = C1 (en entier)", head)
+  |     r = subprocess.run([sys.executable, "tools/verif_flash_dn72.py"], cwd=a.depot, capture_output=True, text=True)
+  |     b = [l for l in r.stdout.splitlines() if l.startswith("BILAN")]
+  |     ok &= dire(r.returncode == 0 and b == ["BILAN : 30 OK, 0 KO"], "1. verif_flash_dn72.py a C1", "rc=%d %s" % (r.returncode, b))
+  |     # ── correctifs de revue du 2026-09-14 : ce que verif_flash_dn72 ⛔ ne garde pas, lu DANS C1 ──
+  |     prov, e1 = montrer(a.depot, a.c1, PROVENANCE)
+  |     binaire, e2 = montrer(a.depot, a.c1, CHARGE + "/desknode.bin", binaire=True)
+  |     cellules = RE_CELLULE_REVISION.findall(prov or "")
+  |     lue, projet = outils(a.depot).version_du_binaire(binaire) if binaire else (None, e2)
+  |     ok &= dire(len(cellules) == 1 and lue is not None and cellules[0] == lue,
+  |                "1. cellule « révision du dépôt » = version lue a 0x30",
+  |                "`%s` = `%s`" % (cellules[0], lue) if len(cellules) == 1 and cellules[0] == lue
+  |                else "⛔ cellule(s) %r · binaire de C1 %r — la table nomme une AUTRE revision que le binaire servi"
+  |                     % (cellules or e1, lue if lue is not None else projet))
+  |     notes, e3 = montrer(a.depot, a.c1, NOTES)
+  |     ancres = outil_ancres(a.depot)
+  |     liens = sorted(set(re.findall(re.escape(URL_BLOB % (a.repo, a.tag)) + r"([^)#\s]+)(?:#([^)\s]+))?", notes or "")))
+  |     fautes = []
+  |     for chemin, frag in liens:
+  |         texte, e = montrer(a.depot, a.c1, chemin)
+  |         if texte is None:
+  |             fautes.append("%s : %s" % (chemin, e))
+  |         elif frag and frag not in ancres(texte):
+  |             fautes.append("%s#%s : ancre ABSENTE" % (chemin, frag))
+  |     ok &= dire(notes is not None and bool(liens) and not fautes,
+  |                "1. liens blob/%s des notes resolus dans C1" % a.tag,
+  |                "%d lien(s) (fichier + ancre, `ancres` importee de verif_reception_dn85)" % len(liens)
+  |                if notes is not None and liens and not fautes else "⛔ " + (" · ".join(fautes) or e3 or "aucun lien"))
+  |     fw = git(a.depot, "diff", "--quiet", SOURCE_FIRMWARE, a.c1, "--", "firmware/").returncode
+  |     ok &= dire(fw == 0, "1. git diff --quiet 55006c1 C1 -- firmware/", "rc=%d%s" % (fw, "" if fw == 0 else " ⛔ firmware/ de C1 ≠ la source du binaire"))
+  |     jour = datetime.date.today().isoformat()
+  |     chg, e4 = montrer(a.depot, a.c1, "CHANGELOG.md")
+  |     dates_chg = RE_TITRE_BETA.findall(chg or "")
+  |     premiere = (notes or "").split("\n", 1)[0]
+  |     dates_notes = RE_DATE.findall(premiere)
+  |     ok &= dire(dates_chg == [jour] and dates_notes == [jour], "1. date du CHANGELOG et des notes = aujourd'hui",
+  |                "%s" % jour if dates_chg == [jour] and dates_notes == [jour]
+  |                else "⛔ aujourd'hui %s · `## [0.1.0-beta] - …` %r · 1re ligne des notes %r" % (jour, dates_chg or e4, dates_notes or premiere[:60]))
+  |     t_ok, t_motif = garde_tag_absent(a.depot, a.remote, a.tag)
+  |     ok &= dire(t_ok, "1. (b) aucun tag sur le remote", t_motif)
+  |     refs, err = refs_distantes(a.depot, a.remote)
+  |     main = (refs or {}).get("refs/heads/main")
+  |     ok &= dire(main == a.main_attendu, "1. refs/heads/main distant = attendu", "%s" % (main or err))
+  |     return 0 if ok else 1
+  |
+  |
+  | # ── 2. LE TAG ────────────────────────────────────────────────────────────────
+  | def lire_tag_local(depot, tag):
+  |     t = git(depot, "cat-file", "-t", "refs/tags/" + tag)
+  |     if t.returncode != 0:
+  |         return None, None, None
+  |     return (t.stdout.strip(), git(depot, "rev-parse", "refs/tags/" + tag).stdout.strip(),
+  |             git(depot, "rev-parse", "refs/tags/%s^{commit}" % tag).stdout.strip())
+  |
+  |
+  | def etape_tag(a):
+  |     typ, objet, commit = lire_tag_local(a.depot, a.tag)
+  |     if typ is None:
+  |         r = git(a.depot, "tag", "-a", a.tag, "-m", TITRE, a.c1)
+  |         if not dire(r.returncode == 0, "2. git tag -a sur C1", "rc=%d %s" % (r.returncode, r.stderr.strip())):
+  |             return 1
+  |         typ, objet, commit = lire_tag_local(a.depot, a.tag)
+  |     ok = dire(typ == "tag", "2. le tag est ANNOTE", "objet %s de type %s" % (objet, typ))
+  |     ok &= dire(commit == a.c1, "2. %s^{commit} = C1" % a.tag, commit)
+  |     d = git(a.depot, "describe", "--tags", "--always", "--dirty").stdout.strip()
+  |     ok &= dire(d == a.tag, "2. git describe --tags --always --dirty", d)
+  |     return 0 if ok else 1
+  |
+  |
+  | # ── 3. LA POUSSEE DU TAG SEUL ────────────────────────────────────────────────
+  | def etape_pousser(a):
+  |     typ, objet, commit = lire_tag_local(a.depot, a.tag)
+  |     if not dire(typ == "tag" and commit == a.c1, "3. tag local annote sur C1 avant poussee", "%s %s" % (typ, commit)):
+  |         return 1
+  |     t_ok, t_motif = garde_tag_absent(a.depot, a.remote, a.tag)
+  |     if not dire(t_ok, "3. (b) aucun tag sur le remote", t_motif):
+  |         return 1
+  |     avant, err = refs_distantes(a.depot, a.remote)
+  |     if avant is None:
+  |         dire(False, "3. ls-remote avant poussee", err)
+  |         return 1
+  |     refspec = "refs/tags/" + a.tag
+  |     cmd = ["push", a.remote, refspec]
+  |     assert "--force" not in cmd and "-f" not in cmd and ":" not in refspec
+  |     print("    $ git %s" % " ".join(cmd))
+  |     r = git(a.depot, *cmd)
+  |     print("    rc=%d\n%s" % (r.returncode, "\n".join("    | " + l for l in (r.stdout + r.stderr).splitlines())))
+  |     if r.returncode != 0:
+  |         typ2, objet2, commit2 = lire_tag_local(a.depot, a.tag)
+  |         dire(False, "3. (c) poussee REFUSEE — cause relevee ci-dessus", "rc=%d" % r.returncode)
+  |         dire(objet2 == objet and commit2 == a.c1, "3. (c) tag local CONSERVE sur C1", "%s ^{commit} %s" % (objet2, commit2))
+  |         return 1
+  |     apres, err = refs_distantes(a.depot, a.remote)
+  |     ok = dire(apres is not None and apres.get(refspec) == objet, "3. (d) objet tag distant = objet local", (apres or {}).get(refspec, err))
+  |     ok &= dire(apres is not None and apres.get(refspec + "^{}") == a.c1, "3. (d) ^{} distant = C1", (apres or {}).get(refspec + "^{}", err))
+  |     ok &= dire(apres is not None and apres.get("refs/heads/main") == avant.get("refs/heads/main") == a.main_attendu,
+  |                "3. (d) refs/heads/main distant INCHANGE", (apres or {}).get("refs/heads/main", err))
+  |     autres = sorted(n for n in set(avant) | set(apres or {})
+  |                     if n not in (refspec, refspec + "^{}") and avant.get(n) != (apres or {}).get(n))
+  |     ok &= dire(not autres, "3. (d) aucune autre ref distante n'a bouge", ", ".join(autres) or "0 ref changee")
+  |     return 0 if ok else 1
+  |
+  |
+  | # ── 4. L'ARCHIVE DE L'ARBRE DU TAG ───────────────────────────────────────────
+  | def etape_archive(a):
+  |     shas = []
+  |     for n in (1, 2):
+  |         sortie = a.sortie if n == 1 else a.sortie + ".tir2"
+  |         r = git(a.depot, "archive", "--format=zip", "--prefix=" + PREFIXE, "-o", sortie, a.tag)
+  |         if not dire(r.returncode == 0, "4. git archive tir %d" % n, "rc=%d %s" % (r.returncode, r.stderr.strip())):
+  |             return 1
+  |         shas.append(sha256_fichier(sortie))
+  |         print("    tir %d : %d o  sha256 %s" % (n, os.path.getsize(sortie), shas[-1]))
+  |     os.remove(a.sortie + ".tir2")
+  |     return 0 if dire(shas[0] == shas[1], "4. deux tirs, sha256 egaux (deterministe)", shas[0][:16]) else 1
+  |
+  |
+  | # ── (h) CE QUE L'ARCHIVE PORTE ───────────────────────────────────────────────
+  | def listing_archive(chemin, prefixe):
+  |     with zipfile.ZipFile(chemin) as z:
+  |         noms = [i.filename for i in z.infolist() if not i.is_dir()]
+  |         bat = z.read(prefixe + "installeur/DeskNode-installeur.bat") if prefixe + "installeur/DeskNode-installeur.bat" in noms else b""
+  |     lignes = bat.split(b"\n")[:-1] if bat.endswith(b"\n") else bat.split(b"\n")
+  |     crlf = sum(1 for l in lignes if l.endswith(b"\r"))
+  |     return noms, crlf, len(lignes)
+  |
+  |
+  | def etape_listing(a):
+  |     noms, crlf, n = listing_archive(a.archive, a.prefixe)
+  |     ok = dire(bool(noms), "(h) l'archive se lit", "%d fichier(s)" % len(noms))
+  |     for rel in ("agent/dn_agent.py", "installeur/DeskNode-installeur.bat", "tools/dn_agent_tour.ps1", NOTES):
+  |         ok &= dire(a.prefixe + rel in noms, "(h) presente : %s" % rel)
+  |     ok &= dire(n > 0 and crlf == n, "(h) le .bat est en CRLF", "%d/%d lignes" % (crlf, n))
+  |     ok &= dire(a.prefixe + "tools/dn_agent.py" not in noms,
+  |                "(h) ABSENTE : tools/dn_agent.py",
+  |                "⇒ `permanence` sort en 3 depuis cette archive (known issue declaree)")
+  |     return 0 if ok else 1
+  |
+  |
+  | # ── 5. LA RELEASE ────────────────────────────────────────────────────────────
+  | def construire_commande_release(depot, tag, repo, notes, archive):
+  |     assets = [os.path.join(depot, CHARGE, n) for n in IMAGES + AUTRES] + [archive]
+  |     return (["gh", "release", "create", tag, "--repo", repo, "--verify-tag", "--prerelease",
+  |              "--title", TITRE, "--notes-file", notes] + assets)
+  |
+  |
+  | def garde_commande_release(cmd):
+  |     manque = [d for d in ("--verify-tag", "--prerelease") if d not in cmd]
+  |     return not manque, ("⛔ la commande ne porte pas %s — ⛔ jamais lancee" % " ni ".join(manque)
+  |                         if manque else "--verify-tag ET --prerelease presents")
+  |
+  |
+  | def etape_release(a):
+  |     st = git(a.depot, "status", "--porcelain").stdout
+  |     diff = git(a.depot, "diff", "--quiet", a.tag, "--", CHARGE, NOTES).returncode
+  |     if not dire(st == "" and diff == 0, "5. arbre propre, charge et notes = celles du tag", "status %r · diff rc=%d" % (st[:40], diff)):
+  |         return 1
+  |     fd, frais = tempfile.mkstemp(suffix=".zip")
+  |     os.close(fd)
+  |     try:
+  |         g = git(a.depot, "archive", "--format=zip", "--prefix=" + PREFIXE, "-o", frais, a.tag)
+  |         sha_frais = sha256_fichier(frais) if g.returncode == 0 else None
+  |     finally:
+  |         os.remove(frais)
+  |     sha_fourni = sha256_fichier(a.archive)
+  |     if not dire(sha_frais is not None and sha_frais == sha_fourni, "5. --archive = git archive du TAG, regeneree",
+  |                 "%s…" % sha_fourni[:16] if sha_frais == sha_fourni
+  |                 else "⛔ fournie %s… · regeneree %s — une archive PERIMEE ne part pas, ⛔ gh jamais appele"
+  |                      % (sha_fourni[:16], (sha_frais or "rc=%d" % g.returncode)[:16])):
+  |         return 1
+  |     notes = os.path.join(os.path.dirname(os.path.abspath(a.archive)), "notes-du-tag.md")
+  |     with open(notes, "w", encoding="utf-8", newline="") as f:
+  |         f.write(git(a.depot, "show", "%s:%s" % (a.tag, NOTES), check=True).stdout)
+  |     cmd = construire_commande_release(a.depot, a.tag, a.repo, notes, a.archive)
+  |     ok, motif = garde_commande_release(cmd)
+  |     print("    $ %s" % " ".join(cmd))
+  |     if not dire(ok, "5. (e) la commande porte --verify-tag et --prerelease", motif):
+  |         return 1
+  |     r = subprocess.run(cmd, capture_output=True, text=True)
+  |     print("    rc=%d\n%s" % (r.returncode, "\n".join("    | " + l for l in (r.stdout + r.stderr).splitlines())))
+  |     return 0 if dire(r.returncode == 0, "5. gh release create", "rc=%d" % r.returncode) else 1
+  |
+  |
+  | # ── 6. LA RELECTURE SUR LE REMOTE ────────────────────────────────────────────
+  | def lire_json(a, api):
+  |     if a.json:
+  |         with open(a.json, encoding="utf-8") as f:
+  |             return json.load(f), "fichier %s" % a.json
+  |     r = subprocess.run(["gh", "api", api], capture_output=True, text=True)
+  |     if r.returncode != 0:
+  |         raise SystemExit("gh api %s : rc=%d %s" % (api, r.returncode, r.stderr.strip()))
+  |     return json.loads(r.stdout), "gh api %s" % api
+  |
+  |
+  | def attendus_assets(depot, tag, archive):
+  |     prov = git(depot, "show", "%s:%s" % (tag, PROVENANCE), check=True).stdout
+  |     table = table_provenance(depot, prov)
+  |     att = {}
+  |     for n in IMAGES:
+  |         if n in table:
+  |             att[n] = (table[n][1], table[n][2], "table de PROVENANCE.md au tag")
+  |     for n in AUTRES:
+  |         brut = subprocess.run(["git", "-C", depot, "show", "%s:%s/%s" % (tag, CHARGE, n)], capture_output=True).stdout
+  |         att[n] = (len(brut), hashlib.sha256(brut).hexdigest(), "blob du tag")
+  |     att[os.path.basename(archive)] = (os.path.getsize(archive), sha256_fichier(archive), "archive locale")
+  |     return att, table
+  |
+  |
+  | def verifier_release(rel, attendus, tag):
+  |     """(f) ⇒ liste des KO NOMMES ; vide = conforme."""
+  |     ko = []
+  |     if rel.get("tag_name") != tag:
+  |         ko.append("tag_name %r" % rel.get("tag_name"))
+  |     if rel.get("prerelease") is not True:
+  |         ko.append("prerelease %r" % rel.get("prerelease"))
+  |     if rel.get("draft") is not False:
+  |         ko.append("draft %r" % rel.get("draft"))
+  |     servis = {x.get("name"): x for x in rel.get("assets") or []}
+  |     if len(rel.get("assets") or []) != len(attendus):
+  |         ko.append("%d asset(s), %d attendu(s)" % (len(rel.get("assets") or []), len(attendus)))
+  |     for nom, (taille, sha, _src) in sorted(attendus.items()):
+  |         x = servis.get(nom)
+  |         if x is None:
+  |             ko.append("%s : ABSENT" % nom)
+  |             continue
+  |         if x.get("size") != taille:
+  |             ko.append("%s : size %r ≠ %d" % (nom, x.get("size"), taille))
+  |         if x.get("digest") != "sha256:" + sha:
+  |             ko.append("%s : digest %r ≠ sha256:%s…" % (nom, x.get("digest"), sha[:12]))
+  |     for nom in sorted(set(servis) - set(attendus)):
+  |         ko.append("%s : asset INATTENDU" % nom)
+  |     return ko
+  |
+  |
+  | def etape_assets(a):
+  |     rel, source = lire_json(a, "repos/%s/releases/tags/%s" % (a.repo, a.tag))
+  |     attendus, table = attendus_assets(a.depot, a.tag, a.archive)
+  |     print("    source : %s" % source)
+  |     ok = dire(len(table) == 4 and all(n in table for n in IMAGES), "6. table de PROVENANCE.md parsee (RE_PROV_LIGNE importee)", "%d ligne(s)" % len(table))
+  |     ko = verifier_release(rel, attendus, a.tag)
+  |     ok &= dire(not ko, "6. (f) prerelease · draft · 6 assets · size/digest", "conforme" if not ko else " · ".join(ko))
+  |     corps = (rel.get("body") or "").replace("\r\n", "\n")
+  |     fichier = git(a.depot, "show", "%s:%s" % (a.tag, NOTES), check=True).stdout.replace("\r\n", "\n")
+  |     egal = corps.rstrip("\n") == fichier.rstrip("\n")
+  |     ok &= dire(egal, "6. body = git show TAG:%s (fins de ligne normalisees)" % NOTES,
+  |                "egal (%d o)" % len(fichier.encode()) if egal else "⛔ ecart : %d o servis, %d o au tag" % (len(corps.encode()), len(fichier.encode())))
+  |     return 0 if ok else 1
+  |
+  |
+  | def etape_telecharger(a):
+  |     os.makedirs(a.dossier, exist_ok=False)
+  |     r = subprocess.run(["gh", "release", "download", a.tag, "--repo", a.repo, "--dir", a.dossier], capture_output=True, text=True)
+  |     if not dire(r.returncode == 0, "6. gh release download", "rc=%d %s" % (r.returncode, r.stderr.strip())):
+  |         return 1
+  |     attendus, _t = attendus_assets(a.depot, a.tag, a.archive)
+  |     ok = True
+  |     for nom, (taille, sha, src) in sorted(attendus.items()):
+  |         p = os.path.join(a.dossier, nom)
+  |         reel = sha256_fichier(p) if os.path.exists(p) else None
+  |         ok &= dire(reel == sha and os.path.getsize(p) == taille, "6. re-telecharge : %s" % nom, "%s… = %s" % ((reel or "ABSENT")[:16], src))
+  |     return 0 if ok else 1
+  |
+  |
+  | def liens_du_corps(texte, repo, tag):
+  |     base = URL_BLOB % (repo, tag)
+  |     return sorted(set(m.group(1) for m in re.finditer(re.escape(base) + r"([^)#\s]+)", texte)))
+  |
+  |
+  | def etape_liens(a):
+  |     fichier = git(a.depot, "show", "%s:%s" % (a.tag, NOTES), check=True).stdout
+  |     chemins = liens_du_corps(fichier, a.repo, a.tag)
+  |     ok = dire(bool(chemins), "6. liens absolus du corps vers blob/%s" % a.tag, "%d chemin(s)" % len(chemins))
+  |     tous = re.findall(r"\]\((https?://[^)]+)\)", fichier)
+  |     hors = [u for u in tous if not u.startswith(URL_BLOB % (a.repo, a.tag)) and "/releases/tag/%s" % a.tag not in u
+  |             and "/compare/" not in u]
+  |     ok &= dire(not hors, "6. ⛔ aucun lien du corps hors ref=%s" % a.tag, ", ".join(hors) or "0")
+  |     for c in chemins:
+  |         local = git(a.depot, "cat-file", "-e", "%s:%s" % (a.tag, c)).returncode == 0
+  |         r = subprocess.run(["gh", "api", "repos/%s/contents/%s?ref=%s" % (a.repo, c, a.tag), "--jq", ".path"], capture_output=True, text=True)
+  |         ok &= dire(local and r.returncode == 0 and r.stdout.strip() == c, "6. contents/%s?ref=%s" % (c, a.tag), "rc=%d %s" % (r.returncode, r.stdout.strip() or r.stderr.strip()[:60]))
+  |     # ⚠️ LES FRAGMENTS : `POST /markdown` ⛔ n'emet PAS les ancres de titre (mesure T2) ; le rendu
+  |     #    HTML de `contents` a ref=TAG, lui, les emet — c'est lui qui juge.
+  |     base = re.escape(URL_BLOB % (a.repo, a.tag))
+  |     fragments = sorted(set(re.findall(base + r"([^)#\s]+)#([^)\s]+)", fichier)))
+  |     for c, frag in fragments:
+  |         r = subprocess.run(["gh", "api", "repos/%s/contents/%s?ref=%s" % (a.repo, c, a.tag),
+  |                             "-H", "Accept: application/vnd.github.html"], capture_output=True, text=True)
+  |         ok &= dire(r.returncode == 0 and ('id="user-content-%s"' % frag) in r.stdout,
+  |                    "6. #%s rendu dans %s a ref=%s" % (frag, c, a.tag), "rc=%d" % r.returncode)
+  |     return 0 if ok else 1
+  |
+  |
+  | # ── 7. LE RUN CI DU TAG ──────────────────────────────────────────────────────
+  | def classer_run(run):
+  |     """(g) ⇒ (rc, verdict). ⛔ Seul `completed` + `success` est VERT."""
+  |     statut, conclusion = run.get("status"), run.get("conclusion")
+  |     if statut != "completed":
+  |         return 4, "PAS FINI (status %r)" % statut
+  |     if conclusion == "success":
+  |         return 0, "VERTE (success)"
+  |     return 1, "⛔ NON VERTE : conclusion %r" % conclusion
+  |
+  |
+  | def duree_run(run):
+  |     try:
+  |         t0 = datetime.datetime.fromisoformat(run["startedAt"].replace("Z", "+00:00"))
+  |         t1 = datetime.datetime.fromisoformat(run["updatedAt"].replace("Z", "+00:00"))
+  |         return "%d s" % (t1 - t0).total_seconds()
+  |     except (KeyError, TypeError, ValueError, AttributeError):
+  |         return "⛔ illisible (startedAt %r, updatedAt %r)" % (run.get("startedAt"), run.get("updatedAt"))
+  |
+  |
+  | def gh_json(args, libelle):
+  |     """(objet, None) ou (None, motif NOMME) — ⛔ jamais un traceback."""
+  |     r = subprocess.run(args, capture_output=True, text=True)
+  |     if r.returncode != 0:
+  |         return None, "⛔ %s : rc=%d %s" % (libelle, r.returncode, (r.stderr or r.stdout).strip()[:120])
+  |     try:
+  |         return json.loads(r.stdout), None
+  |     except ValueError as x:
+  |         return None, "⛔ %s : JSON illisible (%s)" % (libelle, x)
+  |
+  |
+  | def etape_ci(a):
+  |     journal = None
+  |     if a.json:
+  |         run, source = lire_json(a, None)
+  |     else:
+  |         runs, err = gh_json(["gh", "run", "list", "--repo", a.repo, "--workflow", WORKFLOW, "--branch", a.tag,
+  |                              "--json", "databaseId,status,conclusion,headSha,event,createdAt"], "gh run list")
+  |         if not dire(runs is not None, "7. gh run list", err or "%d run(s)" % len(runs)):
+  |             return 1
+  |         if not dire(len(runs) >= 1, "7. un run gates.yml porte le tag", "%d run(s)" % len(runs)):
+  |             return 4
+  |         ident = str(runs[0].get("databaseId"))
+  |         run, err = gh_json(["gh", "run", "view", ident, "--repo", a.repo, "--json",
+  |                             "databaseId,status,conclusion,headSha,event,createdAt,startedAt,updatedAt,url"],
+  |                            "gh run view %s" % ident)
+  |         if not dire(run is not None, "7. gh run view %s" % ident, err or "lu"):
+  |             return 1
+  |         source = "gh run view %s" % ident
+  |     print("    source : %s" % source)
+  |     if not dire(run.get("headSha") == a.c1, "7. headSha du run = C1", "%s" % run.get("headSha")):
+  |         return 1
+  |     rc, verdict = classer_run(run)
+  |     dire(rc == 0, "7. (g) conclusion du run %s" % run.get("databaseId"), verdict)
+  |     print("    duree : %s" % duree_run(run))
+  |     if rc == 4:
+  |         return 4
+  |     if not a.json:
+  |         r = subprocess.run(["gh", "run", "view", str(run.get("databaseId")), "--repo", a.repo, "--log"],
+  |                            capture_output=True, text=True)
+  |         if not dire(r.returncode == 0, "7. gh run view --log", "rc=%d %s" % (r.returncode, r.stderr.strip()[:120])):
+  |             return 1
+  |         journal = r.stdout
+  |     else:
+  |         print("    journal : ⛔ non lu (reponse fabriquee, --json)")
+  |     if journal is not None:
+  |         bilans = [l for l in journal.splitlines() if "BILAN :" in l]
+  |         nj = [l for l in journal.splitlines() if "NON-JOUABLE" in l]
+  |         dire(bool(bilans), "7. ligne(s) « BILAN : » du journal", "%d" % len(bilans))
+  |         for l in bilans:
+  |             print("    | %s" % l.strip()[-160:])
+  |         print("    NON-JOUABLE : %d ligne(s)" % len(nj))
+  |         for l in nj:
+  |             print("    | %s" % l.strip()[-160:])
+  |     return rc
+  |
+  |
+  | def main(argv=None):
+  |     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+  |     ap.add_argument("etape", choices=["charge", "garde", "tag", "pousser", "archive", "listing", "release",
+  |                                       "assets", "telecharger", "liens", "ci"])
+  |     ap.add_argument("--depot", default=os.path.expanduser("~/projects/desknode"))
+  |     ap.add_argument("--remote", default="origin")
+  |     ap.add_argument("--repo", default=REPO)
+  |     ap.add_argument("--tag", default=TAG)
+  |     ap.add_argument("--c1")
+  |     ap.add_argument("--main-attendu")
+  |     ap.add_argument("--source")
+  |     ap.add_argument("--sha")
+  |     ap.add_argument("--dest")
+  |     ap.add_argument("--sortie")
+  |     ap.add_argument("--archive")
+  |     ap.add_argument("--prefixe", default=PREFIXE)
+  |     ap.add_argument("--dossier")
+  |     ap.add_argument("--json")
+  |     a = ap.parse_args(argv)
+  |     requis = {"charge": ("source", "sha", "dest"), "garde": ("c1", "main_attendu"), "tag": ("c1",),
+  |               "pousser": ("c1", "main_attendu"), "archive": ("sortie",), "listing": ("archive",),
+  |               "release": ("archive",), "assets": ("archive",), "telecharger": ("archive", "dossier"),
+  |               "liens": (), "ci": ("c1",)}[a.etape]
+  |     manque = [r for r in requis if not getattr(a, r)]
+  |     if manque:
+  |         ap.error("%s exige %s" % (a.etape, ", ".join("--" + m.replace("_", "-") for m in manque)))
+  |     if a.c1 and not re.fullmatch(r"[0-9a-f]{40}", a.c1):
+  |         ap.error("--c1 s'ecrit EN ENTIER (40 hex)")
+  |     return globals()["etape_" + a.etape](a)
+  |
+  |
+  | if __name__ == "__main__":
+  |     sys.exit(main())
+
+── 6. LE SCRIPT DES TEMOINS, `temoins-revue.sh` (source integrale) ───────────
+  | #!/usr/bin/env bash
+  | # dn8-7 / T5 — LES TEMOINS DES CORRECTIFS DE REVUE DU SCRIPT DE PUBLICATION, ⛔ SANS TOUCHER GITHUB.
+  | # Meme mise en place que T3 (clone JETABLE + C1-temoin = l'arbre ecrit, remotes NUS, JSON fabriques),
+  | # puis une variante de C1 par faute REPLANTEE, chacune sur sa branche jetable du clone.
+  | set -u
+  | S=$S
+  | T=$S/T5w
+  | DN=/home/nasbarok/projects/desknode
+  | P="python3 $S/publier.py"
+  | MAIN=7246f5248d1625a2a351bbb374c03f0585a008c3
+  | TAG=v0.1.0-beta
+  | W=$T/work
+  | rm -rf "$T"; mkdir -p "$T"
+  |
+  | jouer() {  # $1 = rc attendu, reste = commande
+  |   local att="$1"; shift
+  |   echo "  \$ $*"
+  |   "$@" 2>&1 | sed 's/^/  | /'
+  |   local rc=${PIPESTATUS[0]}
+  |   if [ "$rc" = "$att" ]; then echo "  rc=$rc (attendu $att) ⇒ TENU"; else echo "  rc=$rc (attendu $att) ⇒ ⛔ NON TENU"; fi
+  | }
+  | nu() {
+  |   git init -q --bare "$T/$1.git"
+  |   git -C "$W" push -q "$T/$1.git" "$MAIN:refs/heads/main"
+  | }
+  | variante() {  # $1 = nom de branche ; le reste (stdin) = script python qui mute l'arbre du clone
+  |   git -C "$W" switch -q -c "$1" "$C1"
+  |   ( cd "$W" && python3 - )
+  |   git -C "$W" -c user.name="dn8-7 temoin" -c user.email="temoin-sans-adresse" commit -qam "variante $1"
+  |   git -C "$W" rev-parse HEAD
+  | }
+  | retour() { git -C "$W" switch -q main; }
+  | garde_sur() {  # $1 = rc attendu, $2 = commit
+  |   jouer "$1" $P garde --depot "$W" --remote "$T/rd.git" --c1 "$2" --main-attendu $MAIN
+  | }
+  |
+  | echo "=== dn8-7 / T5 — debut $(date -Iseconds) ==="
+  | echo "--- GitHub AVANT (lecture seule) ---"
+  | echo "  ls-remote origin : $(git -C "$DN" ls-remote origin | tr '\t\n' '  ')"
+  | echo "  releases : $(gh api repos/nasbarok/desknode/releases 2>&1)"
+  |
+  | echo; echo "── MISE EN PLACE (identique a T3) ─────────────────────────────────────────"
+  | git clone -q "$DN" "$W"
+  | git -C "$W" remote remove origin
+  | ( cd "$DN" && git diff --binary HEAD ) | git -C "$W" apply --binary
+  | ( cd "$DN" && git ls-files --others --exclude-standard -z ) | while IFS= read -r -d '' f; do
+  |   mkdir -p "$W/$(dirname "$f")"; cp "$DN/$f" "$W/$f"; done
+  | git -C "$W" add -A
+  | git -C "$W" -c user.name="dn8-7 temoin" -c user.email="temoin-sans-adresse" commit -q -m "C1-temoin (clone jetable)"
+  | C1=$(git -C "$W" rev-parse HEAD)
+  | echo "  C1-temoin = $C1"
+  | ( cd "$DN" && git ls-files -co --exclude-standard -z ) | while IFS= read -r -d '' f; do
+  |   cmp -s "$DN/$f" "$W/$f" || echo "    ⛔ DIFFERE : $f"; done
+  | echo "    (fin du diff arbre ecrit ⇄ C1-temoin)"
+  | nu rd
+  |
+  | echo; echo "── R0. TEMOIN POSITIF : garde sur le C1-temoin (toutes les gardes neuves OK) ──"
+  | garde_sur 0 "$C1"
+  |
+  | echo; echo "── R1. CELLULE « révision du dépôt » REMISE A 40be2c8 ⇒ KO NOMME, verif_flash reste 30/0 ─"
+  | V=$(variante t-cellule <<'EOF'
+  | p = "installeur/charge/PROVENANCE.md"; s = open(p, encoding="utf-8").read()
+  | a = "| **révision du dépôt** | **`55006c1`**"
+  | assert s.count(a) == 1; open(p, "w", encoding="utf-8").write(s.replace(a, "| **révision du dépôt** | **`40be2c8`**"))
+  | EOF
+  | )
+  | echo "  variante = $V ; la gate de la charge SUR CETTE VARIANTE :"
+  | ( cd "$W" && python3 tools/verif_flash_dn72.py | grep -E '^BILAN|\(c16\)' | sed 's/^/    /' )
+  | garde_sur 1 "$V"
+  | retour
+  |
+  | echo; echo "── R2. TITRE DU CHANGELOG RE-DATE ⇒ KO NOMME SUR LE LIEN, ET SUR LA DATE ──────"
+  | V=$(variante t-titre <<'EOF'
+  | p = "CHANGELOG.md"; s = open(p, encoding="utf-8").read()
+  | a = "## [0.1.0-beta] - 2026-09-14"
+  | assert s.count(a) == 1; open(p, "w", encoding="utf-8").write(s.replace(a, "## [0.1.0-beta] - 2026-09-15"))
+  | EOF
+  | )
+  | garde_sur 1 "$V"
+  | retour
+  |
+  | echo; echo "── R3. 1re LIGNE DES NOTES RE-DATEE (le CHANGELOG, lui, juste) ⇒ KO date ──────"
+  | V=$(variante t-notes <<'EOF'
+  | p = "docs/releases/v0.1.0-beta.md"; s = open(p, encoding="utf-8").read()
+  | a = "# DeskNode v0.1.0-beta — 2026-09-14\n"
+  | assert s.startswith(a); open(p, "w", encoding="utf-8").write(s.replace(a, "# DeskNode v0.1.0-beta — 2026-09-13\n", 1))
+  | EOF
+  | )
+  | garde_sur 1 "$V"
+  | retour
+  |
+  | echo; echo "── R4. UN COMMIT JETABLE QUI TOUCHE firmware/ ⇒ KO ──────────────────────────"
+  | V=$(variante t-firmware <<'EOF'
+  | p = "firmware/desknode/main/CMakeLists.txt"; s = open(p, encoding="utf-8").read()
+  | open(p, "w", encoding="utf-8").write(s + "# temoin dn8-7 : commit jetable\n")
+  | EOF
+  | )
+  | garde_sur 1 "$V"
+  | retour
+  |
+  | echo; echo "── R5. UN AUTRE TAG SUR LE REMOTE (v0.0.1) ⇒ garde ET pousser arretent ────────"
+  | nu rautre
+  | git -C "$T/rautre.git" -c user.name=intrus -c user.email="intrus-sans-adresse" tag -a v0.0.1 -m "autre tag" refs/heads/main
+  | jouer 1 $P garde --depot "$W" --remote "$T/rautre.git" --c1 "$C1" --main-attendu $MAIN
+  | jouer 0 $P tag --depot "$W" --c1 "$C1"
+  | jouer 1 $P pousser --depot "$W" --remote "$T/rautre.git" --c1 "$C1" --main-attendu $MAIN
+  | echo "  tags sur rautre.git apres : $(git -C "$W" ls-remote --tags "$T/rautre.git" | tr '\t\n' '  ')"
+  | echo "  (b) conserve — le MEME tag deja present :"
+  | nu rb
+  | git -C "$T/rb.git" -c user.name=intrus -c user.email="intrus-sans-adresse" tag -a $TAG -m "tag intrus" refs/heads/main
+  | jouer 1 $P pousser --depot "$W" --remote "$T/rb.git" --c1 "$C1" --main-attendu $MAIN
+  |
+  | echo; echo "── R6. UNE REF VOISINE (refs/tags/v0.1.0-beta.1) BOUGE PENDANT LA POUSSEE ⇒ KO ─"
+  | nu rvoisin
+  | printf '#!/bin/sh\ngit update-ref refs/tags/v0.1.0-beta.1 refs/heads/main\n' > "$T/rvoisin.git/hooks/post-receive"
+  | chmod +x "$T/rvoisin.git/hooks/post-receive"
+  | jouer 1 $P pousser --depot "$W" --remote "$T/rvoisin.git" --c1 "$C1" --main-attendu $MAIN
+  | echo "  temoin nominal (rd.git, sans hook) :"
+  | jouer 0 $P pousser --depot "$W" --remote "$T/rd.git" --c1 "$C1" --main-attendu $MAIN
+  |
+  | echo; echo "── R7. RELEASE AVEC UNE ARCHIVE PERIMEE ⇒ KO, ⛔ AUCUN APPEL gh ────────────────"
+  | mkdir -p "$T/frais" "$T/perime"
+  | jouer 0 $P archive --depot "$W" --sortie "$T/frais/desknode-v0.1.0-beta.zip"
+  | git -C "$W" archive --format=zip --prefix=desknode-v0.1.0-beta/ -o "$T/perime/desknode-v0.1.0-beta.zip" HEAD~1
+  | echo "  archive perimee = git archive de HEAD~1 du clone (la base), meme prefixe, meme nom : $(sha256sum "$T/perime/desknode-v0.1.0-beta.zip" | cut -c1-16)…"
+  | python3 - "$S" "$W" "$T" <<'EOF' 2>&1 | sed 's/^/  | /'
+  | import subprocess, sys, types
+  | sys.path.insert(0, sys.argv[1]); import publier as p
+  | W, T = sys.argv[2], sys.argv[3]
+  | vrai = subprocess.run
+  | for nom, z, att in (("perimee", T + "/perime/desknode-v0.1.0-beta.zip", 1),
+  |                     ("fraiche", T + "/frais/desknode-v0.1.0-beta.zip", 0)):
+  |     appels = []
+  |     def faux(args, **kw):
+  |         if args and args[0] == "gh":
+  |             appels.append(args)
+  |             return subprocess.CompletedProcess(args, 0, "(intercepte : aucun appel)", "")
+  |         return vrai(args, **kw)
+  |     p.subprocess.run = faux
+  |     rc = p.etape_release(types.SimpleNamespace(depot=W, tag=p.TAG, repo=p.REPO, archive=z))
+  |     p.subprocess.run = vrai
+  |     print("archive %s : etape_release rc=%d (attendu %d) · appels gh : %d ⇒ %s"
+  |           % (nom, rc, att, len(appels), "TENU" if rc == att and len(appels) == (0 if att else 1) else "⛔ NON TENU"))
+  | EOF
+  |
+  | echo; echo "── R8. CI : headSha FAUX, ECHEC DE gh, ET LE CHEMIN REEL (gh INTERCEPTE) ───────"
+  | printf '{"databaseId": 91, "status": "completed", "conclusion": "success", "headSha": "%s", "startedAt": "2026-09-14T10:00:00Z", "updatedAt": "2026-09-14T10:07:30Z"}\n' "0000000000000000000000000000000000000000" > "$T/run-headsha-faux.json"
+  | jouer 1 $P ci --c1 "$C1" --json "$T/run-headsha-faux.json"
+  | for c in failure cancelled; do
+  |   printf '{"databaseId": 92, "status": "completed", "conclusion": "%s", "headSha": "%s"}\n' "$c" "$C1" > "$T/run-$c.json"
+  |   jouer 1 $P ci --c1 "$C1" --json "$T/run-$c.json"
+  | done
+  | printf '{"databaseId": 93, "status": "in_progress", "conclusion": null, "headSha": "%s"}\n' "$C1" > "$T/run-en-cours.json"
+  | jouer 4 $P ci --c1 "$C1" --json "$T/run-en-cours.json"
+  | python3 - "$S" "$C1" <<'EOF' 2>&1 | sed 's/^/  | /'
+  | import json, subprocess, sys, types
+  | sys.path.insert(0, sys.argv[1]); import publier as p
+  | C1 = sys.argv[2]
+  | vrai = subprocess.run
+  | LISTE = json.dumps([{"databaseId": 94, "status": "completed", "conclusion": "success", "headSha": C1}])
+  | VUE = json.dumps({"databaseId": 94, "status": "completed", "conclusion": "success", "headSha": C1,
+  |                   "startedAt": "2026-09-14T10:00:00Z", "updatedAt": "2026-09-14T10:16:41Z"})
+  | LOG = ("gates\tRun gates\t2026-09-14T10:16:30Z [NON-JOUABLE] tools/verif_sr03.py rc=2 (attendu) temoin absent\n"
+  |        "gates\tRun gates\t2026-09-14T10:16:40Z BILAN : 38 VERTE, 0 ROUGE, 11 NON-JOUABLE sur 49 gates (990s)\n")
+  | def scenario(nom, reponses, att):
+  |     appels = []
+  |     def faux(args, **kw):
+  |         if args and args[0] == "gh":
+  |             appels.append(" ".join(args[:4]))
+  |             for cle, rep in reponses:
+  |                 if cle in args:
+  |                     return rep
+  |             return subprocess.CompletedProcess(args, 0, "", "")
+  |         return vrai(args, **kw)
+  |     p.subprocess.run = faux
+  |     print("--- %s" % nom)
+  |     rc = p.etape_ci(types.SimpleNamespace(json=None, repo=p.REPO, tag=p.TAG, c1=C1))
+  |     p.subprocess.run = vrai
+  |     print("etape_ci rc=%d (attendu %d) ⇒ %s · appels gh intercepte(s) : %s" % (rc, att, "TENU" if rc == att else "⛔ NON TENU", appels))
+  | ok = lambda out: subprocess.CompletedProcess([], 0, out, "")
+  | scenario("gh run view ECHOUE (rc=1)", [("list", ok(LISTE)), ("--log", ok(LOG)),
+  |          ("view", subprocess.CompletedProcess([], 1, "", "HTTP 404: Not Found (simule)"))], 1)
+  | scenario("gh run list ECHOUE (rc=1)", [("list", subprocess.CompletedProcess([], 1, "", "HTTP 502 (simule)"))], 1)
+  | scenario("chemin nominal : liste, vue, journal", [("list", ok(LISTE)), ("--log", ok(LOG)), ("view", ok(VUE))], 0)
+  | EOF
+  |
+  | echo; echo "--- GitHub APRES (lecture seule) ---"
+  | echo "  ls-remote origin : $(git -C "$DN" ls-remote origin | tr '\t\n' '  ')"
+  | echo "  releases : $(gh api repos/nasbarok/desknode/releases 2>&1)"
+  | echo "  git tag dans desknode : [$(git -C "$DN" tag)]"
+  | echo "=== fin $(date -Iseconds) ==="

@@ -1,0 +1,154 @@
+==============================================================================
+dn8-7 / T1 — LA CHARGE DE LA SEANCE : RELUE, CONFRONTEE, PUIS COPIEE
+  Joue le 2026-09-14 a 01:26:43 (+02:00), APRES la borne T0 et AVANT toute
+  autre ecriture de l'arbre. Sortie brute en § 2 (le chemin du scratchpad de
+  session est abrege en `$S`, et c'est la seule transformation).
+==============================================================================
+
+── 1. LES VERDICTS ──────────────────────────────────────────────────────────
+  (1) LE BINAIRE DE `build/` EST CELUI DE LA SEANCE `dn8-6` — trois empreintes
+      INDEPENDANTES le relient a ce qui a ete flashe puis lu sur la dalle :
+        · app_elf_sha256 lu dans le descripteur : fa4ac7bd78150cd6…
+          = « ELF file SHA256: fa4ac7bd7... » du bandeau (seance B2 l.62) ;
+        · time + date du descripteur : « 19:48:28 » · « Sep 13 2026 »
+          = « Compile time: Sep 13 2026 19:48:28 » (B2 l.61) ;
+        · zlib -9 du binaire : 660 834 o
+          = « Compressed 1266928 bytes to 660834 » (B1 l.37).
+      Et version 55006c1 = « App version: 55006c1 » (B2 l.60), IDF v5.5.5
+      (B2 l.63), 1 266 928 o, sha256 2b845a16…474e3b = la valeur du dossier.
+      ⚠️ Le `zlib -9` de Python et la compression d'esptool ne sont pas
+         garantis identiques par construction : l'egalite est MESUREE ici,
+         ⛔ pas deduite.
+  (2) ⛔ AUCUN REBUILD : aucune commande `idf.py` n'a ete jouee par cette
+      marche. La copie passe par la GARDE (a) du script de publication
+      (`publier.py charge`, source versee dans T3 § 4) : sha256 relu AVANT
+      la copie (= 2b845a16…) et APRES (= 2b845a16…) ; `cmp` build/ ⇄ charge/
+      IDENTIQUES. La commande de verification du dossier rend
+      « 55006c1 fa4ac7bd78 ».
+  (3) LES TROIS AUTRES IMAGES NE CHANGENT PAS : bootloader d1bf1fd3…,
+      partition-table 0934eb42…, living_pcb_v0 fae162a0… — identiques entre
+      `build/` et `installeur/charge/`. Offsets de `flasher_args.json`
+      (0x0 / 0x8000 / 0x10000 / 0x410000) = manifeste (0 / 32768 / 65536 /
+      4259840).
+  (4) LA SOURCE DU BINAIRE EST L'ARBRE QUI SERA TAGUE :
+      `git diff --quiet 55006c1 HEAD -- firmware/` rend 0 avant ET apres la
+      copie (HEAD = 0086ea6, base de la marche ; la marche ⛔ n'ecrit rien
+      sous firmware/). La meme commande contre C1 appartient a la passe de
+      publication ; elle est deja jouee contre le C1-temoin de T3 (rc=0).
+  (5) ⚠️ CE QUI N'EST ⛔ PAS REJOUE, DECLARE : le flash de CE binaire-la
+      DEPUIS LA PAGE. `dn7-2` a prouve la page de bout en bout sur la charge
+      `40be2c8` ; la seance de `dn8-6` a flashe `55006c1` par `idf.py`
+      (B1). ⇒ l'ecriture par ESP Web Tools des quatre morceaux de cette
+      charge-ci n'a ete observee par personne. Ecrit dans PROVENANCE.md, le
+      CHANGELOG et les notes de release.
+  (6) LE COUT, A VIE : +176 o de binaire dans l'arbre (1 266 752 ⇒
+      1 266 928), et un objet git neuf pour `desknode.bin` (le dossier estime
+      ~+204 Ko de delta au pack, ⛔ re-mesure ici).
+
+── 2. LA SORTIE BRUTE (`rtk proxy bash t1.sh`) ─────────────────────────────
+  === dn8-7 / T1 — debut 2026-09-14T01:26:43+02:00 ===
+  HEAD desknode : 0086ea6579ddf012ffb2752ddf72306a5939779f
+  git status --porcelain : []
+
+  ── 1. LE BINAIRE DE build/, AVANT TOUTE COPIE ──
+  -rw-r--r-- 1 nasbarok nasbarok 1266928 2026-09-13 19:48:42.326192241 +0200 firmware/desknode/build/desknode.bin
+  2b845a161079de8bb90ee2b23208a2531d04b157f76fea1c61933a6f8d474e3b  firmware/desknode/build/desknode.bin
+  taille               : 1266928 o
+  magie @0x20          : 0xabcd5432 (esp_app_desc_t)
+  version @0x30        : 55006c1
+  projet  @0x50        : desknode
+  time    @0x70        : 19:48:28
+  date    @0x80        : Sep 13 2026
+  idf_ver @0x90        : v5.5.5
+  app_elf_sha256 @0xb0 : fa4ac7bd78150cd6353a51e8a9ae15b2da8d71b5c44818c21ccc836a0719054e
+  zlib -9 du binaire   : 660834 o
+
+  ── 2. CE QUE LA SEANCE A RELEVE (captures dn8-6, lues) ──
+  37:Compressed 1266928 bytes to 660834...
+  60:I (783) app_init: App version:      55006c1
+  61:I (783) app_init: Compile time:     Sep 13 2026 19:48:28
+  62:I (784) app_init: ELF file SHA256:  fa4ac7bd7...
+  63:I (784) app_init: ESP-IDF:          v5.5.5
+  commit 55006c1 : 55006c19182b3ff1ccc017044057347841ede475 2026-09-13 19:20:33 +0200
+  git diff --quiet 55006c1 HEAD -- firmware/ : rc=0
+
+  ── 3. LES TROIS AUTRES IMAGES : build/ ⇄ charge/ ──
+  d1bf1fd347b3494bcb3d38c7cee0d4698fd45617505529cf5c5dc1653ae0a478  firmware/desknode/build/bootloader/bootloader.bin
+  d1bf1fd347b3494bcb3d38c7cee0d4698fd45617505529cf5c5dc1653ae0a478  installeur/charge/bootloader.bin
+  0934eb422b7c7f52193373a9ce81818e7344d9f0061e073b60fb8ebe209e46eb  firmware/desknode/build/partition_table/partition-table.bin
+  0934eb422b7c7f52193373a9ce81818e7344d9f0061e073b60fb8ebe209e46eb  installeur/charge/partition-table.bin
+  fae162a0a422c3c134db7ba015d8ddcf0adb20502be4f1617c17dba9fb3500ed  firmware/desknode/build/living_pcb_v0.bin
+  fae162a0a422c3c134db7ba015d8ddcf0adb20502be4f1617c17dba9fb3500ed  installeur/charge/living_pcb_v0.bin
+  flasher_args.json flash_files : {'0x0': 'bootloader/bootloader.bin', '0x10000': 'desknode.bin', '0x8000': 'partition_table/partition-table.bin', '0x410000': 'living_pcb_v0.bin'}
+  manifest.json offsets         : [('bootloader.bin', 0), ('partition-table.bin', 32768), ('desknode.bin', 65536), ('living_pcb_v0.bin', 4259840)]
+
+  ── 4. LA COPIE, PAR LA GARDE (a) DU SCRIPT DE PUBLICATION ──
+  sha256 charge/desknode.bin AVANT : 00719e7310df9c5368cd84b965190883a001b39530c35ae61c6b8729f63e72b5
+  $ python3 publier.py charge --source firmware/desknode/build/desknode.bin --sha 2b845a161079de8bb90ee2b23208a2531d04b157f76fea1c61933a6f8d474e3b --dest installeur/charge/desknode.bin
+  [OK ] (a) sha256 de la source = binaire de seance                2b845a161079de8b…
+  [OK ] (a) sha256 relu sur la copie                               2b845a161079de8b…
+  rc=0
+  sha256 charge/desknode.bin APRES : 2b845a161079de8bb90ee2b23208a2531d04b157f76fea1c61933a6f8d474e3b
+  cmp build/ ⇄ charge/ : IDENTIQUES
+  commande du dossier : 55006c1 fa4ac7bd78
+  git diff --quiet 55006c1 HEAD -- firmware/ (apres) : rc=0
+  git status --porcelain (apres) :
+     M installeur/charge/desknode.bin
+  === fin 2026-09-14T01:26:43+02:00 ===
+
+── 3. LE SCRIPT (tel que joue) ─────────────────────────────────────────────
+  | #!/usr/bin/env bash
+  | # dn8-7 / T1 — la charge de la seance : relue, confrontee, COPIEE par la garde (a) du script de publication.
+  | set -u
+  | S=$S
+  | DN=/home/nasbarok/projects/desknode
+  | cd "$DN" || exit 9
+  | B=firmware/desknode/build
+  | SHA=2b845a161079de8bb90ee2b23208a2531d04b157f76fea1c61933a6f8d474e3b
+  | SEANCE=mesures/dn8-6/seance-2026-09-13
+  | echo "=== dn8-7 / T1 — debut $(date -Iseconds) ==="
+  | echo "HEAD desknode : $(git rev-parse HEAD)"
+  | echo "git status --porcelain : [$(git status --porcelain)]"
+  | echo
+  | echo "── 1. LE BINAIRE DE build/, AVANT TOUTE COPIE ──"
+  | ls -la --time-style=full-iso $B/desknode.bin
+  | sha256sum $B/desknode.bin
+  | python3 - "$B/desknode.bin" <<'EOF'
+  | import struct, sys, zlib
+  | d = open(sys.argv[1], "rb").read()
+  | c = lambda a, b: d[a:b].split(b"\0")[0].decode()
+  | magie = struct.unpack_from("<I", d, 0x20)[0]
+  | print("taille               : %d o" % len(d))
+  | print("magie @0x20          : %#010x (%s)" % (magie, "esp_app_desc_t" if magie == 0xABCD5432 else "⛔ ABSENTE"))
+  | print("version @0x30        : %s" % c(0x30, 0x50))
+  | print("projet  @0x50        : %s" % c(0x50, 0x70))
+  | print("time    @0x70        : %s" % c(0x70, 0x80))
+  | print("date    @0x80        : %s" % c(0x80, 0x90))
+  | print("idf_ver @0x90        : %s" % c(0x90, 0xb0))
+  | print("app_elf_sha256 @0xb0 : %s" % d[0xb0:0xd0].hex())
+  | print("zlib -9 du binaire   : %d o" % len(zlib.compress(d, 9)))
+  | EOF
+  | echo
+  | echo "── 2. CE QUE LA SEANCE A RELEVE (captures dn8-6, lues) ──"
+  | grep -n "Compressed 1266928" $SEANCE/B1-flash.txt
+  | grep -nE "App version|Compile time|ELF file SHA256|ESP-IDF:" $SEANCE/B2-bandeau-reset.txt
+  | echo "commit 55006c1 : $(git log -1 --format='%H %ci' 55006c1)"
+  | echo "git diff --quiet 55006c1 HEAD -- firmware/ : $(git diff --quiet 55006c1 HEAD -- firmware/; echo rc=$?)"
+  | echo
+  | echo "── 3. LES TROIS AUTRES IMAGES : build/ ⇄ charge/ ──"
+  | sha256sum $B/bootloader/bootloader.bin installeur/charge/bootloader.bin \
+  |           $B/partition_table/partition-table.bin installeur/charge/partition-table.bin \
+  |           $B/living_pcb_v0.bin installeur/charge/living_pcb_v0.bin
+  | echo "flasher_args.json flash_files : $(python3 -c "import json;print(json.load(open('$B/flasher_args.json'))['flash_files'])")"
+  | echo "manifest.json offsets         : $(python3 -c "import json;print([(x['path'],x['offset']) for x in json.load(open('installeur/charge/manifest.json'))['builds'][0]['parts']])")"
+  | echo
+  | echo "── 4. LA COPIE, PAR LA GARDE (a) DU SCRIPT DE PUBLICATION ──"
+  | echo "sha256 charge/desknode.bin AVANT : $(sha256sum installeur/charge/desknode.bin | cut -c1-64)"
+  | echo "\$ python3 publier.py charge --source $B/desknode.bin --sha $SHA --dest installeur/charge/desknode.bin"
+  | python3 $S/publier.py charge --source $B/desknode.bin --sha $SHA --dest installeur/charge/desknode.bin; echo "rc=$?"
+  | echo "sha256 charge/desknode.bin APRES : $(sha256sum installeur/charge/desknode.bin | cut -c1-64)"
+  | echo "cmp build/ ⇄ charge/ : $(cmp $B/desknode.bin installeur/charge/desknode.bin && echo IDENTIQUES)"
+  | python3 -c "d=open('installeur/charge/desknode.bin','rb').read(0x100); print('commande du dossier :', d[0x30:0x50].split(b'\0')[0].decode(), d[0xb0:0xb5].hex())"
+  | echo "git diff --quiet 55006c1 HEAD -- firmware/ (apres) : $(git diff --quiet 55006c1 HEAD -- firmware/; echo rc=$?)"
+  | echo "git status --porcelain (apres) :"; git status --porcelain | sed 's/^/  /'
+  | echo "=== fin $(date -Iseconds) ==="

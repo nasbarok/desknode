@@ -6,10 +6,41 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0-beta] - 2026-09-14
+
 Work towards the first public release, `v0.1.0-beta`.
+
+> ⚠️ **Annotated on 2026-09-14 (`dn8-7`) — the line above is ⛔ not rewritten.** This section was
+> `[Unreleased]` until that day, and it is now `0.1.0-beta`: a **pre-release** of a repository that
+> is **still private**. ⇒ it is the first release, and ⛔ not yet a public one. Nothing below was
+> back-filled: work items closed before the release keep the entries they had, and none gained one.
 
 ### Added
 
+- 🆕 **The first release exists, and what it distributes has a source** (`dn8-7`, 2026-09-14).
+  Measured that day: `git tag` and `git ls-remote --tags origin` were both empty and the GitHub API
+  listed no release — while the install page's payload was a build of 2026-09-08, made **before**
+  the version appeared on the display: shipped as-is, it would have distributed a firmware that does
+  not show its version. What changed. (1) The payload's `desknode.bin` is now **the build that was
+  flashed and read on the development board on 2026-09-13** (`version 55006c1` under the menu
+  title) — copied, ⛔ not rebuilt: three builds of the same size made that day have three different
+  SHA-256. `installeur/charge/PROVENANCE.md` and `manifest.json` name revision `55006c1`, and the
+  earlier values stay there as a dated quotation. (2) `v0.1.0-beta` is an **annotated tag** on the
+  commit that carries this entry, pushed on its own, and a GitHub **pre-release** attaches the four
+  images, `manifest.json` and `desknode-v0.1.0-beta.zip` — the **whole tree** of the tag, made by
+  `git archive`, because the installer needs the rest of the repository next to it. The release
+  notes are versioned in `docs/releases/v0.1.0-beta.md` and **link** to the status, the
+  instructions, the known issues, this file, the licenses and the provenance instead of copying
+  them. (3) The known issues are reconciled: the front page, this file and `CONTRIBUTING.md` now
+  say the same thing of the cold-start window — characterised, cause **not established** — and
+  *"Not perceptible in use"* and the LibreHardwareMonitor refusal carry dated annotations that cite
+  their sources, below.
+  ⚠️ **What this release does ⛔ not provide, written rather than implied**: a **publicly reachable
+  source** — the repository is still private, so the source it names can be reached by its owner
+  only; a **mechanised provenance** — the binaries are built by hand and no CI builds this firmware
+  (`dn4-45`); and a **standalone executable** for the agent, planned for V0.2. ⚠️ **And one thing is
+  not replayed**: flashing this exact binary **from the install page** — the page was proven end to
+  end on the previous payload, and the 2026-09-13 session flashed this one with `idf.py`.
 - 🆕 **The repository can now receive what comes back: issue forms, a security policy, a code of
   conduct, and a status line that promises nothing** (`dn8-5`, 2026-09-13). Measured that morning:
   `.github/` held only the CLA signature store and two workflows, and GitHub's community profile
@@ -646,6 +677,13 @@ Work towards the first public release, `v0.1.0-beta`.
     browser or starts a scheduled task. That fact is measured on Windows and filed under
     `mesures/dn7-5/`, where the agent's absence is **verified** rather than deduced from
     the message.
+
+  > ⚠️ **Annotated on 2026-09-14 (`dn8-7`) — this entry is ⛔ not rewritten, and the refusal it
+  > describes no longer ships.** It held from 2026-09-10 to 2026-09-12. Since 2026-09-12 the agent's
+  > pre-flight **waits** for LibreHardwareMonitor — 5 minutes by default, `-AttenteLhm` in
+  > `tools/dn_agent_tour.ps1` — and then **starts anyway**, the CPU temperature and the fan speeds at
+  > `--`. Source: the re-annotation of 2026-09-12 in `docs/journal-de-bord.md`, and the front page's
+  > *Install* section, which says the same. No entry was added for that change, and none is back-filled.
 - **`mesures/` and the Markdown files at the repository root are now CC-BY-SA-4.0**
   too — added on 2026-09-04, at the code review of the entry below, which had applied
   its own reason to only half the tree. `mesures/` is 330 measurement captures and the
@@ -791,11 +829,31 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Known issues
 
+- **Activating the agent from a downloaded copy is expected to fail** (added on 2026-09-14,
+  `dn8-7`). On a clone or a downloaded archive of the repository, the install page's *Activate the
+  agent* step should be refused with exit code `3`: the launcher expects the agent **next to
+  itself** (`tools/dn_agent.py`), a layout that only the author's own deployment script produces.
+  This was established on 2026-09-14 by reading `tools/dn_agent_tour.ps1` (and by an earlier run
+  of that launcher from a copy of the repository); it has ⛔ not yet been observed on a downloaded
+  copy. The standalone executable planned for V0.2 is what removes that step.
 - Touch input can be unreliable for roughly **40 s after a cold start** — the whole
   I²C bus degrades during that window. Cause not yet investigated.
+  > ⚠️ **Annotated on 2026-09-14 (`dn8-7`) — *"Cause not yet investigated"* is ⛔ not rewritten,
+  > and it had stopped being true on 2026-08-20.** The window was **characterised** that day, over
+  > six physical cold starts (`hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md`, § 13.17.1): on
+  > about **1 cold start in 6**, multi-byte transactions fail across the **whole** bus — the touch
+  > controller's reads failed **55.5 %** of the time — for about the first 40 s, then recover on
+  > their own. What is still missing is the **cause**: it is **not established**. The front page's
+  > *Known issues* carries that wording.
 - Opening a detail page takes **335.8 ms** on average against a 300 ms target — n = 80,
   spread 281.2 to 400.9. Not perceptible in use, but the number does not meet the
   stated goal.
+  > ⚠️ **Annotated on 2026-09-14 (`dn8-7`) — *"Not perceptible in use"* is ⛔ not rewritten, and it
+  > is a verdict, ⛔ not a measurement.** It is the owner's verdict **by finger**, in the session of
+  > 2026-08-24 (*« franchement ca repond tres bien »*), and the same pass timed **361.8 ms** on
+  > average from tap to flushed screen (n = 26) — more than the 335.8 ms above, which is measured
+  > without the touch chain (`hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`, § 22.10). The front
+  > page does not repeat it.
 - The agent runs on **Windows only**, and its GPU readings come from **AMD only**.
   **NVIDIA is not implemented** — there is no NVML in the agent, and `pynvml` is not a
   dependency. **Intel Arc and integrated GPUs are untested** — no hardware available to
@@ -866,8 +924,17 @@ Work towards the first public release, `v0.1.0-beta`.
   working**, and *« installed separately »* now understates what that costs. ⛔ The
   earlier wording is named here rather than swapped out: it was true when it was
   published, and it still describes the hardware.
+  ⚠️ **Re-annotated on 2026-09-14 (`dn8-7`), ⛔ nothing above erased — the refusal has itself
+  fallen, on 2026-09-12.** The pre-flight no longer refuses: it **waits** for
+  LibreHardwareMonitor (5 minutes by default) and then **starts the agent anyway**. ⇒ the first
+  sentence of this entry is the whole truth again — without it, those two values show `--` and
+  everything else keeps working. Source: `-AttenteLhm` in `tools/dn_agent_tour.ps1`, and the
+  re-annotation of 2026-09-12 in `docs/journal-de-bord.md`.
   ⚠️ **The refusal itself is asserted only where it has been measured**: what has been
   checked here is that the mechanism is wired — the probe exists, it targets what the
   agent targets, and the refusal carries its own exit code. That a real tower without
   LibreHardwareMonitor refuses is closed by a Windows-side record under
   `mesures/dn7-5/`, ⛔ not by any check in this repository.
+
+[Unreleased]: https://github.com/nasbarok/desknode/compare/v0.1.0-beta...HEAD
+[0.1.0-beta]: https://github.com/nasbarok/desknode/releases/tag/v0.1.0-beta

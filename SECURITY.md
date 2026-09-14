@@ -38,7 +38,9 @@ this page anyway.
 - **Which part is affected**: the firmware, the Windows agent, the local install page and the
   script that serves it, or a tool of this repository.
 - **The version**: the firmware SHA printed at boot (how to read it:
-  [Reporting a bug](CONTRIBUTING.md#reporting-a-bug)), or the commit you cloned.
+  [Reporting a bug](CONTRIBUTING.md#reporting-a-bug)), or the commit you cloned. The `v0.1.0-beta`
+  release binary shows `version 55006c1`; a build from a clone at or after that tag shows
+  `v0.1.0-beta` or `v0.1.0-beta-<n>-g<sha>`.
 - **How to reproduce it**, step by step, and **what an attacker gains** from it.
 - **Whether it is already public** anywhere else.
 
@@ -50,6 +52,10 @@ to that component's own project first.
 There is no release yet: the version covered is the **default branch, `main`**. Once a first
 release exists, the covered version is the **latest release**, and older releases are not
 patched.
+
+*Annotated on 2026-09-14 (`dn8-7`): a first release now exists — `v0.1.0-beta`, a pre-release.
+GitHub's "latest release" label leaves pre-releases out, so the covered version is named here
+explicitly: the **most recent release, pre-releases included** — today `v0.1.0-beta`.*
 
 ## What happens after you report
 
