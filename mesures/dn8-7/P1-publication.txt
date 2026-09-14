@@ -1,0 +1,219 @@
+==============================================================================
+dn8-7 / P1 — LA PUBLICATION : LE TAG POUSSE SEUL, LA PRE-RELEASE, ET TOUT
+             CE QUI A ETE RELU SUR LE REMOTE
+  Passe jouee le 2026-09-14 : garde et tag de 03:34 a 03:35 (+02:00), puis
+  ARRET sur un refus de permission de l'agent, puis poussee a 08:33 apres
+  l'autorisation de l'owner en session, release a 08:38, relecture jusqu'a
+  09:10. Script : `publier.py`, source integrale dans
+  `mesures/dn8-7/T5-temoins-des-correctifs-de-revue.txt`. Sorties recopiees
+  telles quelles ; chemin du scratchpad abrege en `$S`, seule transformation.
+  C1  = fb6d64601f5b17ce54927a7e2aae599bd517a4e0 (le commit revu de la marche)
+  M   = 7246f5248d1625a2a351bbb374c03f0585a008c3 (main distant, attendu inchange)
+==============================================================================
+
+── 0. CE QUI S'EST PASSE ENTRE L'ETAPE 2 ET L'ETAPE 3, ECRIT PLUTOT QUE LISSE ─
+  La poussee du tag (etape 3) a ete REFUSEE DEUX FOIS a 03:35 par le
+  classificateur de permissions de l'agent (mode auto) — « Permission for
+  this action was denied by the Claude Code auto mode classifier ». ⛔ Aucun
+  contournement. La marche a ete arretee `blocked`, le tag etant pose EN
+  LOCAL seulement (cockpit : commit du dossier de marche du 2026-09-14).
+  A 08:33, l'owner a autorise le geste en session ; la poussee est passee.
+  ⚠️ Deux etapes de relecture (6b `telecharger`, puis la commande groupee
+  6a+6b+liens) ont encore ete refusees, l'une comme « Auto-Mode Bypass » ;
+  elles ont ete jouees apres que l'owner a ajoute la regle de permission du
+  script. ⇒ la chronologie ci-dessous a un TROU de 5 h entre 2 et 3, et la
+  garde de date (etape 1) ne s'est pas rejouee a 08:33 : le jour est le meme
+  (2026-09-14), ce qui est ce qu'elle garde.
+
+── 1. GARDE (lecture seule, sur le vrai `origin`) ────────────────────────────
+  === P1 — debut 2026-09-14T03:34:09+02:00 ===
+  HEAD : fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  status : []
+  git tag : []
+  ls-remote --tags origin : []
+  ls-remote origin refs/heads/main : 7246f5248d1625a2a351bbb374c03f0585a008c3	refs/heads/main
+  releases : []
+
+  $ publier.py garde
+  [OK ] 1. arbre propre                                            status vide
+  [OK ] 1. HEAD = C1 (en entier)                                   fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  [OK ] 1. verif_flash_dn72.py a C1                                rc=0 ['BILAN : 30 OK, 0 KO']
+  [OK ] 1. cellule « révision du dépôt » = version lue a 0x30      `55006c1` = `55006c1`
+  [OK ] 1. liens blob/v0.1.0-beta des notes resolus dans C1        10 lien(s) (fichier + ancre, `ancres` importee de verif_reception_dn85)
+  [OK ] 1. git diff --quiet 55006c1 C1 -- firmware/                rc=0
+  [OK ] 1. date du CHANGELOG et des notes = aujourd'hui            2026-09-14
+  [OK ] 1. (b) aucun tag sur le remote                             0 tag distant
+  [OK ] 1. refs/heads/main distant = attendu                       7246f5248d1625a2a351bbb374c03f0585a008c3
+  rc=0
+
+── 2. TAG ANNOTE, EN LOCAL ───────────────────────────────────────────────────
+  === P1 / 2. tag — 2026-09-14T03:34:52+02:00 ===
+  [OK ] 2. git tag -a sur C1                                       rc=0
+  [OK ] 2. le tag est ANNOTE                                       objet f382819016ea4a2431350a2127e29258dbb027e1 de type tag
+  [OK ] 2. v0.1.0-beta^{commit} = C1                               fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  [OK ] 2. git describe --tags --always --dirty                    v0.1.0-beta
+  rc=0
+
+── 3. POUSSEE DU TAG SEUL ────────────────────────────────────────────────────
+  === P1 / 3. pousser — 2026-09-14T08:33:19+02:00 — autorisation owner donnee en session ===
+  [OK ] 3. tag local annote sur C1 avant poussee                   tag fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  [OK ] 3. (b) aucun tag sur le remote                             0 tag distant
+      $ git push origin refs/tags/v0.1.0-beta
+      rc=0
+      | To https://github.com/nasbarok/desknode.git
+      |  * [new tag]         v0.1.0-beta -> v0.1.0-beta
+  [OK ] 3. (d) objet tag distant = objet local                     f382819016ea4a2431350a2127e29258dbb027e1
+  [OK ] 3. (d) ^{} distant = C1                                    fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  [OK ] 3. (d) refs/heads/main distant INCHANGE                    7246f5248d1625a2a351bbb374c03f0585a008c3
+  [OK ] 3. (d) aucune autre ref distante n'a bouge                 0 ref changee
+  rc=0
+  ls-remote origin (apres) :
+  7246f5248d1625a2a351bbb374c03f0585a008c3	HEAD
+  3db180cbd6789cde32bb093dd565d1ab3c4f298f	refs/heads/dn4-5-le-module-vit-tout-seul
+  7246f5248d1625a2a351bbb374c03f0585a008c3	refs/heads/main
+  d11977f8d80eee890f37bf79843cfe782b612338	refs/pull/1/head
+  6a80de8ccab4fb3715ebfdeae830ecbe801a5069	refs/pull/2/head
+  f382819016ea4a2431350a2127e29258dbb027e1	refs/tags/v0.1.0-beta
+  fb6d64601f5b17ce54927a7e2aae599bd517a4e0	refs/tags/v0.1.0-beta^{}
+
+  ⚠️ CE QUE LA POUSSEE REND PRESENT SUR LE REMOTE : les commits
+     `7246f52..fb6d646` sont desormais ATTEIGNABLES par le tag, alors que
+     `main` distant n'a pas bouge. Le depot est PRIVE : ⛔ rien n'est public.
+     ⇒ le releve de ce qui devient public, a la bascule, compte LES TAGS.
+
+── 4. L'ARCHIVE DE L'ARBRE DU TAG ────────────────────────────────────────────
+  === P1 / 4. archive — 2026-09-14T08:35:41+02:00 ===
+  [OK ] 4. git archive tir 1                                       rc=0
+      tir 1 : 23228908 o  sha256 0989e0ed2448d6aeefe5b39ec92f704c5131437e8b6461d0b9db39420c81329a
+  [OK ] 4. git archive tir 2                                       rc=0
+      tir 2 : 23228908 o  sha256 0989e0ed2448d6aeefe5b39ec92f704c5131437e8b6461d0b9db39420c81329a
+  [OK ] 4. deux tirs, sha256 egaux (deterministe)                  0989e0ed2448d6ae
+  rc=0
+
+  $ listing
+  [OK ] (h) l'archive se lit                                       876 fichier(s)
+  [OK ] (h) presente : agent/dn_agent.py
+  [OK ] (h) presente : installeur/DeskNode-installeur.bat
+  [OK ] (h) presente : tools/dn_agent_tour.ps1
+  [OK ] (h) presente : docs/releases/v0.1.0-beta.md
+  [OK ] (h) le .bat est en CRLF                                    209/209 lignes
+  [OK ] (h) ABSENTE : tools/dn_agent.py                            ⇒ `permanence` sort en 3 depuis cette archive (known issue declaree)
+  rc=0
+
+── 5. LA PRE-RELEASE ─────────────────────────────────────────────────────────
+  === P1 / 5. release — 2026-09-14T08:37:56+02:00 — autorisation owner donnee en session ===
+  [OK ] 5. arbre propre, charge et notes = celles du tag           status '' · diff rc=0
+  [OK ] 5. --archive = git archive du TAG, regeneree               0989e0ed2448d6ae…
+      $ gh release create v0.1.0-beta --repo nasbarok/desknode --verify-tag --prerelease --title DeskNode v0.1.0-beta --notes-file $S/P1/notes-du-tag.md …/installeur/charge/bootloader.bin …/installeur/charge/partition-table.bin …/installeur/charge/desknode.bin …/installeur/charge/living_pcb_v0.bin …/installeur/charge/manifest.json $S/P1/desknode-v0.1.0-beta.zip
+  [OK ] 5. (e) la commande porte --verify-tag et --prerelease      --verify-tag ET --prerelease presents
+      rc=0
+      | https://github.com/nasbarok/desknode/releases/tag/v0.1.0-beta
+  [OK ] 5. gh release create                                       rc=0
+  rc=0
+
+── 6. RELECTURE SUR LE REMOTE ────────────────────────────────────────────────
+  (i) L'API, brute (`gh api repos/nasbarok/desknode/releases/tags/v0.1.0-beta`,
+      champs choisis) :
+  {"assets":[{"digest":"sha256:d1bf1fd347b3494bcb3d38c7cee0d4698fd45617505529cf5c5dc1653ae0a478","name":"bootloader.bin","size":20848},{"digest":"sha256:0989e0ed2448d6aeefe5b39ec92f704c5131437e8b6461d0b9db39420c81329a","name":"desknode-v0.1.0-beta.zip","size":23228908},{"digest":"sha256:2b845a161079de8bb90ee2b23208a2531d04b157f76fea1c61933a6f8d474e3b","name":"desknode.bin","size":1266928},{"digest":"sha256:fae162a0a422c3c134db7ba015d8ddcf0adb20502be4f1617c17dba9fb3500ed","name":"living_pcb_v0.bin","size":614416},{"digest":"sha256:8835022afbf87d828403dea65ffe9d0ef7d364b6c9c1d7d7eb4c0620afbc45cd","name":"manifest.json","size":509},{"digest":"sha256:0934eb422b7c7f52193373a9ce81818e7344d9f0061e073b60fb8ebe209e46eb","name":"partition-table.bin","size":3072}],"draft":false,"name":"DeskNode v0.1.0-beta","prerelease":true,"published_at":"2026-09-14T06:38:04Z","tag_name":"v0.1.0-beta"}
+  ⇒ le champ `digest` EXISTE sur ce depot, au format `sha256:<hex>` — le
+    « lu sur un autre depot » du dossier est leve.
+
+  (ii) === P1 / 6a. assets — 2026-09-14T09:07:37+02:00 ===
+      source : gh api repos/nasbarok/desknode/releases/tags/v0.1.0-beta
+  [OK ] 6. table de PROVENANCE.md parsee (RE_PROV_LIGNE importee)  4 ligne(s)
+  [OK ] 6. (f) prerelease · draft · 6 assets · size/digest         conforme
+  [OK ] 6. body = git show TAG:docs/releases/v0.1.0-beta.md (fins de ligne normalisees) egal (4616 o)
+  rc=0
+
+  (iii) $ publier.py telecharger
+  [OK ] 6. gh release download                                     rc=0
+  [OK ] 6. re-telecharge : bootloader.bin                          d1bf1fd347b3494b… = table de PROVENANCE.md au tag
+  [OK ] 6. re-telecharge : desknode-v0.1.0-beta.zip                0989e0ed2448d6ae… = archive locale
+  [OK ] 6. re-telecharge : desknode.bin                            2b845a161079de8b… = table de PROVENANCE.md au tag
+  [OK ] 6. re-telecharge : living_pcb_v0.bin                       fae162a0a422c3c1… = table de PROVENANCE.md au tag
+  [OK ] 6. re-telecharge : manifest.json                           8835022afbf87d82… = blob du tag
+  [OK ] 6. re-telecharge : partition-table.bin                     0934eb422b7c7f52… = table de PROVENANCE.md au tag
+
+  (iv) $ publier.py liens
+  [OK ] 6. liens absolus du corps vers blob/v0.1.0-beta            6 chemin(s)
+  [OK ] 6. ⛔ aucun lien du corps hors ref=v0.1.0-beta              0
+  [OK ] 6. contents/CHANGELOG.md?ref=v0.1.0-beta                   rc=0 CHANGELOG.md
+  [OK ] 6. contents/CONTRIBUTING.md?ref=v0.1.0-beta                rc=0 CONTRIBUTING.md
+  [OK ] 6. contents/LICENSING.md?ref=v0.1.0-beta                   rc=0 LICENSING.md
+  [OK ] 6. contents/README.md?ref=v0.1.0-beta                      rc=0 README.md
+  [OK ] 6. contents/THIRD-PARTY.md?ref=v0.1.0-beta                 rc=0 THIRD-PARTY.md
+  [OK ] 6. contents/installeur/charge/PROVENANCE.md?ref=v0.1.0-beta rc=0 installeur/charge/PROVENANCE.md
+  [OK ] 6. #010-beta---2026-09-14 rendu dans CHANGELOG.md a ref=v0.1.0-beta rc=0
+  [OK ] 6. #building-the-firmware rendu dans CONTRIBUTING.md a ref=v0.1.0-beta rc=0
+  [OK ] 6. #what-this-project-is-honestly rendu dans CONTRIBUTING.md a ref=v0.1.0-beta rc=0
+  [OK ] 6. #binary-releases rendu dans LICENSING.md a ref=v0.1.0-beta rc=0
+  [OK ] 6. #install rendu dans README.md a ref=v0.1.0-beta         rc=0
+  [OK ] 6. #known-issues rendu dans README.md a ref=v0.1.0-beta    rc=0
+  rc=0
+
+── 7. LE RUN CI QUE LA POUSSEE DU TAG A DECLENCHE ────────────────────────────
+  $ gh run list --workflow gates.yml --limit 3 (brut, 1re ligne)
+  {"conclusion":"success","createdAt":"2026-09-14T06:33:31Z","databaseId":34813970007,"event":"push","headBranch":"v0.1.0-beta","headSha":"fb6d64601f5b17ce54927a7e2aae599bd517a4e0","status":"completed","updatedAt":"2026-09-14T06:39:23Z"}
+
+  $ publier.py ci --c1 C1
+  [OK ] 7. gh run list                                             1 run(s)
+  [OK ] 7. un run gates.yml porte le tag                           1 run(s)
+  [OK ] 7. gh run view 34813970007                                 lu
+      source : gh run view 34813970007
+  [OK ] 7. headSha du run = C1                                     fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  [OK ] 7. (g) conclusion du run 34813970007                       VERTE (success)
+      duree : 352 s
+  [OK ] 7. gh run view --log                                       rc=0
+  [OK ] 7. ligne(s) « BILAN : » du journal                         1
+      | … BILAN : 38 VERTE, 0 ROUGE, 11 NON-JOUABLE sur 49 gates (340s)
+  rc=0
+
+  Relu dans le journal du job (`gh run view 34813970007 --log`, 340 lignes) :
+    commit   : fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+    python3  : Python 3.12.3 · node v22.23.2 · cockpit ABSENT · lvgl ABSENT
+    [VERTE      ] tools/verif_campagne_dn56.py           rc=0    291s
+    [VERTE      ] tools/verif_reception_dn85.py          rc=0      0s
+    [NON-JOUABLE] (11) : verif_boitier_dn64, verif_campagne_dn440,
+                  verif_dossier_d5_dn45, verif_dossier_dn415, verif_harnais_dn413,
+                  verif_harnais_dn81, verif_hist_dn413, verif_ledger_dn416,
+                  verif_lhm_ps_dn83, verif_sr03 (rc=2), verif_veille_dn33
+    BILAN : 38 VERTE, 0 ROUGE, 11 NON-JOUABLE sur 49 gates (340s)
+    COUVERTURE : 96/100 fonctions, 131/190 blocs — les deux seuils sont tenus.
+
+  🎯 DEUX QUESTIONS DU LEDGER TRANCHEES PAR CE RUN, ⛔ PAR UNE SUPPOSITION :
+    · PyYAML sur le Python systeme du runner : `verif_reception_dn85.py`
+      rend rc=0. Or cette gate ECHOUE FERMEE sans PyYAML (banc de
+      `mesures/dn8-5/T2-temoins-gate.txt` § 3 : 11 OK / 5 KO, rc=1) ⇒ le
+      module EST la. ⚠️ Le COMPTE de la gate (16 OK attendu) ⛔ n'est pas
+      imprime par le runner pour une gate verte ; `import yaml` ⛔ n'est pas
+      relu en propre dans le journal.
+    · La duree : `run_gates.sh` 340 s pour un plafond de job de 1 200 s ;
+      `verif_campagne_dn56.py` 291 s sur le runner (chemin SANS cockpit),
+      pour un plafond de 600 s. ⇒ la marge sur ce runner est connue, et le
+      runner est PLUS RAPIDE que la tour (778,84 s avec cockpit a `T7`).
+
+── 8. LA BORNE POST-REVUE `T7` (avant le commit C1) ──────────────────────────
+  `passe.sh T7` sur l'arbre CORRIGE par la revue (2026-09-14, 02:56 ⇒ 03:32),
+  empreintes AVANT = APRES (contenu 4f626ab715f35f93, index e2e9f466f017504e,
+  cockpit ec3750c94152c571).
+  `comparer.py T0 T7` : rc=0
+    gates comparees : 49 (T0 49 · T7 49) · identiques au compte : 49 · differentes : 0 · OK perdu, KO gagne, rc degrade ou gate absente : 0
+    verif_dossier_dn415.py a T7 : 23 OK / 10 KO  (exige : 23 OK / 10 KO)
+  run_gates.sh --silencieux --cockpit : rc=1  1042.82 s
+    BILAN : 47 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 49 gates (1042s)
+    ⛔ ROUGES : · tools/verif_dossier_dn415.py (rc=1)   (pre-existant)
+  verif_campagne_dn56.py : rc=0  778.84 s  BILAN : 8 OK, 0 KO
+  ⚠️ `releve-comptes.md` porte `T4` (avant les correctifs de revue) ; `T7` est
+    la borne de l'arbre effectivement tague.
+
+── 9. CE QUE CE RELEVE ⛔ NE DIT PAS ─────────────────────────────────────────
+  · ⛔ Qu'un INCONNU atteigne la source, la release ou le tag : le depot est
+    PRIVE, toutes les lectures ci-dessus sont AUTHENTIFIEES. C'est `AC8.8.6`.
+  · ⛔ Qu'un inconnu lance l'archive TELECHARGEE : `AC8.8.8`.
+  · ⛔ Que le binaire de la release se flashe depuis la page : declare.
+  · ⛔ Qu'un rebuild depuis le tag reproduise ces octets : il ne le fait pas
+    (horodatage embarque ; `sdkconfig` et `dependencies.lock` hors du depot).
+  · ⛔ Que le tag soit protege : aucune protection de tag n'est possible sur
+    ce depot prive (`rulesets` 403, `tags/protection` 404) ; `NFR9` ne tient
+    que par discipline.
+  · ⛔ Le compte OK/KO des gates vertes SUR LE RUNNER : il imprime le verdict.
