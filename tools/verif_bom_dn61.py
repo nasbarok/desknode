@@ -48,6 +48,35 @@ PRIX SANS SA DATE ET SA SOURCE. Cette gate garde cette regle, et rien d'autre.
   (c10) ⛔ AUCUN JALON CHIFFRE — decision owner du 2026-09-06. Ils sont sortis
        du perimetre ; le sujet est porte par `dn6-5`.
 
+── 🆕 2026-09-15 (`dn6-6`) — LA PAGE EST PASSEE EN ANGLAIS, SES LITTERAUX AUSSI ──
+
+⚠️ ANNOTATION, ⛔ PAS UNE REECRITURE (NFR3). Tout ce qui precede — et les
+   commentaires plus bas — nomme les litteraux de la page FRANCAISE : c'est
+   ce que `docs/bom.md` ecrivait JUSQU'AU 2026-09-15 (page francaise jusqu'a
+   cette date, texte d'origine dans l'historique git). Decision owner du
+   2026-09-15 : la page passe en anglais, ⛔ UNE SEULE page (pas de
+   `bom.en.md`). Les controles gardent le MEME invariant, sur les litteraux
+   anglais, et ⛔ aucun controle n'est ajoute ni retire (24 + (z), 31 mutants) :
+     `Date du relevé` ⇒ `Survey date` · `Prix` ⇒ `Price` · `Qté` ⇒ `Qty` ·
+     `Désignation` ⇒ `Item` · `Référence exacte` ⇒ `Exact reference` ·
+     `Fournisseur` ⇒ `Supplier` · `Pourquoi il n'est pas…` ⇒ `Why it is not…`
+     · `Adresse tentée` ⇒ `Address tried` · `Résultat` ⇒ `Result` ·
+     « non relevé » ⇒ « not surveyed » · `⛔ PAS UNE TABLE DE BOM` ⇒
+     `⛔ NOT A BOM TABLE` · `## Palier « X »` ⇒ `## Tier "X"` ·
+     « ne porte aucun lien affilié » / « porte des liens affiliés » ⇒
+     « carries no affiliate link » / « carries affiliate links ».
+🔴 (c1) SE DECLARE DESORMAIS PAR `Survey date` ET `Source`, ⛔ plus par la
+   seule sous-chaine `date`. Mesure du 2026-09-15 (`mesures/dn6-6/T3`) :
+   `Date du relevé` CONTIENT `date` ⇒ une table de palier retraduite en
+   francais continuait de se declarer table de BOM, et ⛔ n'etait vue que par
+   RICOCHET (`22 OK, 2 KO` : colonnes `item · price · …` introuvables). Avec
+   `Survey date`, elle CESSE de se declarer et (c1c) la NOMME (`23 OK, 1 KO`,
+   « table a prix ni declaree ni exemptee ») ; et la page francaise d'origine
+   ENTIERE sort a `1 OK, 1 KO` — AUCUNE table ne se declare.
+⚠️ LES PAGES QUI RESTENT EN FRANCAIS NE SONT PAS LUES ICI : cette gate ⛔ ne
+   lit que `docs/bom.md`. `docs/affiliation.md` reste francaise, et c'est
+   `verif_affiliation_dn65.py` qui lit ses deux langues.
+
 Sortie : `BILAN : n OK, m KO`, rc 0 si tout passe, 1 sinon.
 Usage  : python3 tools/verif_bom_dn61.py [--mutant <n>] [--liste-mutants]
          `--mutant` REPLANTE UNE FAUTE EN MEMOIRE et doit faire ROUGIR.
@@ -85,11 +114,21 @@ RE_DATE = re.compile(r"20\d{2}-\d{2}-\d{2}")
 RE_URL = re.compile(r"https?://\S+")
 # ⚠️ « non releve » est la SEULE formule qui vaut declaration. Une gate qui
 #    accepterait « ⛔ » ou « ? » laisserait passer un trou decore.
-RE_NON_RELEVE = re.compile(r"non\s+relev", re.I)
+# 🆕 2026-09-15 (`dn6-6`) : la formule est desormais « not surveyed » — la
+#    page est anglaise. ⛔ La forme francaise ⛔ n'est PAS gardee en
+#    alternative : une ligne retraduite ne doit pas passer en silence.
+RE_NON_RELEVE = re.compile(r"not\s+surveyed", re.I)
 # 🔴 REVUE DU 2026-09-07 — DEUX MOTS NE SONT PAS UNE DECLARATION. Le seuil
 #    est ecrit ici plutot que devine : `⛔ **non relevé**` fait 16 caracteres,
 #    et c'est exactement la forme qui passait pour une declaration.
 MIN_RAISON = 30
+# 🆕 2026-09-15 (`dn6-6`) — LES DEUX FORMES DE LA DECLARATION, EN ANGLAIS. Elles
+#    etaient « ne porte aucun lien affilié » / « porte des liens affiliés »
+#    jusqu'au 2026-09-15 ; `verif_affiliation_dn65.py` ecrit les MEMES deux
+#    litteraux pour la page d'achat (`NEG_BOM`/`POS_BOM`) — ⛔ les faire
+#    diverger ferait lire aux deux gates deux declarations differentes.
+DECL_NEG = "carries no affiliate link"
+DECL_POS = "carries affiliate links"
 # ⚠️ LE COMPTE DU CHEMIN NORMAL, hors le controle final qui le confronte.
 #    Il se PERIME si on ajoute un controle sans le mettre a jour — et
 #    c'est voulu : c'est ce qui rend le controle final FALSIFIABLE.
@@ -99,6 +138,12 @@ ok_total = [0]
 ko_total = [0]
 
 MUTANTS = {}                      # ⛔ AU NIVEAU MODULE — sinon `--liste-mutants`
+# 🆕 2026-09-15 (`dn6-6`) — LES MUTANTS ANCRES SUR DU TEXTE SONT RE-ANCRES SUR
+#    LA PAGE ANGLAISE : 4, 7, 8, 9, 12, 13, 19, 20, 21, 22, 23, 24, 28, 29,
+#    30, 31. Chacun replante la MEME faute qu'avant ; seul son litteral change,
+#    et les descriptions ci-dessous nomment le litteral anglais. ⚠️ Le mutant 8
+#    retire desormais les DEUX formes de la declaration : la page porte la
+#    phrase perimee ET la neuve (NFR3), en retirer une seule laissait (c9) VERT.
 MUTANTS[1] = ("retire la DATE de la 1re ligne de BOM qui porte un prix "
               "(un prix nu se perime sans le dire)")
 MUTANTS[2] = ("retire l'URL SOURCE de la 1re ligne de BOM qui porte un prix")
@@ -123,9 +168,9 @@ MUTANTS[11] = ("rend le document VIDE "
 #    la table qui se declare, le palier 1, les DEUX sens du VL6180X, et la
 #    presence meme de la citation `dn4-41`. « N vus rougir » prouve
 #    `mutant ⇒ rouge`, ⛔ jamais `controle ⇒ couvert`.
-MUTANTS[12] = ("retire `Date du releve` de l'en-tete d'une table "
+MUTANTS[12] = ("retire `Survey date` de l'en-tete d'une table "
                "(elle cesse de SE DECLARER table de BOM, et sort du controle)")
-MUTANTS[13] = ("renomme le palier 1 « DeskNode » en « DeskNode Solo » "
+MUTANTS[13] = ("renomme le palier 1 \"DeskNode\" en \"DeskNode Solo\" "
                "⛔ sans toucher au palier 2")
 MUTANTS[14] = ("supprime la ligne VL6180X (l'autre composant hors palier)")
 MUTANTS[15] = ("deplace le VL6180X DANS une table de palier")
@@ -142,18 +187,18 @@ MUTANTS[18] = ("vide le MOTIF du jeton d'exemption "
 #    (c1b) — « au moins une table se declare » — n'etait garde par RIEN. Il
 #    faut les retirer TOUTES pour l'atteindre. Ecrit parce que la difference
 #    entre « une » et « toutes » est exactement ce qui rendait le controle nu.
-MUTANTS[19] = ("retire `Date du releve` de TOUTES les tables "
+MUTANTS[19] = ("retire `Survey date` de TOUTES les tables "
                "(⛔ plus AUCUNE table de BOM — la gate ne trouve plus sa cible)")
 # 🔴 LES SIX SUIVANTS SONT NES DE LA REVUE DU 2026-09-07. Chacun REPLANTE la
 #    faute que son controle venait de rater — ⛔ aucun ne DEBRANCHE une garde.
 MUTANTS[20] = ("retire le nom d'un palier de son TITRE en le laissant dans la "
                "PROSE (une mention n'est pas une section : la population de "
                "(c6) se vidait, et rien ne rougissait)")
-MUTANTS[21] = ("renomme l'en-tete `Prix` d'une table de BOM "
+MUTANTS[21] = ("renomme l'en-tete `Price` d'une table de BOM "
                "(la colonne ne se resout plus, la table sortait du controle)")
-MUTANTS[22] = ("reduit une declaration a la SEULE formule « non relevé » "
+MUTANTS[22] = ("reduit une declaration a la SEULE formule « not surveyed » "
                "(le TROU MUET du tableau d'E/S, qui sortait VERT)")
-MUTANTS[23] = ("renomme la colonne `Pourquoi` de la table hors-palier "
+MUTANTS[23] = ("renomme la colonne `Why` de la table hors-palier "
                "(le motif se lisait alors dans la mauvaise cellule)")
 MUTANTS[24] = ("passe un composant hors-palier en MINUSCULES dans une section "
                "de palier (la casse sauvait (c6) par accident)")
@@ -163,7 +208,7 @@ MUTANTS[26] = ("fait sortir la gate APRES (c2) sans rien declarer "
                "(le bilan retrecit, et il sortirait VERT)")
 MUTANTS[27] = ("vide la QUANTITE d'une ligne a prix "
                "(une ligne incomplete ⛔ n'est pas commandable)")
-MUTANTS[28] = ("retire la colonne `Qté` d'une table de palier "
+MUTANTS[28] = ("retire la colonne `Qty` d'une table de palier "
                "(⛔ retirer la colonne echappait au controle du champ)")
 MUTANTS[29] = ("remplace une URL tentee par un NOM D'HOTE nu "
                "(un nom de boutique ⛔ ne se re-tente pas)")
@@ -235,7 +280,8 @@ def est_separateur(ligne):
 
 # 🔴 CE JETON EST L'EXCEPTION **FALSIFIABLE** — voir `toutes_les_tables()`.
 #    Il porte un MOTIF, et un motif vide ne vaut pas exemption.
-RE_EXEMPT = re.compile(r"<!--\s*⛔ PAS UNE TABLE DE BOM\s*:\s*(.+?)-->", re.S)
+# 🆕 2026-09-15 (`dn6-6`) : le jeton est `⛔ NOT A BOM TABLE` (page anglaise).
+RE_EXEMPT = re.compile(r"<!--\s*⛔ NOT A BOM TABLE\s*:\s*(.+?)-->", re.S)
 
 
 def toutes_les_tables(texte):
@@ -279,9 +325,16 @@ def toutes_les_tables(texte):
 def est_table_de_bom(entetes):
     """Une table SE DECLARE de BOM quand son en-tete nomme `Date` ET `Source`.
     ⛔ Aucune reconnaissance par position : la position se perime au premier
-    paragraphe insere."""
+    paragraphe insere.
+
+    🆕 2026-09-15 (`dn6-6`) : `Survey date`, ⛔ plus la sous-chaine `date`.
+       `Date du relevé` et `Date of the attempt` CONTIENNENT `date` : une
+       table de BOM retraduite en francais continuait de SE DECLARER. Le
+       litteral est celui de la page anglaise, et une table qui ne l'ecrit
+       pas sort de la declaration — (c1c) la nomme si elle porte un prix."""
     bas = [c.lower() for c in entetes]
-    return any("date" in c for c in bas) and any("source" in c for c in bas)
+    return (any("survey date" in c for c in bas)
+            and any("source" in c for c in bas))
 
 
 def tables_de_bom(texte):
@@ -407,11 +460,14 @@ def muter(texte):
         #    `RE_DATE.sub(...)` sur TOUT le document : elle rougissait AUSSI
         #    (c3) et (c8c), c'est-a-dire qu'elle synchronisait la faute et sa
         #    fixture. Un mutant qui casse trois choses n'en prouve aucune.
-        return texte.replace("statut `in-progress`", "et elle est acquise")
+        # 🆕 2026-09-15 (`dn6-6`) : ancre anglaise (« statut » ⇒ « status »).
+        return texte.replace("status `in-progress`", "and it is acquired")
     if _MUTANT == 12:
-        return texte.replace("Date du relevé", "Quand", 1)
+        return texte.replace("Survey date", "When", 1)
     if _MUTANT == 13:
-        return texte.replace("« DeskNode »", "« DeskNode Solo »")
+        # 🆕 2026-09-15 (`dn6-6`) : la page anglaise ecrit le nom entre
+        #    guillemets DROITS (`## Tier "DeskNode"`), que `nom_nu()` retire.
+        return texte.replace('"DeskNode"', '"DeskNode Solo"')
     if _MUTANT == 14:
         return "\n".join(l for l in texte.split("\n") if "VL6180X" not in l)
     if _MUTANT == 15:
@@ -425,9 +481,9 @@ def muter(texte):
     if _MUTANT == 16:
         return texte.replace("dn4-41", "cette marche")
     if _MUTANT == 19:
-        return texte.replace("Date du relevé", "Quand")
+        return texte.replace("Survey date", "When")
     if _MUTANT == 18:
-        return RE_EXEMPT.sub("<!-- ⛔ PAS UNE TABLE DE BOM : -->", texte)
+        return RE_EXEMPT.sub("<!-- ⛔ NOT A BOM TABLE : -->", texte)
     if _MUTANT == 17:
         # La date DISPARAIT DE LA SEULE FENETRE que (c8) regarde — le reste du
         # document garde les siennes, sinon (c3) tomberait avec.
@@ -435,7 +491,11 @@ def muter(texte):
         a, b = max(0, m.start() - 200), m.start() + 600
         return texte[:a] + RE_DATE.sub("recemment", texte[a:b]) + texte[b:]
     if _MUTANT == 8:
-        return texte.replace("ne porte aucun lien affilié", "est ce qu'elle est")
+        # 🆕 2026-09-15 (`dn6-6`) : les DEUX formes — la page porte la phrase
+        #    perimee (annotee, NFR3) ET la declaration neuve en dessous.
+        #    N'en retirer qu'une laissait l'autre satisfaire (c9).
+        return texte.replace(DECL_NEG, "is what it is") \
+                    .replace(DECL_POS, "is what it is")
     if _MUTANT == 9:
         # 🔴 REVUE DU 2026-09-07 — CE MUTANT REPUBLIAIT, MOT POUR MOT, LES
         #    QUATRE CHIFFRES QUE LA DECISION OWNER DU 2026-09-06 A SORTIS DU
@@ -444,7 +504,9 @@ def muter(texte):
         #    fichier EST livre par cette marche, il est joue par la CI, et
         #    (c10) ne lit que `docs/bom.md` : elle ⛔ ne pouvait pas se voir.
         #    ⇒ le mutant garde sa FORME et abandonne les chiffres de l'owner.
-        return texte + "\n\n⚠️ Seuils de reevaluation : 12 € et 34 €.\n"
+        # 🆕 2026-09-15 (`dn6-6`) : la charge est ecrite dans la langue de la
+        #    page ; (c10) lit les mots de jalon anglais ET francais.
+        return texte + "\n\n⚠️ Re-evaluation thresholds: 12 € and 34 €.\n"
     if _MUTANT == 10:
         # La ligne INA219 est DEPLACEE : retiree de sa table, reinjectee dans
         # la 1re table de BOM d'une section de palier.
@@ -463,41 +525,42 @@ def muter(texte):
         #    mutant qui ne replante plus rien ⛔ n'est pas un mutant. Il vise
         #    donc la faute REELLE : le nom vit dans la prose, ⛔ pas en titre.
         q = PALIERS[1]
-        return texte.replace("## Palier « %s »" % q, "## L'option capteurs", 1) \
-                    .replace("---\n", "---\n\nOn parle ici du « %s ».\n" % q, 1)
+        # 🆕 2026-09-15 (`dn6-6`) : titre anglais `## Tier "…"`.
+        return texte.replace('## Tier "%s"' % q, "## The sensor option", 1) \
+                    .replace("---\n", '---\n\nThis is about the "%s" tier.\n' % q, 1)
     if _MUTANT == 21:
-        return texte.replace("| Prix |", "| Coût |", 1)
+        return texte.replace("| Price |", "| Cost |", 1)
     if _MUTANT == 22:
         l = _ligne_sans_prix(texte)
         c = cellules(l)
         for k, cel in enumerate(c):
             if RE_NON_RELEVE.search(cel):
-                c[k] = "non relevé"
+                c[k] = "not surveyed"
                 break
         return texte.replace(l, "| " + " | ".join(c) + " |", 1)
     if _MUTANT == 23:
-        return texte.replace("| Pourquoi il n'est **pas** au catalogue |",
-                             "| Commentaire libre |", 1)
+        return texte.replace("| Why it is **not** in the catalogue |",
+                             "| Free comment |", 1)
     if _MUTANT == 24:
-        return texte.replace("**BH1750**", "**BH1750** (voir aussi ina219)", 1)
+        return texte.replace("**BH1750**", "**BH1750** (see also ina219)", 1)
     if _MUTANT == 31:
-        return texte.replace("| Adresse tentée | Date de la tentative |",
-                             "| Boutique | Quand |", 1)
+        return texte.replace("| Address tried | Date of the attempt |",
+                             "| Shop | When |", 1)
     if _MUTANT == 27:
         for _e, corps in tables_de_bom(texte):
             for l in corps:
                 c = cellules(l)
-                k = colonne(_e, "qté")
+                k = colonne(_e, "qty")
                 if RE_PRIX.search(l) and k is not None and k < len(c) \
                         and c[k].strip(" —-–*`"):
                     c[k] = " "
                     return texte.replace(l, "| " + " | ".join(c) + " |", 1)
         return texte
     if _MUTANT == 28:
-        return texte.replace("| Désignation | Référence exacte | Qté | "
-                             "Fournisseur | Prix | Date du relevé | Source |",
-                             "| Désignation | Référence exacte | "
-                             "Fournisseur | Prix | Date du relevé | Source |", 1)
+        return texte.replace("| Item | Exact reference | Qty | "
+                             "Supplier | Price | Survey date | Source |",
+                             "| Item | Exact reference | "
+                             "Supplier | Price | Survey date | Source |", 1)
     if _MUTANT == 29:
         # ⚠️ CHIRURGICAL : la MEME URL vit aussi dans la PROSE, plus haut. Une
         #    substitution « la 1re occurrence » frappait la prose et laissait
@@ -507,12 +570,12 @@ def muter(texte):
             if l.strip().startswith("|") and "waveshare.com" in l \
                     and RE_DATE.search(l):
                 c = cellules(l)
-                c[0] = "`waveshare.com` (fiche produit)"
+                c[0] = "`waveshare.com` (product page)"
                 return texte.replace(l, "| " + " | ".join(c) + " |", 1)
         return texte
     if _MUTANT == 30:
         return texte.replace("| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 |",
-                             "| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | récemment |", 1)
+                             "| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | recently |", 1)
     if _MUTANT in (25, 26):
         # ⚠️ Ces deux-la ⛔ ne mutent PAS le texte : 25 deplace la CIBLE, 26
         #    replante une sortie anticipee. Le texte revient intact, et la
@@ -604,7 +667,7 @@ def main():
     tables = tables_de_bom(texte)
     if not ctrl(bool(tables),
                 "au moins une table SE DECLARE table de BOM",
-                "%d table(s) portant `Date` ET `Source` en en-tete" % len(tables)
+                "%d table(s) portant `Survey date` ET `Source` en en-tete" % len(tables)
                 if tables else
                 "⛔ AUCUNE — une table non declaree n'est gardee par RIEN"):
         return bilan(1, "AUCUNE table ne se declare table de BOM")
@@ -687,12 +750,16 @@ def main():
     # ⚠️ MOTIFS SANS LEUR PREMIERE SYLLABE ACCENTUEE : `"design" in
     #    "désignation"` est FAUX (`dé` ≠ `de`) — mesure du 2026-09-07, le
     #    controle accusait les 4 lignes de la page d'etre sans designation.
-    CHAMPS = (("signation", "designation"), ("férence", "reference"),
-              ("qté", "quantite"), ("fournisseur", "fournisseur"))
+    # 🆕 2026-09-15 (`dn6-6`) : en-tetes anglais `Item | Exact reference |
+    #    Qty | Supplier` — ⛔ plus de piege d'accent, mais `item` et `qty`
+    #    sont COURTS : ils ne se resolvent que dans une table de BOM, dont
+    #    aucun autre en-tete ne les contient (mesure du 2026-09-15).
+    CHAMPS = (("item", "item"), ("reference", "reference"),
+              ("qty", "quantity"), ("supplier", "supplier"))
     sans_date, sans_url, muettes, sans_colonne, creux = [], [], [], [], []
     avec_prix = sans_prix = 0
     for ent, corps in tables:
-        i_prix = colonne(ent, "prix")
+        i_prix = colonne(ent, "price")
         i_date = colonne(ent, "date")
         i_src = colonne(ent, "source")
         # 🔴 UNE COLONNE QUI NE SE RESOUT PAS SORTAIT LA TABLE DU CONTROLE EN
@@ -739,7 +806,7 @@ def main():
     #    RETIRER une suffirait a echapper au controle ci-dessus.
     manquantes = []
     for ent, _co in tables_de_bom(corps_paliers):
-        for motif_col, lib in CHAMPS + (("prix", "prix"), ("date", "date"),
+        for motif_col, lib in CHAMPS + (("price", "price"), ("date", "date"),
                                         ("source", "source")):
             if colonne(ent, motif_col) is None:
                 manquantes.append(lib)
@@ -791,7 +858,8 @@ def main():
         #    motif. Le controle certifiait un motif qui n'existait pas.
         motif = ""
         for ent, corps, _a in toutes_les_tables(texte):
-            i_m = colonne(ent, "pourquoi")
+            # 🆕 2026-09-15 (`dn6-6`) : `Why it is **not** in the catalogue`.
+            i_m = colonne(ent, "why")
             trouvee = next((l for l in corps if comp in l.upper()), None)
             if trouvee is None:
                 continue
@@ -801,7 +869,7 @@ def main():
         ctrl(len(motif) >= 40, "%s porte un MOTIF d'exclusion" % comp,
              "%d caractere(s) de motif" % len(motif) if len(motif) >= 40
              else "⛔ motif VIDE OU CREUX (%d caractere(s)) — ⛔ une colonne "
-                  "`Pourquoi` absente n'est pas un motif" % len(motif))
+                  "`Why` absente n'est pas un motif" % len(motif))
 
     # ── (c11) LES SOURCES NON ATTEINTES SE DECLARENT, UNE PAR UNE ──────────
     # 🔴 `AC6.1.1` exige que toute source non atteinte soit declaree AVEC SON
@@ -812,15 +880,19 @@ def main():
     #    pas. ⛔ Un nom de boutique ne se re-tente pas ; une URL, si.
     print("\n── (c11) CHAQUE SOURCE NON ATTEINTE PORTE URL + DATE + MOTIF ─────")
     t_src = [(e, co) for e, co, _a in toutes_les_tables(texte)
-             if colonne(e, "tent") is not None]
+             if colonne(e, "tried") is not None]
     ctrl(len(t_src) == 1, "la table des sources non atteintes est LA",
          "1 table" if len(t_src) == 1
          else "⛔ %d — ⛔ le silence n'est pas « toutes les sources ont "
               "repondu »" % len(t_src))
     incompletes = []
     for ent, corps in t_src:
-        i_a, i_d, i_r = (colonne(ent, "tent"), colonne(ent, "date"),
-                         colonne(ent, "résultat"))
+        # 🆕 2026-09-15 (`dn6-6`) : `Address tried | Date of the attempt |
+        #    Result`. ⚠️ `tried` et ⛔ pas `attempt` : c'est la colonne
+        #    ADRESSE qu'il faut resoudre, et `Date of the attempt` porterait
+        #    `attempt` sans porter d'URL.
+        i_a, i_d, i_r = (colonne(ent, "tried"), colonne(ent, "date"),
+                         colonne(ent, "result"))
         for l in corps:
             c = cellules(l)
             def _c(i):
@@ -848,8 +920,10 @@ def main():
 
     # ── (c9) la declaration d'affiliation ──────────────────────────────────
     print("\n── (c9) LA PAGE DECLARE SES LIENS AFFILIES ───────────────────────")
-    decl = re.search(r"(ne porte aucun lien affilié|porte des liens affiliés)",
-                     texte)
+    # 🆕 2026-09-15 (`dn6-6`) : les deux formes ANGLAISES. ⚠️ `docs/affiliation.md`
+    #    reste francaise et garde ses litteraux : c'est `verif_affiliation_dn65.py`
+    #    qui confronte les deux langues, fichier par fichier.
+    decl = re.search(r"(%s|%s)" % (DECL_NEG, DECL_POS), texte)
     ctrl(decl is not None, "la page DECLARE si elle porte des liens affilies",
          "« %s »" % decl.group(0) if decl
          else "⛔ AUCUNE declaration — ⛔ le silence ne vaut pas « non »")
@@ -862,7 +936,11 @@ def main():
     #    sur la decision owner du 2026-09-06. ⛔ Aucun de ces mots n'apparait
     #    dans la page (mesure du 2026-09-07), donc elargir ⛔ ne cree pas de
     #    faux positif : il ferme une porte, il n'en ouvre aucune.
-    RE_JALON = r"(?:jalons?|seuils?|objectifs?|d[ée]clencheurs?|paliers? de dons?)"
+    # 🆕 2026-09-15 (`dn6-6`) : la page est anglaise ⇒ les mots de jalon
+    #    anglais sont AJOUTES aux francais, ⛔ ils ne les remplacent pas.
+    RE_JALON = (r"(?:jalons?|seuils?|objectifs?|d[ée]clencheurs?|paliers? de dons?"
+                r"|milestones?|thresholds?|targets?|goals?|triggers?"
+                r"|donation tiers?)")
     jalons = [w.group(0) for w in re.finditer(RE_JALON + r"[^.\n]{0,200}",
                                               texte, re.I)
               if re.search(r"\d[\d\s  ]*(?:€|EUR)", w.group(0))]

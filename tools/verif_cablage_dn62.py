@@ -1178,6 +1178,16 @@ def main():
     # ── (c29) AUTOPORTANCE — LA DEFINITION, ⛔ PAS L'OCCURRENCE ─────────────
     print("\n── (c29) TOUTE NOTION A NOMMER EST DEFINIE DANS LE CLONE ─────────")
     prose = {PAGE_REL: page, README_REL: readme}
+    # 🆕 2026-09-15 (`dn6-6`) — LA PAGE D'ACHAT EST PASSEE EN ANGLAIS, ET ELLE
+    #    RESTE DANS `prose` SANS AUTRE CHANGEMENT : c'est la MESURE qui le dit,
+    #    ⛔ pas une supposition. (c29) rejoue le 2026-09-15 AVEC et SANS
+    #    `docs/bom.md` (`mesures/dn6-6/T0-bornes-depart.txt`) : 8 notions, ⛔ 0
+    #    sans definition dans les DEUX cas — la page d'achat ne glosait QUE
+    #    `DeskNode` et `DeskNode + Ambiance`, que `docs/cablage.md` et le README
+    #    glosent aussi. Et sa forme anglaise (`| **DeskNode** | the board, alone…`,
+    #    `## Tier "DeskNode" — the board alone`) reste une glose aux yeux de
+    #    `glose()` : ouvreur `|`/`—`, guillemet droit admis. ⇒ ⛔ aucune notion
+    #    n'etait glosee par la seule page francaise, ⛔ rien a adapter ici.
     for extra in ("docs/bom.md",):
         try:
             with open(os.path.join(RACINE, extra), encoding="utf-8") as fh:

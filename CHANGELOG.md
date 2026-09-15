@@ -8,6 +8,37 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- 🆕 **The purchase list speaks English, and it carries its affiliate links** (`dn6-6`, 2026-09-15).
+  Measured that day: the front page sends "What to buy" to `docs/bom.md`, which was written entirely
+  in French, and its five AliExpress addresses were bare search pages. What changed, on owner
+  decisions of the same day. (1) `docs/bom.md` is translated into English, **as a single page** —
+  every section, table and dated annotation, with the same prices, dates, the ten addresses tried
+  and the six photo links; the French text now lives in the history only. (2) The five AliExpress
+  rows carry, in their `Source` cell, a tracked link of the AliExpress affiliate programme generated
+  by the owner from the very search page where the price was read, with the words
+  `affiliate link` right beside it. (3) The original status sentence of the page is kept,
+  translated, and the declaration in force is written below it; `docs/affiliation.md` stays in
+  French and annotates every sentence that went stale, with the programme terms the owner read on
+  its portal — the tracking window is written nowhere in them — and **two** Waveshare readings of
+  the same day that disagree, both written and neither settled. The manufacturer price sentence
+  that was refuted on 2026-09-07 is annotated as refuted, ⛔ not re-surveyed.
+  ⚠️ **What did ⛔ not happen, written**: no Waveshare link is published (the application is waiting
+  for approval), no sponsor button exists, and the destination of each tracked link was ⛔ not
+  opened by the agent that wrote it — a click is counted by the programme, so checking them once is
+  the owner's gesture.
+- 🆕 **The affiliation check guards the new commitment instead of the old one** (`dn6-6`, 2026-09-15).
+  `tools/verif_affiliation_dn65.py` had written its control `(c5)` — *no published address is
+  marked* — as a commitment, and named its own remedy. It is applied in the same change as the
+  links: `(c5)` now requires every marked address of the tracked text files to live in
+  `docs/bom.md`, in a cell that carries the mention; the new `(c24)` requires every mention in a
+  table of that page to sit on a marked address; `(c6)` reads the purchase page in English and the
+  affiliation page in French. A redirector host such as the programme's click tracker counts for
+  its parent domain, so the survey still covers **two** domains. `tools/verif_bom_dn61.py` and
+  `tools/verif_cablage_dn62.py` read the English page; a table retranslated into French stops
+  declaring itself and is named. Six new mutants replant a marked link outside the purchase page,
+  a link without its mention, a mention on a bare address, links removed while both pages still
+  declare them, a survey row given to the redirector itself, and an unqualified revenue threshold;
+  each one is seen red on the control it names.
 - 🆕 **The repository is public, and what that makes possible** (`dn8-8`, 2026-09-15).
   Measured on 2026-09-14, before anything was pushed: the repository was private, with 0 forks and 0
   stars, `main` on GitHub was 59 commits behind, and what the release promises a stranger — the

@@ -1,0 +1,770 @@
+==============================================================================
+dn6-6 / T3 — LES CAMPAGNES DE MUTANTS DES TROIS GATES, ET LES TEMOINS DE LA MATRICE
+==============================================================================
+date       : 2026-09-15, 14:29 → 14:41 (+02:00)
+arbre      : desknode `a8c6912` + les ecritures NON COMMITEES de la marche (T3 est
+             joue AVANT le commit ; ⚠️ il ⛔ ne peut pas nommer le SHA du commit qui le
+             publie). Empreinte des fichiers de la marche au § 1.
+contrat    : un mutant SAIN rend rc=1, imprime `BILAN :` et au moins un `[KO ]` —
+             le contrat de `verif_campagne_dn56.py`. ⛔ Un mutant perime rend rc=3.
+attribution: les controles VUS rougir sont relus A COLONNE FIXE (`  [KO ] ` puis le
+             libelle sur 58 colonnes, `%-58s` de `ctrl()`), ⛔ par mot ; `CIBLES` est lu
+             A L'AST dans la gate elle-meme. Ecart = difference symetrique.
+⚠️ Seuls les LIBELLES des `[KO ]` des campagnes sont recopies ici, ⛔ leurs details :
+   ce fichier est relu par `verif_affiliation_dn65.py` (tout `.txt` suivi), et le
+   detail d'un mutant de jalon ou de projection y REPLANTERAIT sa charge.
+
+── 1. L'ARBRE, ET SON EMPREINTE AVANT/APRES CHAQUE CAMPAGNE ─────────────────
+  ⇒ `git ls-files -s | sha256sum` IDENTIQUE avant et apres chaque campagne : ⛔ aucun
+    mutant n'a touche l'arbre (les mutants vivent en memoire). La reprise de 14:36
+    suit UNE correction de `montre()` (dn65 imprimait `…/e/<code>` ENTIER, sans schema,
+    a 40 caracteres) : la campagne dn65 et les temoins ont ete REJOUES apres elle.
+  debut 2026-09-15T14:29:28+02:00 empreinte index c4a3c26661b5b5c7 · contenu des fichiers de la marche : 414a15409caac1ee
+  verif_affiliation_dn65 arbre : MUTANTS : 44 · sains (rc=1+BILAN+[KO ]) : 44 · rc=3 : 0 · ecarts CIBLES : 0 · empreinte c4a3c26661b5b5c7
+  verif_affiliation_dn65 T0 (clone a8c6912) : MUTANTS : 38 · sains (rc=1+BILAN+[KO ]) : 38 · rc=3 : 0 · ecarts CIBLES : 0
+  verif_bom_dn61 arbre : MUTANTS : 31 · sains (rc=1+BILAN+[KO ]) : 31 · rc=3 : 0 · ecarts CIBLES : 0 · empreinte c4a3c26661b5b5c7
+  verif_bom_dn61 T0 (clone a8c6912) : MUTANTS : 31 · sains (rc=1+BILAN+[KO ]) : 31 · rc=3 : 0 · ecarts CIBLES : 0
+  verif_cablage_dn62 arbre : MUTANTS : 40 · sains (rc=1+BILAN+[KO ]) : 40 · rc=3 : 0 · ecarts CIBLES : 0 · empreinte c4a3c26661b5b5c7
+  verif_cablage_dn62 T0 (clone a8c6912) : MUTANTS : 40 · sains (rc=1+BILAN+[KO ]) : 40 · rc=3 : 0 · ecarts CIBLES : 0
+  fin 2026-09-15T14:34:05+02:00 empreinte index c4a3c26661b5b5c7
+  reprise 2026-09-15T14:36:59+02:00 (dn65 : montre() tronque toujours) empreinte index c4a3c26661b5b5c7 · contenu des fichiers de la marche : 5962d8881c01ad7d
+  verif_affiliation_dn65 arbre (reprise) : MUTANTS : 44 · sains (rc=1+BILAN+[KO ]) : 44 · rc=3 : 0 · ecarts CIBLES : 0 · empreinte c4a3c26661b5b5c7
+  temoins rc=0 · fin 2026-09-15T14:41:03+02:00 empreinte index c4a3c26661b5b5c7
+
+── 2. `verif_affiliation_dn65.py` — LE TIR NU ─────────────────────────────
+  ==============================================================================
+  dn6-5 — LA DECLARATION D'AFFILIATION EST GARDEE DANS LES DEUX SENS
+  ==============================================================================
+  cibles     : docs/affiliation.md  +  docs/bom.md  +  toute page `.md` suivie
+  ⛔ CETTE GATE NE JUGE AUCUN TAUX ET N'OUVRE AUCUNE CONNEXION — elle relit ce
+     que le depot PUBLIE, ⛔ pas la page du programme.
+  
+  ── (c1) LA PAGE D'AFFILIATION EXISTE ─────────────────────────────
+    [OK ] (c1) `docs/affiliation.md` existe et porte du texte        31609 caracteres
+  
+  ── (c2)(c3)(c4) LA POPULATION SE DERIVE DE LA BOM ────────────────
+    [OK ] (c2) la population des fournisseurs se DERIVE              2 domaine(s) : aliexpress.com · waveshare.com
+    [OK ] (c3) le releve couvre la BOM, DANS LES DEUX SENS           2 domaine(s) confronte(s), 8 ligne(s) de releve
+    [OK ] (c4) la 2e population est publiee, DANS LES DEUX SENS      10 adresse(s) tentee(s), toutes nommees
+  
+  ── (c5)(c24)(c6) L'ENGAGEMENT, SA RECIPROQUE, LA CONCORDANCE ─────
+    [OK ] (c5) toute adresse MARQUEE est declaree, a sa place        478 adresse(s) relue(s) dans 609 fichier(s) de texte suivis (`.md` + `.txt`), 5 marquee(s) — toutes dans `docs/bom.md`, chacune avec `affiliate link` dans son unite
+    [OK ] (c24) toute mention `affiliate link` porte son adresse     5 cellule(s) portant la mention, toutes sur une adresse marquee
+    [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR : « carries affiliate links » (docs/bom.md) · « porte des liens affiliés » (docs/affiliation.md)
+  
+  ── (c7)(c8)(c9) LA PAGE D'ACHAT : PHRASE, RENVOI, BASCULE ────────
+    [OK ] (c7) la phrase d'etat d'origine est INTACTE                mot pour mot
+    [OK ] (c8) la page d'achat RENVOIE vers la page, et ca resout    4 renvoi(s), tous resolus
+    [OK ] (c9) le POINT DE BASCULE est ecrit, avec ses conditions    6 condition(s) nommee(s)
+  
+  ── (c10)(c11) URL + DATE PARTOUT, MOTIF SUR CHAQUE ECHEC ─────────
+    [OK ] (c10) chaque ligne de releve porte URL + DATE              8 ligne(s) confrontee(s)
+    [OK ] (c11) chaque source NON ATTEINTE porte son MOTIF           5 echec(s) declare(s), tous motives
+  
+  ── (c23) CHAQUE VERDICT NOMME SA METHODE DE RECUPERATION ─────────
+    [OK ] (c23) chaque verdict NOMME sa methode de releve            13 verdict(s), tous methodes
+  
+  ── (c12)(c13) LES TEXTES CITES, ET LA MISE EN GARDE ──────────────
+    [OK ] (c12) chaque texte cite porte sa SOURCE OFFICIELLE         5 texte(s), tous sources et dates
+    [OK ] (c13) la page dit que ⛔ ce n'est PAS un conseil            la mise en garde est ecrite
+  
+  ── (c14) L'ACCOMPAGNEMENT NOMME SES PORTEURS ─────────────────────
+    [OK ] (c14) chaque geste owner porte un porteur NOMME            7 geste(s), tous portes
+  
+  ── (c15)(c16) ⛔ NI JALON CHIFFRE, ⛔ NI REVENU PROJETE ──────────
+    [OK ] (c15) ⛔ aucun jalon CHIFFRE dans tout le depot             aucun
+    [OK ] (c16) ⛔ aucun REVENU PROJETE dans tout le depot            aucun
+  
+  ── (c17)(c18)(c19) BASCULE · ACCES · RE-MESURE ───────────────────
+    [OK ] (c17) le point de bascule NOMME son prerequis              4287 caracteres
+    [OK ] (c18) la page est ATTEIGNABLE depuis la prose              3 lien(s) entrant(s) : CHANGELOG.md · docs/bom.md · docs/roadmap.md
+    [OK ] (c19) la page dit comment ses nombres se re-tirent         4 commande(s) publiee(s)
+  
+  ── (c20)(c21)(c22) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+    [OK ] (c20) chaque controle est vise par >= 1 mutant             26 controle(s) lu(s) a l'AST, 26 cible(s) declaree(s)
+    [OK ] (c21) chaque cible de mutant est un controle REEL          26 cible(s) confrontee(s)
+    [OK ] (c22) `CIBLES` et `MUTANTS` se correspondent               44 mutant(s), 44 cible(s), cle a cle
+  
+  ⛔ CE QUE CETTE GATE NE PROUVE PAS : que le taux publie soit VRAI
+     ni FRAIS. Un taux faux mais date et source la laisse VERTE —
+     rouvrir la source est le seul chemin. Elle ne prouve pas non
+     plus que le mutant rougisse BIEN le controle qu'il declare :
+     ca, c'est `mesures/dn6-5/T3` puis `mesures/dn6-6/T3`, qui relisent
+     A COLONNE FIXE.
+  
+  ==============================================================================
+  BILAN : 24 OK, 0 KO
+  ==============================================================================
+
+── 3. `verif_affiliation_dn65.py` — LA CAMPAGNE, UN MUTANT PAR TIR ─────────────────
+  n°  rc  BILAN            vus rougir (a colonne fixe)       CIBLES (AST)          verdict
+   1  1   23 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+        [KO ] (c3) le releve couvre la BOM, DANS LES DEUX SENS
+   2  1   23 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+        [KO ] (c3) le releve couvre la BOM, DANS LES DEUX SENS
+   3  1   23 OK, 1 KO      c4                                c4                    ✅ SAIN · 0 ecart
+        [KO ] (c4) la 2e population est publiee, DANS LES DEUX SENS
+   4  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) toute adresse MARQUEE est declaree, a sa place
+   5  1   23 OK, 1 KO      c6                                c6                    ✅ SAIN · 0 ecart
+        [KO ] (c6) l'affirmation CONCORDE avec l'etat mesure
+   6  1   23 OK, 1 KO      c7                                c7                    ✅ SAIN · 0 ecart
+        [KO ] (c7) la phrase d'etat d'origine est INTACTE
+   7  1   23 OK, 1 KO      c8                                c8                    ✅ SAIN · 0 ecart
+        [KO ] (c8) la page d'achat RENVOIE vers la page, et ca resout
+   8  1   23 OK, 1 KO      c8                                c8                    ✅ SAIN · 0 ecart
+        [KO ] (c8) la page d'achat RENVOIE vers la page, et ca resout
+   9  1   23 OK, 1 KO      c9                                c9                    ✅ SAIN · 0 ecart
+        [KO ] (c9) le POINT DE BASCULE est ecrit, avec ses conditions
+  10  1   22 OK, 2 KO      c10,c11                           c10,c11               ✅ SAIN · 0 ecart
+        [KO ] (c10) chaque ligne de releve porte URL + DATE
+        [KO ] (c11) chaque source NON ATTEINTE porte son MOTIF
+  11  1   23 OK, 1 KO      c10                               c10                   ✅ SAIN · 0 ecart
+        [KO ] (c10) chaque ligne de releve porte URL + DATE
+  12  1   23 OK, 1 KO      c11                               c11                   ✅ SAIN · 0 ecart
+        [KO ] (c11) chaque source NON ATTEINTE porte son MOTIF
+  13  1   23 OK, 1 KO      c12                               c12                   ✅ SAIN · 0 ecart
+        [KO ] (c12) chaque texte cite porte sa SOURCE OFFICIELLE
+  14  1   23 OK, 1 KO      c13                               c13                   ✅ SAIN · 0 ecart
+        [KO ] (c13) la page dit que ⛔ ce n'est PAS un conseil
+  15  1   23 OK, 1 KO      c14                               c14                   ✅ SAIN · 0 ecart
+        [KO ] (c14) chaque geste owner porte un porteur NOMME
+  16  1   22 OK, 2 KO      c15,c16                           c15,c16               ✅ SAIN · 0 ecart
+        [KO ] (c15) ⛔ aucun jalon CHIFFRE dans tout le depot
+        [KO ] (c16) ⛔ aucun REVENU PROJETE dans tout le depot
+  17  1   22 OK, 2 KO      c15,c16                           c15,c16               ✅ SAIN · 0 ecart
+        [KO ] (c15) ⛔ aucun jalon CHIFFRE dans tout le depot
+        [KO ] (c16) ⛔ aucun REVENU PROJETE dans tout le depot
+  18  1   23 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+        [KO ] (c16) ⛔ aucun REVENU PROJETE dans tout le depot
+  19  1   22 OK, 2 KO      c14,c17                           c17,c14               ✅ SAIN · 0 ecart
+        [KO ] (c14) chaque geste owner porte un porteur NOMME
+        [KO ] (c17) le point de bascule NOMME son prerequis
+  20  1   22 OK, 2 KO      c18,c8                            c18,c8                ✅ SAIN · 0 ecart
+        [KO ] (c8) la page d'achat RENVOIE vers la page, et ca resout
+        [KO ] (c18) la page est ATTEIGNABLE depuis la prose
+  21  1   22 OK, 2 KO      c17,c19                           c19,c17               ✅ SAIN · 0 ecart
+        [KO ] (c17) le point de bascule NOMME son prerequis
+        [KO ] (c19) la page dit comment ses nombres se re-tirent
+  22  1   0 OK, 1 KO       c1                                c1                    ✅ SAIN · 0 ecart
+        [KO ] (c1) `docs/affiliation.md` existe et porte du texte
+  23  1   19 OK, 5 KO      c2,c24,c3,c4,c6                   c2,c4,c3,c6,c24       ✅ SAIN · 0 ecart
+        [KO ] (c2) la population des fournisseurs se DERIVE
+        [KO ] (c3) le releve couvre la BOM, DANS LES DEUX SENS
+        [KO ] (c4) la 2e population est publiee, DANS LES DEUX SENS
+        [KO ] (c24) toute mention `affiliate link` porte son adresse
+        [KO ] (c6) l'affirmation CONCORDE avec l'etat mesure
+  24  1   23 OK, 1 KO      c20                               c20                   ✅ SAIN · 0 ecart
+        [KO ] (c20) chaque controle est vise par >= 1 mutant
+  25  1   23 OK, 1 KO      c21                               c21                   ✅ SAIN · 0 ecart
+        [KO ] (c21) chaque cible de mutant est un controle REEL
+  26  1   23 OK, 1 KO      c22                               c22                   ✅ SAIN · 0 ecart
+        [KO ] (c22) `CIBLES` et `MUTANTS` se correspondent
+  27  1   21 OK, 1 KO      z                                 z                     ✅ SAIN · 0 ecart
+        [KO ] (z) tout controle prevu est EMIS
+  28  1   0 OK, 1 KO       c0                                c0                    ✅ SAIN · 0 ecart
+        [KO ] (c0) le mutant 28 a une CIBLE et un CORPS
+  29  1   23 OK, 1 KO      c4                                c4                    ✅ SAIN · 0 ecart
+        [KO ] (c4) la 2e population est publiee, DANS LES DEUX SENS
+  30  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) toute adresse MARQUEE est declaree, a sa place
+  31  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) toute adresse MARQUEE est declaree, a sa place
+  32  1   23 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+        [KO ] (c3) le releve couvre la BOM, DANS LES DEUX SENS
+  33  1   23 OK, 1 KO      c15                               c15                   ✅ SAIN · 0 ecart
+        [KO ] (c15) ⛔ aucun jalon CHIFFRE dans tout le depot
+  34  1   23 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+        [KO ] (c16) ⛔ aucun REVENU PROJETE dans tout le depot
+  35  1   23 OK, 1 KO      c23                               c23                   ✅ SAIN · 0 ecart
+        [KO ] (c23) chaque verdict NOMME sa methode de releve
+  36  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) toute adresse MARQUEE est declaree, a sa place
+  37  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) toute adresse MARQUEE est declaree, a sa place
+  38  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) toute adresse MARQUEE est declaree, a sa place
+  39  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) toute adresse MARQUEE est declaree, a sa place
+  40  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) toute adresse MARQUEE est declaree, a sa place
+  41  1   23 OK, 1 KO      c24                               c24                   ✅ SAIN · 0 ecart
+        [KO ] (c24) toute mention `affiliate link` porte son adresse
+  42  1   23 OK, 1 KO      c6                                c6                    ✅ SAIN · 0 ecart
+        [KO ] (c6) l'affirmation CONCORDE avec l'etat mesure
+  43  1   23 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+        [KO ] (c3) le releve couvre la BOM, DANS LES DEUX SENS
+  44  1   23 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+        [KO ] (c16) ⛔ aucun REVENU PROJETE dans tout le depot
+  ⇒ 44 mutant(s) · 44 sain(s) · 0 rc=3 · 0 ecart(s) a CIBLES
+  CONFRONTATION A T0 (la meme gate rejouee sur un clone jetable a `a8c6912`) :
+    38 mutant(s) a T0 · 44 dans l'arbre · neufs : [39, 40, 41, 42, 43, 44]
+    memes controles vus rougir, seul le compte d'OK change (+1, le controle neuf) : [1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 24, 25, 26, 27, 29, 32, 33, 34, 35]
+    controles vus rougir DIFFERENTS de T0 : 8
+      #4  T0 21 OK, 2 KO (c5) ⛔ aucune adresse publiee n'est MARQUEE | (c6) l'affirmation CONCORDE avec l'etat mesure
+           ⇒  23 OK, 1 KO (c5) toute adresse MARQUEE est declaree, a sa place
+      #6  T0 21 OK, 2 KO (c6) l'affirmation CONCORDE avec l'etat mesure | (c7) la phrase d'etat d'origine est INTACTE
+           ⇒  23 OK, 1 KO (c7) la phrase d'etat d'origine est INTACTE
+      #23  T0 20 OK, 3 KO (c2) la population des fournisseurs se DERIVE | (c3) le releve couvre la BOM, DANS LES DEUX SENS | (c4) la 2e population est publiee, DANS LES DEUX SENS
+           ⇒  19 OK, 5 KO (c2) la population des fournisseurs se DERIVE | (c24) toute mention `affiliate link` porte son adresse | (c3) le releve couvre la BOM, DANS LES DEUX SENS | (c4) la 2e population est publiee, DANS LES DEUX SENS | (c6) l'affirmation CONCORDE avec l'etat mesure
+      #30  T0 22 OK, 1 KO (c5) ⛔ aucune adresse publiee n'est MARQUEE
+           ⇒  23 OK, 1 KO (c5) toute adresse MARQUEE est declaree, a sa place
+      #31  T0 21 OK, 2 KO (c5) ⛔ aucune adresse publiee n'est MARQUEE | (c6) l'affirmation CONCORDE avec l'etat mesure
+           ⇒  23 OK, 1 KO (c5) toute adresse MARQUEE est declaree, a sa place
+      #36  T0 21 OK, 2 KO (c5) ⛔ aucune adresse publiee n'est MARQUEE | (c6) l'affirmation CONCORDE avec l'etat mesure
+           ⇒  23 OK, 1 KO (c5) toute adresse MARQUEE est declaree, a sa place
+      #37  T0 21 OK, 2 KO (c5) ⛔ aucune adresse publiee n'est MARQUEE | (c6) l'affirmation CONCORDE avec l'etat mesure
+           ⇒  23 OK, 1 KO (c5) toute adresse MARQUEE est declaree, a sa place
+      #38  T0 21 OK, 2 KO (c5) ⛔ aucune adresse publiee n'est MARQUEE | (c6) l'affirmation CONCORDE avec l'etat mesure
+           ⇒  23 OK, 1 KO (c5) toute adresse MARQUEE est declaree, a sa place
+
+── 4. `verif_bom_dn61.py` — LA CAMPAGNE, UN MUTANT PAR TIR ─────────────────
+  n°  rc  BILAN            vus rougir (a colonne fixe)       CIBLES (AST)          verdict
+   1  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute ligne a prix porte sa DATE de releve
+   2  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute ligne a prix porte son URL SOURCE
+   3  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute ligne SANS prix se DECLARE
+   4  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] le palier « DeskNode + Ambiance » titre UNE section
+   5  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+        [KO ] INA219 est NOMME dans le document
+        [KO ] INA219 porte un MOTIF d'exclusion
+   6  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] VL6180X porte un MOTIF d'exclusion
+   7  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] elle cite son STATUT
+   8  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] la page DECLARE si elle porte des liens affilies
+   9  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] ⛔ aucun jalon CHIFFRE n'est publie
+  10  1   21 OK, 3 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute ligne SANS prix se DECLARE
+        [KO ] INA219 est HORS des sections de palier
+        [KO ] INA219 porte un MOTIF d'exclusion
+  11  1   0 OK, 1 KO       ?                                 —                     ✅ SAIN
+        [KO ] le document n'est pas vide
+  12  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] aucune table a prix hors du controle
+  13  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] le palier « DeskNode » titre UNE section
+  14  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+        [KO ] VL6180X est NOMME dans le document
+        [KO ] VL6180X porte un MOTIF d'exclusion
+  15  1   21 OK, 3 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute ligne SANS prix se DECLARE
+        [KO ] VL6180X est HORS des sections de palier
+        [KO ] VL6180X porte un MOTIF d'exclusion
+  16  1   21 OK, 3 KO      ?                                 —                     ✅ SAIN
+        [KO ] la BOM cite la marche `dn4-41`
+        [KO ] elle cite son STATUT
+        [KO ] elle cite une DATE de relecture
+  17  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] elle cite une DATE de relecture
+  18  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] aucune table a prix hors du controle
+  19  1   1 OK, 1 KO       ?                                 —                     ✅ SAIN
+        [KO ] au moins une table SE DECLARE table de BOM
+  20  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] le palier « DeskNode + Ambiance » titre UNE section
+  21  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute table de PALIER declare ses 7 colonnes
+        [KO ] toute table de BOM RESOUT ses 3 colonnes
+  22  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute ligne SANS prix se DECLARE
+  23  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+        [KO ] VL6180X porte un MOTIF d'exclusion
+        [KO ] INA219 porte un MOTIF d'exclusion
+  24  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+        [KO ] INA219 est HORS des sections de palier
+        [KO ] INA219 porte un MOTIF d'exclusion
+  25  1   0 OK, 1 KO       ?                                 —                     ✅ SAIN
+        [KO ] le document d'achat existe
+  26  1   5 OK, 1 KO       ?                                 —                     ✅ SAIN
+        [KO ] tout controle prevu est EMIS
+  27  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute ligne a prix porte ses AUTRES champs
+  28  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+        [KO ] toute table de PALIER declare ses 7 colonnes
+        [KO ] toute ligne SANS prix se DECLARE
+  29  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] chaque source tentee porte URL, DATE et MOTIF
+  30  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] chaque source tentee porte URL, DATE et MOTIF
+  31  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+        [KO ] la table des sources non atteintes est LA
+  ⇒ 31 mutant(s) · 31 sain(s) · 0 rc=3 · (⛔ pas de `CIBLES` dans cette gate : attribution par libelle)
+  CONFRONTATION A T0 (la meme gate rejouee sur un clone jetable a `a8c6912`) :
+    31 mutant(s) a T0 · 31 dans l'arbre · neufs : aucun
+    memes controles vus rougir, seul le compte d'OK change (+1, le controle neuf) : aucun
+    controles vus rougir DIFFERENTS de T0 : 0
+
+── 5. `verif_cablage_dn62.py` — LA CAMPAGNE, UN MUTANT PAR TIR ─────────────────
+  n°  rc  BILAN            vus rougir (a colonne fixe)       CIBLES (AST)          verdict
+   1  1   36 OK, 1 KO      c2                                c2                    ✅ SAIN · 0 ecart
+        [KO ] (c2) aucun § n'est cite SANS son fichier
+   2  1   36 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+        [KO ] (c3) chaque paire (fichier, §) EXISTE dans hardware/
+   3  1   36 OK, 1 KO      c4                                c4                    ✅ SAIN · 0 ecart
+        [KO ] (c4) aucune paire citee n'est sur la liste `dn4-34`
+   4  1   36 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+        [KO ] (c5) SCL = GPIO7 cite sa mesure
+   5  1   36 OK, 1 KO      c6                                c6                    ✅ SAIN · 0 ecart
+        [KO ] (c6) SDA = GPIO15 cite sa mesure
+   6  1   36 OK, 1 KO      c7                                c7                    ✅ SAIN · 0 ecart
+        [KO ] (c7) l'alimentation 3V3 / GND cite sa mesure
+   7  1   36 OK, 1 KO      c8                                c8                    ✅ SAIN · 0 ecart
+        [KO ] (c8) BME680 a l'adresse 0x77 cite sa mesure
+   8  1   36 OK, 1 KO      c9                                c9                    ✅ SAIN · 0 ecart
+        [KO ] (c9) BH1750 a l'adresse 0x23 cite sa mesure
+   9  1   35 OK, 2 KO      c10,c11                           c10,c11               ✅ SAIN · 0 ecart
+        [KO ] (c10) la page porte l'inversion `SDA`/`SCL` de la source
+        [KO ] (c11) cet avertissement porte SA DATE
+  10  1   36 OK, 1 KO      c11                               c11                   ✅ SAIN · 0 ecart
+        [KO ] (c11) cet avertissement porte SA DATE
+  11  1   36 OK, 1 KO      c12                               c12                   ✅ SAIN · 0 ecart
+        [KO ] (c12) l'embase JST porte son piege (jumelle UART)
+  12  1   36 OK, 1 KO      c13                               c13                   ✅ SAIN · 0 ecart
+        [KO ] (c13) le header 2x12 porte son piege (rangee A)
+  13  1   36 OK, 1 KO      c14                               c14                   ✅ SAIN · 0 ecart
+        [KO ] (c14) la procedure prescrit PLUSIEURS passes
+  14  1   36 OK, 1 KO      c15                               c15                   ✅ SAIN · 0 ecart
+        [KO ] (c15) un desaccord n'est PAS un verdict
+  15  1   36 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+        [KO ] (c16) le departage est la LECTURE DE REGISTRE
+  16  1   36 OK, 1 KO      c17                               c17                   ✅ SAIN · 0 ecart
+        [KO ] (c17) un TIMEOUT n'est pas une absence
+  17  1   36 OK, 1 KO      c18                               c18                   ✅ SAIN · 0 ecart
+        [KO ] (c18) `0x76` est nomme FAUX POSITIF MESURE
+  18  1   36 OK, 1 KO      c19                               c19                   ✅ SAIN · 0 ecart
+        [KO ] (c19) la fenetre `0x76` renvoie a `0x77`
+  19  1   36 OK, 1 KO      c20                               c20                   ✅ SAIN · 0 ecart
+        [KO ] (c20) bouger ⇒ COUPER L'ALIM ⇒ rescanner
+  20  1   36 OK, 1 KO      c21                               c21                   ✅ SAIN · 0 ecart
+        [KO ] (c21) chaque palier a UN bloc `TESTED`
+  21  1   36 OK, 1 KO      c22                               c22                   ✅ SAIN · 0 ecart
+        [KO ] (c22) chaque `TESTED` dit COMBIEN DE TEMPS
+  22  1   36 OK, 1 KO      c23                               c23                   ✅ SAIN · 0 ecart
+        [KO ] (c23) chaque `TESTED` dit SUR QUEL SHA
+  23  1   36 OK, 1 KO      c24                               c24                   ✅ SAIN · 0 ecart
+        [KO ] (c24) chaque `TESTED` ecrit ce qui n'a JAMAIS tourne
+  24  1   36 OK, 1 KO      c25                               c25                   ✅ SAIN · 0 ecart
+        [KO ] (c25) le README lie `docs/cablage.md`
+  25  1   36 OK, 1 KO      c26                               c26                   ✅ SAIN · 0 ecart
+        [KO ] (c26) le README lie `docs/bom.md`
+  26  1   36 OK, 1 KO      c27                               c27                   ✅ SAIN · 0 ecart
+        [KO ] (c27) toute photo citee existe
+  27  1   36 OK, 1 KO      c28                               c28                   ✅ SAIN · 0 ecart
+        [KO ] (c28) la page MONTRE au moins une photo
+  28  1   36 OK, 1 KO      c29                               c29                   ✅ SAIN · 0 ecart
+        [KO ] (c29) chaque notion a nommer est DEFINIE dans le clone
+  29  1   0 OK, 1 KO       c1                                c1                    ✅ SAIN · 0 ecart
+        [KO ] (c1) la page de cablage n'est pas vide
+  30  1   36 OK, 1 KO      c30                               c30                   ✅ SAIN · 0 ecart
+        [KO ] (c30) chaque controle est vise par >= 1 mutant
+  31  1   36 OK, 1 KO      c31                               c31                   ✅ SAIN · 0 ecart
+        [KO ] (c31) chaque cible de mutant est un controle REEL
+  32  1   36 OK, 1 KO      c32                               c32                   ✅ SAIN · 0 ecart
+        [KO ] (c32) la regle de (c4) distingue les HOMONYMES
+  33  1   36 OK, 1 KO      c33                               c33                   ✅ SAIN · 0 ecart
+        [KO ] (c33) `CIBLES` et `MUTANTS` se correspondent
+  34  1   36 OK, 1 KO      c34                               c34                   ✅ SAIN · 0 ecart
+        [KO ] (c34) les DEUX temoins positifs et leur portee
+  35  1   36 OK, 1 KO      c35                               c35                   ✅ SAIN · 0 ecart
+        [KO ] (c35) `ADDR` du BH1750 va a la MASSE
+  36  1   36 OK, 1 KO      c36                               c36                   ✅ SAIN · 0 ecart
+        [KO ] (c36) le PIEGE DU MIROIR est ecrit
+  37  1   34 OK, 3 KO      c18,c19,c37                       c37,c18,c19           ✅ SAIN · 0 ecart
+        [KO ] (c37) la section d'ancrage de la procedure existe
+        [KO ] (c18) `0x76` est nomme FAUX POSITIF MESURE
+        [KO ] (c19) la fenetre `0x76` renvoie a `0x77`
+  38  1   18 OK, 1 KO      z                                 z                     ✅ SAIN · 0 ecart
+        [KO ] (z) tout controle prevu est EMIS
+  39  1   36 OK, 1 KO      c29                               c29                   ✅ SAIN · 0 ecart
+        [KO ] (c29) chaque notion a nommer est DEFINIE dans le clone
+  40  1   36 OK, 1 KO      c24                               c24                   ✅ SAIN · 0 ecart
+        [KO ] (c24) chaque `TESTED` ecrit ce qui n'a JAMAIS tourne
+  ⇒ 40 mutant(s) · 40 sain(s) · 0 rc=3 · 0 ecart(s) a CIBLES
+  CONFRONTATION A T0 (la meme gate rejouee sur un clone jetable a `a8c6912`) :
+    40 mutant(s) a T0 · 40 dans l'arbre · neufs : aucun
+    memes controles vus rougir, seul le compte d'OK change (+1, le controle neuf) : aucun
+    controles vus rougir DIFFERENTS de T0 : 0
+
+── 6. LES TEMOINS DE L'I/O MATRIX, SUR UN CLONE JETABLE ─────────────────────
+  clone : `git clone --no-hardlinks` de l'arbre, les ecritures de la marche copiees puis
+  committees DANS LE CLONE (pour que `git ls-files` les voie) ; chaque temoin pose sa
+  charge, tire la gate, puis `git checkout -- . && git clean -fd` (statut relu VIDE).
+  ⛔ Aucun temoin n'a touche l'arbre : empreintes du § 1.
+  ── W1 — aujourd'hui, apres la marche (le clone = l'arbre de la marche)
+    ── W1-dn65
+       $ python3 tools/verif_affiliation_dn65.py
+       rc=0 · BILAN : 24 OK, 0 KO
+       ── (c2)(c3)(c4) LA POPULATION SE DERIVE DE LA BOM ────────────────
+         [OK ] (c2) la population des fournisseurs se DERIVE              2 domaine(s) : aliexpress.com · waveshare.com
+         [OK ] (c3) le releve couvre la BOM, DANS LES DEUX SENS           2 domaine(s) confronte(s), 8 ligne(s) de releve
+       ── (c5)(c24)(c6) L'ENGAGEMENT, SA RECIPROQUE, LA CONCORDANCE ─────
+         [OK ] (c5) toute adresse MARQUEE est declaree, a sa place        488 adresse(s) relue(s) dans 611 fichier(s) de texte suivis (`.md` + `.txt`), 5 marquee(s) — toutes dans `docs/bom.md`, chacune avec `affiliate link` dans son unite
+         [OK ] (c24) toute mention `affiliate link` porte son adresse     5 cellule(s) portant la mention, toutes sur une adresse marquee
+         [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR : « carries affiliate links » (docs/bom.md) · « porte des liens affiliés » (docs/affiliation.md)
+       (clone remis a son commit : git status VIDE)
+  ── W2 — lien marque HORS de la page d'achat : une adresse suivie ENTIERE copiee dans le releve T1
+    ── W2-dn65
+       $ python3 tools/verif_affiliation_dn65.py
+       rc=1 · BILAN : 23 OK, 1 KO
+         [KO ] (c5) toute adresse MARQUEE est declaree, a sa place        ⛔ 1 HORS DE LA PAGE D'ACHAT : mesures/dn6-6/T1-releves-du-2026-09-15.txt : s.click.aliexpress.com/e/_c3… (REDIRECTEUR) · 0 SANS SA MENTION dans son unite : — — un lien affilie NON DECLARE
+       (clone remis a son commit : git status VIDE)
+  ── W2bis — la meme adresse copiee dans docs/affiliation.md
+    ── W2bis-dn65
+       $ python3 tools/verif_affiliation_dn65.py
+       rc=1 · BILAN : 23 OK, 1 KO
+         [KO ] (c5) toute adresse MARQUEE est declaree, a sa place        ⛔ 1 HORS DE LA PAGE D'ACHAT : docs/affiliation.md : s.click.aliexpress.com/e/_c3… (REDIRECTEUR) · 0 SANS SA MENTION dans son unite : — — un lien affilie NON DECLARE
+       (clone remis a son commit : git status VIDE)
+  ── W3 — lien marque SANS sa mention : `— affiliate link` retire de la 1re cellule, l'adresse reste
+    ── W3-dn65
+       $ python3 tools/verif_affiliation_dn65.py
+       rc=1 · BILAN : 23 OK, 1 KO
+         [KO ] (c5) toute adresse MARQUEE est declaree, a sa place        ⛔ 0 HORS DE LA PAGE D'ACHAT : — · 1 SANS SA MENTION dans son unite : s.click.aliexpress.com/e/_c3… (REDIRECTEUR) — un lien affilie NON DECLARE
+       (clone remis a son commit : git status VIDE)
+  ── W4 — mention SANS lien marque : `affiliate link` pose a cote d'une adresse nue (table des tentatives)
+    ── W4-dn65
+       $ python3 tools/verif_affiliation_dn65.py
+       rc=1 · BILAN : 23 OK, 1 KO
+         [KO ] (c24) toute mention `affiliate link` porte son adresse     ⛔ 1 MENTION(S) SUR UNE ADRESSE NUE : octopart.com/search?q=ESP32-… — la page declarerait un lien affilie qui n'existe pas
+       (clone remis a son commit : git status VIDE)
+  ── W5 — liens retires, declarations restees : les 5 cellules redeviennent des recherches nues (adresses du SHA de depart), mentions retirees
+    ── W5-dn65
+       $ python3 tools/verif_affiliation_dn65.py
+       rc=1 · BILAN : 23 OK, 1 KO
+         [KO ] (c6) l'affirmation CONCORDE avec l'etat mesure             ⛔ 2 CONTRADICTION(S) — l'etat mesure (0 adresse(s) marquee(s) publiee(s)) contredit la declaration EN VIGUEUR de : docs/affiliation.md · docs/bom.md
+       (clone remis a son commit : git status VIDE)
+  ── W6 — la declaration EN VIGUEUR de docs/affiliation.md rebasculee a « aucun »
+    ── W6-dn65
+       $ python3 tools/verif_affiliation_dn65.py
+       rc=1 · BILAN : 23 OK, 1 KO
+         [KO ] (c6) l'affirmation CONCORDE avec l'etat mesure             ⛔ 1 CONTRADICTION(S) — l'etat mesure (5 adresse(s) marquee(s) publiee(s)) contredit la declaration EN VIGUEUR de : docs/affiliation.md
+       (clone remis a son commit : git status VIDE)
+  ── W7 — la phrase d'etat d'origine REECRITE au lieu d'etre annotee
+    ── W7-dn65
+       $ python3 tools/verif_affiliation_dn65.py
+       rc=1 · BILAN : 23 OK, 1 KO
+         [KO ] (c7) la phrase d'etat d'origine est INTACTE                ⛔ REECRITE OU EFFACEE — `NFR3` dit d'ANNOTER, ⛔ pas d'effacer
+       (clone remis a son commit : git status VIDE)
+  ── W9 — la page d'achat RETRADUITE en francais : la page du SHA de depart, entiere
+    ── W9-dn61
+       $ python3 tools/verif_bom_dn61.py
+       rc=1 · BILAN : 1 OK, 1 KO
+         [KO ] au moins une table SE DECLARE table de BOM                 ⛔ AUCUNE — une table non declaree n'est gardee par RIEN
+       ⛔ SORTIE ANTICIPEE — 2 controle(s) emis sur 24 prevus : AUCUNE table ne se declare table de BOM
+       (clone remis a son commit : git status VIDE)
+  ── W9bis — UNE table de palier retraduite (en-tetes francais), le reste anglais
+    ── W9bis-dn61
+       $ python3 tools/verif_bom_dn61.py
+       rc=1 · BILAN : 23 OK, 1 KO
+         [KO ] aucune table a prix hors du controle                       ⛔ 1 TABLE(S) A PRIX NI DECLAREE(S) NI EXEMPTEE(S) : Désignation / Référence exacte / Qté / Fournisseur /
+       (clone remis a son commit : git status VIDE)
+  ── W10 — mutant dont l'ANCRE a bouge (⛔ jamais un vert)
+    ── W10-dn65-mutant41
+       $ python3 tools/verif_affiliation_dn65.py --mutant 41
+       rc=3 · BILAN : 0 OK, 1 KO
+         [KO ] (c0) le mutant 41 a bien un EFFET                          ⛔ SANS EFFET — son ancre litterale a disparu de la cible. ⛔ Ce n'est PAS un controle vert : rc=3, mutant PERIME.
+       ⛔ SORTIE ANTICIPEE — 1 controle(s) emis sur 24 prevus : le mutant 41 n'a eu aucun effet
+       (clone remis a son commit : git status VIDE)
+    ── W10-dn61-mutant7
+       $ python3 tools/verif_bom_dn61.py --mutant 7
+       rc=1 · BILAN : 0 OK, 1 KO
+         [KO ] le mutant 7 a bien un EFFET                                ⛔ SANS EFFET — sa cible litterale a disparu de docs/bom.md. ⛔ Ce n'est PAS un controle vert.
+       ⛔ SORTIE ANTICIPEE — 1 controle(s) emis sur 24 prevus : le mutant 7 n'a eu aucun effet
+       (clone remis a son commit : git status VIDE)
+    ── W10-dn62-mutant25
+       $ python3 tools/verif_cablage_dn62.py --mutant 25
+       rc=3 · BILAN : 0 OK, 1 KO
+         [KO ] (c0) le mutant 25 a bien un EFFET                          ⛔ SANS EFFET — son ancre litterale a disparu de la cible. ⛔ Ce n'est PAS un controle vert : rc=3, mutant PERIME.
+       ⛔ SORTIE ANTICIPEE — 1 controle(s) emis sur 37 prevus : le mutant 25 n'a eu aucun effet
+       (clone remis a son commit : git status VIDE)
+
+── 7. LA MATRICE, LIGNE PAR LIGNE ⇒ CE QUI LA REPLANTE ─────────────────────
+  aujourd'hui, apres la marche            ⇒ W1 : dn65 24 OK, 0 KO, rc=0
+  lien marque HORS de la page d'achat     ⇒ mutants 30, 39 · W2 (T1) · W2bis (affiliation.md) — (c5)
+  lien marque SANS sa mention             ⇒ mutants 4, 31, 36, 37, 38, 40 · W3 — (c5)
+  mention SANS lien marque                ⇒ mutant 41 · W4 — (c24)
+  liens retires, declaration restee       ⇒ mutant 42 · W5 — (c6), les DEUX pages nommees
+  declaration d'affiliation.md rebasculee ⇒ mutant 5 · W6 — (c6)
+  phrase d'etat d'origine reecrite        ⇒ mutant 6 · W7 — (c7)
+  redirecteur en cellule Source           ⇒ W1 : (c2) « 2 domaine(s) : aliexpress.com · waveshare.com », (c3) vert ;
+                                            mutant 43 : une ligne de releve pour le redirecteur lui-meme ⇒ (c3) ORPHELINE
+  page d'achat retraduite en francais     ⇒ W9 (page entiere : 1 OK, 1 KO) · W9bis (une table : 23 OK, 1 KO) — dn61
+  mutant dont l'ancre a bouge             ⇒ W10 : dn65 #41 rc=3 · dn61 #7 rc=1 « SANS EFFET » · dn62 #25 rc=3 — ⛔ aucun vert
+  poussee de l'owner (arbre sale, HEAD, non fast-forward) ⇒ temoins du lanceur, joues A BLANC : dossier de la marche
+
+── 8. LES SCRIPTS, INTEGRAUX ─────────────────────────────────────────────
+  ── campagne.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — campagne de mutants d'UNE gate, un mutant par tir : rc, BILAN, [KO ] vus, et pour les gates
+  | # a identifiants `(cN)` l'ATTRIBUTION REELLE lue A COLONNE FIXE [9:66] confrontee a CIBLES (import AST).
+  | # Usage : campagne.py <racine-du-depot> <gate relative> [--json sortie]
+  | import ast, json, re, subprocess, sys, os
+  | rac, gate = sys.argv[1], sys.argv[2]
+  | out_json = sys.argv[4] if len(sys.argv) > 4 and sys.argv[3] == "--json" else None
+  | g = os.path.join(rac, gate)
+  | cibles = {}
+  | try:
+  |     arbre = ast.parse(open(g, encoding="utf-8").read())
+  |     for n in ast.walk(arbre):
+  |         if (isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Subscript)
+  |                 and isinstance(n.targets[0].value, ast.Name) and n.targets[0].value.id == "CIBLES"):
+  |             k = ast.literal_eval(n.targets[0].slice)
+  |             cibles[k] = tuple(ast.literal_eval(n.value))
+  | except Exception as e:
+  |     print("AST:", e)
+  | lst = subprocess.run([sys.executable, g, "--liste-mutants"], cwd=rac, capture_output=True, text=True).stdout
+  | nums = [int(m.group(1)) for m in re.finditer(r"^\s*(\d+)\s+\S", lst, re.M)]
+  | res = []
+  | for n in nums:
+  |     r = subprocess.run([sys.executable, g, "--mutant", str(n)], cwd=rac, capture_output=True, text=True)
+  |     o = r.stdout + r.stderr
+  |     b = re.findall(r"^BILAN\s*:.*$", o, re.M)
+  |     kos = [l for l in o.split("\n") if re.match(r"^\s*\[KO \]", l)]
+  |     ids = set()
+  |     for l in kos:
+  |         # la colonne FIXE de ctrl() : `  [KO ] ` puis le libelle sur 58 colonnes
+  |         mc = re.match(r"^\s*\[KO \] (.{1,58})", l)
+  |         lib = mc.group(1) if mc else ""
+  |         m = re.match(r"\((\w+)\)", lib)
+  |         ids.add(m.group(1) if m else "?")
+  |     dec = cibles.get(n)
+  |     ecart = None
+  |     if dec is not None:
+  |         ecart = sorted(set(dec) ^ ids)
+  |     res.append({"n": n, "rc": r.returncode, "bilan": b[-1] if b else None, "nko": len(kos),
+  |                 "vus": sorted(ids), "cibles": list(dec) if dec is not None else None, "ecart": ecart,
+  |                 "ko": [l.strip()[:120] for l in kos]})
+  |     print("%3d rc=%s %-22s KO=%d vus=%-22s cibles=%-22s %s" % (
+  |         n, r.returncode, (b[-1][8:] if b else "⛔ SANS BILAN"), len(kos), ",".join(sorted(ids)),
+  |         ",".join(dec) if dec is not None else "—",
+  |         ("" if dec is None else ("✅ 0 ecart" if not ecart else "⛔ ECART %s" % ecart))))
+  | if out_json:
+  |     json.dump(res, open(out_json, "w"), ensure_ascii=False, indent=1)
+  | sains = sum(1 for x in res if x["rc"] == 1 and x["bilan"] and x["nko"] > 0)
+  | print("MUTANTS : %d · sains (rc=1+BILAN+[KO ]) : %d · rc=3 : %d · ecarts CIBLES : %d"
+  |       % (len(res), sains, sum(1 for x in res if x["rc"] == 3),
+  |          sum(1 for x in res if x["ecart"])))
+
+  ── temoins.sh ──
+  | #!/usr/bin/env bash
+  | # dn6-6 — les TEMOINS de l'I/O Matrix, joues sur un CLONE JETABLE ($C), ⛔ jamais sur l'arbre.
+  | # Chaque temoin : pose sa charge dans le clone, tire la gate, imprime rc + BILAN + [KO ], puis
+  | # `git checkout -- .` (le clone revient a son commit de temoin, verifie par `git status`).
+  | set -u
+  | C="$1"; cd "$C" || exit 9
+  | tir() {  # $1 = etiquette, reste = commande
+  |   local e="$1"; shift
+  |   local out rc
+  |   out=$("$@" 2>&1); rc=$?
+  |   echo "  ── $e"
+  |   echo "     \$ $*"
+  |   echo "     rc=$rc · $(echo "$out" | grep -E '^BILAN' | tail -1)"
+  |   echo "$out" | grep -E '^\s*\[KO \]' | sed 's/^/     /'
+  |   echo "$out" | grep -E '^⛔ SORTIE ANTICIPEE' | sed 's/^/     /'
+  | }
+  | remet() { git checkout -q -- . && git clean -qfd && [ -z "$(git status --porcelain)" ] && echo "     (clone remis a son commit : git status VIDE)"; }
+  | 
+  | echo "── W1 — aujourd'hui, apres la marche (le clone = l'arbre de la marche)"
+  | tir W1-dn65 python3 tools/verif_affiliation_dn65.py
+  | python3 tools/verif_affiliation_dn65.py | grep -E '\((c2|c3|c5|c24|c6)\)' | sed 's/^/     /'
+  | remet
+  | 
+  | echo "── W2 — lien marque HORS de la page d'achat : une adresse suivie ENTIERE copiee dans le releve T1"
+  | U=$(python3 - <<'PY'
+  | import re
+  | t=open("docs/bom.md",encoding="utf-8").read()
+  | print(next(u for u in re.findall(r"https?://[^\s`)>\"'\]]+", t) if "s.click." in u))
+  | PY
+  | )
+  | printf '\nLien copie par erreur : %s\n' "$U" >> mesures/dn6-6/T1-releves-du-2026-09-15.txt
+  | tir W2-dn65 python3 tools/verif_affiliation_dn65.py
+  | remet
+  | echo "── W2bis — la meme adresse copiee dans docs/affiliation.md"
+  | printf '\nLien copie par erreur : %s\n' "$U" >> docs/affiliation.md
+  | tir W2bis-dn65 python3 tools/verif_affiliation_dn65.py
+  | remet
+  | 
+  | echo "── W3 — lien marque SANS sa mention : \`— affiliate link\` retire de la 1re cellule, l'adresse reste"
+  | python3 - <<'PY'
+  | p="docs/bom.md"; s=open(p,encoding="utf-8").read(); s=s.replace(") — affiliate link |", ") |", 1); open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W3-dn65 python3 tools/verif_affiliation_dn65.py
+  | remet
+  | 
+  | echo "── W4 — mention SANS lien marque : \`affiliate link\` pose a cote d'une adresse nue (table des tentatives)"
+  | python3 - <<'PY'
+  | p="docs/bom.md"; s=open(p,encoding="utf-8").read(); s=s.replace("| `https://octopart.com/search?q=ESP32-S3-Touch-LCD-2.8B` |", "| `https://octopart.com/search?q=ESP32-S3-Touch-LCD-2.8B` — affiliate link |", 1); open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W4-dn65 python3 tools/verif_affiliation_dn65.py
+  | remet
+  | 
+  | echo "── W5 — liens retires, declarations restees : les 5 cellules redeviennent des recherches nues (adresses du SHA de depart), mentions retirees"
+  | python3 - <<'PY'
+  | import re,subprocess
+  | p="docs/bom.md"; s=open(p,encoding="utf-8").read()
+  | old=subprocess.run(["git","show","a8c691211da23dae49c7b8f04829625c19a80a93:docs/bom.md"],capture_output=True,text=True).stdout
+  | nues=re.findall(r"`(https://www\.aliexpress\.com/w/wholesale-[^`]+)`", old)
+  | cells=re.findall(r"\[AliExpress search\]\(https?://[^)]+\) — affiliate link", s)
+  | assert len(nues)==5 and len(cells)==5
+  | for c,u in zip(cells,nues): s=s.replace(c,"`%s`"%u,1)
+  | open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W5-dn65 python3 tools/verif_affiliation_dn65.py
+  | remet
+  | 
+  | echo "── W6 — la declaration EN VIGUEUR de docs/affiliation.md rebasculee a « aucun »"
+  | python3 - <<'PY'
+  | p="docs/affiliation.md"; s=open(p,encoding="utf-8").read(); s=s.replace("**Ce dépôt porte des liens affiliés.**","**Ce dépôt ne porte aucun lien affilié.**",1); open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W6-dn65 python3 tools/verif_affiliation_dn65.py
+  | remet
+  | 
+  | echo "── W7 — la phrase d'etat d'origine REECRITE au lieu d'etre annotee"
+  | python3 - <<'PY'
+  | p="docs/bom.md"; s=open(p,encoding="utf-8").read(); s=s.replace("**This page carries no affiliate link.** The URLs above are bare search addresses.","**This page carries affiliate links.** The URLs above are tracked links.",1); open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W7-dn65 python3 tools/verif_affiliation_dn65.py
+  | remet
+  | 
+  | echo "── W9 — la page d'achat RETRADUITE en francais : la page du SHA de depart, entiere"
+  | git show a8c691211da23dae49c7b8f04829625c19a80a93:docs/bom.md > docs/bom.md
+  | tir W9-dn61 python3 tools/verif_bom_dn61.py
+  | remet
+  | echo "── W9bis — UNE table de palier retraduite (en-tetes francais), le reste anglais"
+  | python3 - <<'PY'
+  | p="docs/bom.md"; s=open(p,encoding="utf-8").read()
+  | a="| Item | Exact reference | Qty | Supplier | Price | Survey date | Source |"
+  | s=s.replace(a,"| Désignation | Référence exacte | Qté | Fournisseur | Prix | Date du relevé | Source |",1); open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W9bis-dn61 python3 tools/verif_bom_dn61.py
+  | remet
+  | 
+  | echo "── W10 — mutant dont l'ANCRE a bouge (⛔ jamais un vert)"
+  | python3 - <<'PY'
+  | p="docs/bom.md"; s=open(p,encoding="utf-8").read(); s=s.replace("| `https://thepihut.com/search?q=BME680` |","| `https://thepihut.com/search?q=BME680&page=1` |",1); open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W10-dn65-mutant41 python3 tools/verif_affiliation_dn65.py --mutant 41
+  | remet
+  | python3 - <<'PY'
+  | p="docs/bom.md"; s=open(p,encoding="utf-8").read(); s=s.replace("status `in-progress`","state `in-progress`",1); open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W10-dn61-mutant7 python3 tools/verif_bom_dn61.py --mutant 7
+  | remet
+  | python3 - <<'PY'
+  | p="README.md"; s=open(p,encoding="utf-8").read(); assert "(docs/bom.md)" in s; s=s.replace("(docs/bom.md)","(./docs/bom.md)"); open(p,"w",encoding="utf-8").write(s)
+  | PY
+  | tir W10-dn62-mutant25 python3 tools/verif_cablage_dn62.py --mutant 25
+  | remet
+
+  ── composer_T3.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — compose mesures/dn6-6/T3-campagne-mutants.txt depuis les sorties BRUTES de T3/.
+  | # ⚠️ LES DETAILS DES [KO ] DES CAMPAGNES NE SONT PAS RECOPIES, SEULS LEURS LIBELLES : ce fichier est
+  | #    dans le corpus de `verif_affiliation_dn65.py`, et le detail d'un mutant de jalon (15/16) ou de
+  | #    projection (16) REPLANTERAIT sa charge dans le releve qui le decrit. Le detail complet reste au
+  | #    scratchpad (JSON). Les temoins (§ 5), eux, sont recopies en entier : aucun ne porte de montant.
+  | import json, os, re
+  | S = os.path.dirname(os.path.abspath(__file__)); T = os.path.join(S, "T3")
+  | lire = lambda n: open(os.path.join(T, n), encoding="utf-8").read().rstrip("\n")
+  | lab = lambda k: re.match(r"\[KO \] (.{1,58})", k).group(1).rstrip()
+  | out = []; A = out.append
+  | A("=" * 78)
+  | A("dn6-6 / T3 — LES CAMPAGNES DE MUTANTS DES TROIS GATES, ET LES TEMOINS DE LA MATRICE")
+  | A("=" * 78)
+  | A("date       : 2026-09-15, 14:29 → 14:41 (+02:00)")
+  | A("arbre      : desknode `a8c6912` + les ecritures NON COMMITEES de la marche (T3 est")
+  | A("             joue AVANT le commit ; ⚠️ il ⛔ ne peut pas nommer le SHA du commit qui le")
+  | A("             publie). Empreinte des fichiers de la marche au § 1.")
+  | A("contrat    : un mutant SAIN rend rc=1, imprime `BILAN :` et au moins un `[KO ]` —")
+  | A("             le contrat de `verif_campagne_dn56.py`. ⛔ Un mutant perime rend rc=3.")
+  | A("attribution: les controles VUS rougir sont relus A COLONNE FIXE (`  [KO ] ` puis le")
+  | A("             libelle sur 58 colonnes, `%-58s` de `ctrl()`), ⛔ par mot ; `CIBLES` est lu")
+  | A("             A L'AST dans la gate elle-meme. Ecart = difference symetrique.")
+  | A("⚠️ Seuls les LIBELLES des `[KO ]` des campagnes sont recopies ici, ⛔ leurs details :")
+  | A("   ce fichier est relu par `verif_affiliation_dn65.py` (tout `.txt` suivi), et le")
+  | A("   detail d'un mutant de jalon ou de projection y REPLANTERAIT sa charge.")
+  | A("")
+  | A("── 1. L'ARBRE, ET SON EMPREINTE AVANT/APRES CHAQUE CAMPAGNE ─────────────────")
+  | A("  ⇒ `git ls-files -s | sha256sum` IDENTIQUE avant et apres chaque campagne : ⛔ aucun")
+  | A("    mutant n'a touche l'arbre (les mutants vivent en memoire). La reprise de 14:36")
+  | A("    suit UNE correction de `montre()` (dn65 imprimait `…/e/<code>` ENTIER, sans schema,")
+  | A("    a 40 caracteres) : la campagne dn65 et les temoins ont ete REJOUES apres elle.")
+  | A("\n".join("  " + l for l in lire("empreintes.txt").split("\n")))
+  | A("")
+  | A("── 2. `verif_affiliation_dn65.py` — LE TIR NU ─────────────────────────────")
+  | A("\n".join("  " + l for l in lire("dn65-tir-nu.txt").split("\n")))
+  | A("")
+  | for g, titre in (("verif_affiliation_dn65", "3"), ("verif_bom_dn61", "4"), ("verif_cablage_dn62", "5")):
+  |     arb = json.load(open(os.path.join(T, g + "-arbre.json")))
+  |     t0 = {x["n"]: x for x in json.load(open(os.path.join(T, g + "-t0.json")))}
+  |     A("── %s. `%s.py` — LA CAMPAGNE, UN MUTANT PAR TIR ─────────────────" % (titre, g))
+  |     A("  n°  rc  BILAN            vus rougir (a colonne fixe)       CIBLES (AST)          verdict")
+  |     ec = 0
+  |     for x in arb:
+  |         vus = ",".join(x["vus"]); cib = ",".join(x["cibles"]) if x["cibles"] is not None else "—"
+  |         sain = x["rc"] == 1 and x["bilan"] and x["nko"] > 0
+  |         e = x["ecart"]
+  |         if e: ec += 1
+  |         A("  %2d  %s   %-16s %-33s %-21s %s" % (x["n"], x["rc"], (x["bilan"] or "⛔ SANS")[8:], vus, cib,
+  |             ("✅ SAIN" if sain else "⛔ NON SAIN") + ("" if x["cibles"] is None else (" · 0 ecart" if not e else " · ⛔ ECART %s" % e))))
+  |         for k in x["ko"]:
+  |             A("        [KO ] %s" % lab(k))
+  |     n_sains = sum(1 for x in arb if x["rc"] == 1 and x["bilan"] and x["nko"] > 0)
+  |     A("  ⇒ %d mutant(s) · %d sain(s) · %d rc=3 · %s" % (len(arb), n_sains, sum(1 for x in arb if x["rc"] == 3),
+  |       "%d ecart(s) a CIBLES" % ec if arb and arb[0]["cibles"] is not None else "(⛔ pas de `CIBLES` dans cette gate : attribution par libelle)"))
+  |     # confrontation a T0
+  |     diff_set, diff_ok = [], []
+  |     for x in arb:
+  |         y = t0.get(x["n"])
+  |         if y is None:
+  |             continue
+  |         la, lb = sorted({lab(k) for k in y["ko"]}), sorted({lab(k) for k in x["ko"]})
+  |         if la != lb or y["rc"] != x["rc"]:
+  |             diff_set.append((x["n"], y["bilan"], la, x["bilan"], lb))
+  |         elif y["bilan"] != x["bilan"]:
+  |             diff_ok.append(x["n"])
+  |     neufs = sorted(set(x["n"] for x in arb) - set(t0))
+  |     A("  CONFRONTATION A T0 (la meme gate rejouee sur un clone jetable a `a8c6912`) :")
+  |     A("    %d mutant(s) a T0 · %d dans l'arbre · neufs : %s" % (len(t0), len(arb), neufs or "aucun"))
+  |     A("    memes controles vus rougir, seul le compte d'OK change (+1, le controle neuf) : %s" % (diff_ok or "aucun"))
+  |     A("    controles vus rougir DIFFERENTS de T0 : %d" % len(diff_set))
+  |     for n, ba, la, bb, lb in diff_set:
+  |         A("      #%d  T0 %s %s" % (n, ba[8:], " | ".join(la)))
+  |         A("           ⇒  %s %s" % (bb[8:], " | ".join(lb)))
+  |     A("")
+  | A("── 6. LES TEMOINS DE L'I/O MATRIX, SUR UN CLONE JETABLE ─────────────────────")
+  | A("  clone : `git clone --no-hardlinks` de l'arbre, les ecritures de la marche copiees puis")
+  | A("  committees DANS LE CLONE (pour que `git ls-files` les voie) ; chaque temoin pose sa")
+  | A("  charge, tire la gate, puis `git checkout -- . && git clean -fd` (statut relu VIDE).")
+  | A("  ⛔ Aucun temoin n'a touche l'arbre : empreintes du § 1.")
+  | A("\n".join("  " + l for l in lire("temoins.txt").split("\n")))
+  | A("")
+  | A("── 7. LA MATRICE, LIGNE PAR LIGNE ⇒ CE QUI LA REPLANTE ─────────────────────")
+  | for l in [
+  |     "aujourd'hui, apres la marche            ⇒ W1 : dn65 24 OK, 0 KO, rc=0",
+  |     "lien marque HORS de la page d'achat     ⇒ mutants 30, 39 · W2 (T1) · W2bis (affiliation.md) — (c5)",
+  |     "lien marque SANS sa mention             ⇒ mutants 4, 31, 36, 37, 38, 40 · W3 — (c5)",
+  |     "mention SANS lien marque                ⇒ mutant 41 · W4 — (c24)",
+  |     "liens retires, declaration restee       ⇒ mutant 42 · W5 — (c6), les DEUX pages nommees",
+  |     "declaration d'affiliation.md rebasculee ⇒ mutant 5 · W6 — (c6)",
+  |     "phrase d'etat d'origine reecrite        ⇒ mutant 6 · W7 — (c7)",
+  |     "redirecteur en cellule Source           ⇒ W1 : (c2) « 2 domaine(s) : aliexpress.com · waveshare.com », (c3) vert ;",
+  |     "                                          mutant 43 : une ligne de releve pour le redirecteur lui-meme ⇒ (c3) ORPHELINE",
+  |     "page d'achat retraduite en francais     ⇒ W9 (page entiere : 1 OK, 1 KO) · W9bis (une table : 23 OK, 1 KO) — dn61",
+  |     "mutant dont l'ancre a bouge             ⇒ W10 : dn65 #41 rc=3 · dn61 #7 rc=1 « SANS EFFET » · dn62 #25 rc=3 — ⛔ aucun vert",
+  |     "poussee de l'owner (arbre sale, HEAD, non fast-forward) ⇒ temoins du lanceur, joues A BLANC : dossier de la marche",
+  |     ]:
+  |     A("  " + l)
+  | A("")
+  | A("── 8. LES SCRIPTS, INTEGRAUX ─────────────────────────────────────────────")
+  | for f in ("campagne.py", "temoins.sh", "composer_T3.py"):
+  |     A("  ── %s ──" % f)
+  |     A("\n".join("  | " + l for l in open(os.path.join(S, f), encoding="utf-8").read().rstrip("\n").split("\n")))
+  |     A("")
+  | print("\n".join(out))
+

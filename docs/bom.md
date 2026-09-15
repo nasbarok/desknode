@@ -1,265 +1,317 @@
-# Ce qu'il faut acheter pour construire un DeskNode
+# What to buy to build a DeskNode
 
-Cette page dit **quoi commander**, **à quel palier**, et **combien ça coûtait le jour où on a
-regardé**. Elle est écrite pour quelqu'un qui n'a jamais vu ce projet.
+This page says **what to order**, **at which tier**, and **how much it cost on the day we
+looked**. It is written for someone who has never seen this project.
 
-⚠️ **Ce qu'elle ne promet pas** : aucun prix ici n'est garanti. Ce sont des relevés **datés**, faits
-sur des places de marché où les prix bougent sans préavis. **Un prix sans sa date ne vaut rien** —
-c'est pour ça qu'ils portent tous la leur.
+⚠️ **What it does not promise**: no price here is guaranteed. These are **dated** surveys, made
+on marketplaces where prices move without notice. **A price without its date is worth nothing** —
+which is why every one of them carries its own.
 
 ---
 
-## Les deux paliers
+## The two tiers
 
-Ce sont les mêmes deux paliers que le [README](../README.md) — mêmes noms, ⛔ pas des synonymes.
+These are the same two tiers as the [README](../README.md) — same names, ⛔ not synonyms.
 
-| Palier | Ce que tu construis |
+| Tier | What you build |
 |---|---|
-| **DeskNode** | la carte, seule. ⛔ Ce n'est **pas** un mode dégradé : c'est une configuration valide et gardée. |
-| **DeskNode + Ambiance** | la même carte, **plus deux capteurs** soudés sur le header I²C. |
+| **DeskNode** | the board, alone. ⛔ This is **not** a degraded mode: it is a valid and guarded configuration. |
+| **DeskNode + Ambiance** | the same board, **plus two sensors** soldered onto the I²C header. |
 
 ---
 
-## Palier « DeskNode » — la carte seule
+## Tier "DeskNode" — the board alone
 
-| Désignation | Référence exacte | Qté | Fournisseur | Prix | Date du relevé | Source |
+| Item | Exact reference | Qty | Supplier | Price | Survey date | Source |
 |---|---|---|---|---|---|---|
-| Carte de développement écran tactile | **Waveshare ESP32-S3-Touch-LCD-2.8B** (Type B, **480 × 640**) | 1 | place de marché AliExpress | **26,77 – 27,88 €** (médiane **27,32 €**, 2 annonces) | 2026-09-06 | `https://www.aliexpress.com/w/wholesale-Waveshare-ESP32-S3-Touch-LCD-2.8B.html` |
-| Câble USB-C données | quelconque, **données ET charge** | 1 | — | ⛔ **non relevé** — consommable générique, aucune référence unique à commander : ⛔ aucune source n'a donc été tentée | — | — |
+| Touchscreen development board | **Waveshare ESP32-S3-Touch-LCD-2.8B** (Type B, **480 × 640**) | 1 | AliExpress marketplace | **26.77 – 27.88 €** (median **27.32 €**, 2 listings) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c3yKWEah) — affiliate link |
+| USB-C data cable | any, **data AND charging** | 1 | — | ⛔ **not surveyed** — generic consumable, no single reference to order: ⛔ so no source was tried | — | — |
 
-⛔ **Prix fabricant non relevable.** `https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm` rend
-**HTTP 403** à toute récupération automatisée (tenté le 2026-09-06). Le dossier matériel écrit déjà
-la même chose du wiki officiel. ⇒ le prix ci-dessus vient d'une **place de marché**, ⛔ pas du
-fabricant, et c'est écrit plutôt que tu.
+⛔ **Manufacturer price not surveyable.** `https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm` returns
+**HTTP 403** to any automated retrieval (tried on 2026-09-06). The hardware folder already writes
+the same thing about the official wiki. ⇒ the price above comes from a **marketplace**, ⛔ not from
+the manufacturer, and that is written rather than left unsaid.
 
-### 🔴 L'erreur d'achat la plus probable — et elle coûte moins cher que la bonne
+⚠️ *Annotated on 2026-09-15 (`dn6-6`)* — **the paragraph above is refuted, ⛔ not erased.** Re-read on
+2026-09-07 with a browser header, the same product page returns **HTTP 200**: the 403 was a property
+of the retrieval tool, ⛔ not of the address — the lesson is written in section 3 of
+[the affiliate links page](affiliation.md). ⇒ the manufacturer price **is** surveyable. ⛔ It is
+still not filled in here: a price table is re-surveyed, ⛔ not patched, and that re-survey is carried
+by the project's planning ledger.
 
-Waveshare vend **plusieurs cartes qui portent presque le même nom**. Relevé le 2026-09-06, **sur la
-même page de résultats** :
+### 🔴 The most likely buying mistake — and it costs less than the right one
 
-<!-- ⛔ PAS UNE TABLE DE BOM : table de COMPARAISON. Elle porte deux prix pour
-     montrer que la mauvaise carte est la moins chère — ⛔ elle ne propose rien
-     à l'achat, et les deux prix sont datés dans la phrase qui la précède. -->
+Waveshare sells **several boards with almost the same name**. Surveyed on 2026-09-06, **on the
+same results page**:
 
-| Ce que tu veux | Ce que tu risques de prendre |
+<!-- ⛔ NOT A BOM TABLE : a COMPARISON table. It carries two prices to
+     show that the wrong board is the cheaper one — ⛔ it offers nothing
+     for purchase, and both prices are dated in the sentence before it. -->
+
+| What you want | What you risk taking |
 |---|---|
-| `ESP32-S3-Touch-LCD-2.8**B**` — **480 × 640**, Type B — **26,77 €** | `ESP32-S3-Touch-LCD-2.8` — **240 × 320** — **23,08 €** |
+| `ESP32-S3-Touch-LCD-2.8**B**` — **480 × 640**, Type B — **26.77 €** | `ESP32-S3-Touch-LCD-2.8` — **240 × 320** — **23.08 €** |
 
-⇒ **la mauvaise carte est la moins chère**, de 3,69 €. Quelqu'un qui trie par prix croissant prend
-la mauvaise. Il existe aussi une `2.8C` ronde en 480 × 480 — ⛔ **relevée nulle part ici** : aucune annonce la nommant n'a été ouverte le 2026-09-06, donc ⛔ ni prix, ni source. C'est écrit pour que tu l'écartes, ⛔ pas pour la comparer.
+⇒ **the wrong board is the cheaper one**, by 3.69 €. Someone who sorts by increasing price takes
+the wrong one. There is also a round `2.8C` at 480 × 480 — ⛔ **surveyed nowhere here**: no listing naming it was opened on 2026-09-06, so ⛔ neither price nor source. It is written so that you rule it out, ⛔ not so that you compare it.
 
-**Ce qui tranche, c'est la résolution : 480 × 640.** Si l'annonce ne l'écrit pas, ⛔ ne l'achète pas.
+**What settles it is the resolution: 480 × 640.** If the listing does not state it, ⛔ do not buy it.
 
-⚠️ **Et la documentation constructeur n'est pas fiable sur ce point.** Le dossier matériel a
-confronté trois sources sur quatre points vérifiables : elles se sont trompées ou contredites
-**quatre fois** — dont un miroir revendeur qui annonce une puce `CH343P` **mesurée absente** de la
-carte réelle, parce qu'il mélange les variantes `2.8` et `2.8B`. Détail en **§14.2** de
-`hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`. **La sérigraphie et la mesure font foi.**
+⚠️ **And the manufacturer's documentation is not reliable on this point.** The hardware folder
+confronted three sources on four verifiable points: they got it wrong or contradicted each other
+**four times** — including a reseller mirror that announces a `CH343P` chip **measured absent** from the
+real board, because it mixes up the `2.8` and `2.8B` variants. Details in **§14.2** of
+`hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`. **The silkscreen and the measurement are what count.**
 
-### ⚠️ Ce que ce palier a vraiment été, et ce qu'il n'a pas été
+### ⚠️ What this tier really has been, and what it has not
 
-La marche qui l'établit est **`dn4-41`**, et elle est **encore ouverte** — statut `in-progress`,
-relu le **2026-09-06**, dernière annotation du **2026-09-01**. ⛔ On ne t'écrit donc pas « validé ».
+The step that establishes it is **`dn4-41`**, and it is **still open** — status `in-progress`,
+re-read on **2026-09-06**, last annotation on **2026-09-01**. ⛔ So we do not write "validated" to you.
 
-Ce qui **a** été mesuré : le module ToF était **réellement débranché** — établi par trois sources
-concordantes, dont **le fait physique demandé à l'owner** — pendant que l'autre capteur répondait
-5 fois sur 5. Six démarrages à froid réels, **zéro faux positif**.
+What **has** been measured: the ToF module was **really unplugged** — established by three concordant
+sources, including **the physical fact asked of the owner** — while the other sensor answered
+5 times out of 5. Six real cold boots, **zero false positives**.
 
-Ce qui **n'a pas** été fait, et qui reste ouvert, **par leurs clés** — `AC2.9`, fermée **avec écart
-déclaré**, et `AC5`, **non mesurée** : le démarrage à froid **sans aucun capteur du tout**, et les
-conditions électriques d'un bus nu. La raison est écrite : il n'existe **qu'une seule
-carte**, celle du développement. ⇒ ce palier part **raisonné et instrumenté**, ⛔ **jamais démarré
-sur silicium nu**. Tu es peut-être le premier à l'assembler.
+What has **not** been done, and remains open, **by their keys** — `AC2.9`, closed **with a declared
+gap**, and `AC5`, **not measured**: the cold boot **with no sensor at all**, and the electrical
+conditions of a bare bus. The reason is written: there is **only one
+board**, the development one. ⇒ this tier ships **reasoned and instrumented**, ⛔ **never booted
+on bare silicon**. You may be the first to assemble it.
 
 ---
 
-## Palier « DeskNode + Ambiance » — la carte + deux capteurs
+## Tier "DeskNode + Ambiance" — the board + two sensors
 
-**Exactement** la carte ci-dessus, **plus ces deux capteurs** — la ligne de connectique qui
-suit est un consommable, ⛔ pas un troisième module.
+**Exactly** the board above, **plus these two sensors** — the connection row that
+follows is a consumable, ⛔ not a third module.
 
-🔴 **Piège de nom, mesuré au relevé** : chercher « BME680 » ramène aussi du **BME688** et du
-**BME280**. Ce ⛔ **ne sont pas** la même puce — le BME280 n'a **pas** de capteur de gaz. Sur les
-annonces retenues le 2026-09-06, il a fallu **écarter à la lecture des titres**. Vérifie que
-l'annonce écrit **680**, ⛔ pas « 6xx ».
+🔴 **Name trap, measured during the survey**: searching "BME680" also brings up **BME688** and
+**BME280**. These ⛔ **are not** the same chip — the BME280 has **no** gas sensor. On the
+listings retained on 2026-09-06, they had to be **ruled out by reading the titles**. Check that
+the listing says **680**, ⛔ not "6xx".
 
-| Désignation | Référence exacte | Qté | Fournisseur | Prix | Date du relevé | Source |
+| Item | Exact reference | Qty | Supplier | Price | Survey date | Source |
 |---|---|---|---|---|---|---|
-| Capteur température / humidité / pression / gaz | **BME680**, breakout type **CJMCU-680** (6 broches `VCC GND SCL SDA SDO CS`) | 1 | place de marché AliExpress | médiane **11,74 €** (10 annonces, 7,77 – 16,96 €) | 2026-09-06 | `https://www.aliexpress.com/w/wholesale-BME680-module.html` |
-| Capteur de luminosité | **BH1750**, module **GY-302** (5 broches `VCC GND SCL SDA ADDR`, 3 – 5 V) | 1 | place de marché AliExpress | médiane **1,93 €** (10 annonces, 1,45 – 14,62 €) | 2026-09-06 | `https://www.aliexpress.com/w/wholesale-BH1750-GY-302.html` |
-| Fil de liaison | Dupont femelle-femelle, ~10 cm | 4 min. | — | ⛔ **non relevé** — consommable générique vendu au lot, aucune référence unique : ⛔ aucune source n'a donc été tentée | — | — |
+| Temperature / humidity / pressure / gas sensor | **BME680**, breakout type **CJMCU-680** (6 pins `VCC GND SCL SDA SDO CS`) | 1 | AliExpress marketplace | median **11.74 €** (10 listings, 7.77 – 16.96 €) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c4Dp3sBL) — affiliate link |
+| Light sensor | **BH1750**, module **GY-302** (5 pins `VCC GND SCL SDA ADDR`, 3 – 5 V) | 1 | AliExpress marketplace | median **1.93 €** (10 listings, 1.45 – 14.62 €) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c4OQ98X7) — affiliate link |
+| Jumper wire | Dupont female-female, ~10 cm | 4 min. | — | ⛔ **not surveyed** — generic consumable sold in lots, no single reference: ⛔ so no source was tried | — | — |
 
-**Coût du palier, au 2026-09-06 :** environ **27,32 + 11,74 + 1,93 ≈ 41 €**, hors port, hors câbles.
+**Cost of the tier, as of 2026-09-06:** about **27.32 + 11.74 + 1.93 ≈ 41 €**, excluding shipping, excluding cables.
 
-<!-- ⛔ ANNOTATION, PAS UNE REECRITURE (NFR3) : la ligne « Fil de liaison »
-     ci-dessus reste TELLE QUELLE. Ce qui suit la precise ; le report herite
-     de dn6-1 designait le cablage comme territoire de la marche suivante. -->
+<!-- ⛔ ANNOTATION, NOT A REWRITE (NFR3): the "Jumper wire" row
+     above stays AS IT IS. What follows makes it precise; the report
+     inherited from dn6-1 designated wiring as the territory of the next step. -->
 
-### ⚠️ Annotation du 2026-09-07 — la ligne « Fil de liaison », précisée
+### ⚠️ Annotation of 2026-09-07 — the "Jumper wire" row, made precise
 
-La ligne **« Fil de liaison — Dupont femelle-femelle, ~10 cm | 4 min. »** ci-dessus reste telle
-quelle ; ce paragraphe la **précise**, il ne la remplace pas.
+The row **"Jumper wire — Dupont female-female, ~10 cm | 4 min."** above stays as
+it is; this paragraph **makes it precise**, it does not replace it.
 
-**Le connecteur visé par CETTE ligne est le header 2×12 au pas de 2,54 mm**, rangée `B` : du Dupont
-femelle-femelle s'y enfiche directement. ⚠️ **C'est une contrainte de TYPE DE CONNECTEUR, ⛔ pas un
-choix d'accès** : la carte offre **deux** points d'accès au bus, tous deux valides, et l'autre — une
-embase **JST 4 broches** — demande un **cordon JST**, ⛔ que du Dupont ne remplace pas. Si tu passes
-par l'embase JST, c'est ce cordon-là qu'il te faut, ⛔ pas cette ligne. Et dans les deux cas se
-tromper de voisin (embase jumelle, ou rangée voisine) envoie l'UART au capteur **sans que rien ne le
-signale**. Le détail, avec la sérigraphie des deux accès et leurs deux pièges :
-[câbler un DeskNode](cablage.md).
+**The connector targeted by THIS row is the 2×12 header at 2.54 mm pitch**, row `B`: female-female
+Dupont plugs straight into it. ⚠️ **This is a CONNECTOR TYPE constraint, ⛔ not an access
+choice**: the board offers **two** access points to the bus, both valid, and the other — a
+**4-pin JST** socket — needs a **JST cable**, ⛔ which Dupont does not replace. If you go
+through the JST socket, that is the cable you need, ⛔ not this row. And in both cases, picking the
+wrong neighbour (twin socket, or neighbouring row) sends the UART to the sensor **without anything
+signalling it**. The details, with the silkscreen of both access points and their two traps:
+[wiring a DeskNode](cablage.md).
 
-⚠️ **Et « 4 min. » est un plancher, ⛔ pas le compte.** Sur un bus I²C, `SDA` et `SCL` sont
-**communs aux deux modules** — un seul bus, ⛔ pas deux — mais **partager un signal ⛔ n'économise
-aucun fil** : chaque module veut sa propre liaison physique. Le compte est posé ici plutôt
-qu'affirmé en l'air :
+⚠️ **And "4 min." is a floor, ⛔ not the count.** On an I²C bus, `SDA` and `SCL` are
+**shared by both modules** — one bus, ⛔ not two — but **sharing a signal ⛔ saves
+no wire**: each module wants its own physical connection. The count is laid out here rather
+than asserted out of thin air:
 
-| Ce qu'il faut | Combien | Pourquoi |
+| What you need | How many | Why |
 |---|---|---|
-| liaisons vers le **1er** module | **4** | `3V3`, `GND`, `SDA`, `SCL` |
-| liaisons vers le **2ᵉ** module | **4 aussi** | il lui faut les **mêmes quatre** signaux : ⛔ un module ne se branche pas avec moins parce que le bus est partagé |
-| fil `ADDR` du BH1750 vers la masse | **+1** | c'est une **entrée de sélection d'adresse**, ⛔ pas une broche libre — la laisser en l'air rend l'adresse indéfinie |
+| connections to the **1st** module | **4** | `3V3`, `GND`, `SDA`, `SCL` |
+| connections to the **2nd** module | **4 as well** | it needs the **same four** signals: ⛔ a module does not connect with fewer because the bus is shared |
+| `ADDR` wire of the BH1750 to ground | **+1** | it is an **address selection input**, ⛔ not a free pin — leaving it floating makes the address undefined |
 
-⚠️ **Ce qui VARIE, c'est l'ENDROIT d'où partent les quatre fils du 2ᵉ module, ⛔ pas leur nombre** :
-soit de la carte (la rangée `B` porte `3V3` et `G`, et la rangée `A` en porte **deux autres**), soit
-en dérivation depuis le 1er module. Dans les deux cas ce sont **quatre fils de plus**.
+⚠️ **What VARIES is WHERE the four wires of the 2nd module start from, ⛔ not their number**:
+either from the board (row `B` carries `3V3` and `G`, and row `A` carries **two more**), or
+branched off the 1st module. In both cases these are **four more wires**.
 
-⇒ **Neuf fils au total**, et ⛔ ce n'est ni 8 ni 5 : `SDA`/`SCL` sont **communs** au sens
-**électrique** — un bus, ⛔ pas deux — mais ça ⛔ n'économise **aucun fil**. **Prends un lot**, ⛔ ne
-compte pas au fil près : c'est un consommable, et c'est pour ça que la ligne ci-dessus n'a ni prix,
-ni source, ni quantité ferme.
+⇒ **Nine wires in total**, and ⛔ it is neither 8 nor 5: `SDA`/`SCL` are **shared** in the
+**electrical** sense — one bus, ⛔ not two — but that ⛔ saves **no wire**. **Get a lot**, ⛔ do not
+count to the exact wire: it is a consumable, and that is why the row above has no price,
+no source, and no firm quantity.
 
-### ⚠️ Pourquoi une médiane et pas une moyenne
+### ⚠️ Why a median and not a mean
 
-Parce que la moyenne ment, et c'est **mesuré ici**. Sur les 10 annonces BH1750, **une seule à
-14,62 €** (un lot, ou une erreur de prix) fait passer la moyenne de **2,14 à 3,39 €** — **+58 %** —
-pendant que la médiane ne bouge que de 1,86 à 1,93 €.
+Because the mean lies, and it is **measured here**. Out of the 10 BH1750 listings, **a single one at
+14.62 €** (a lot, or a pricing error) moves the mean from **2.14 to 3.39 €** — **+58 %** —
+while the median only moves from 1.86 to 1.93 €.
 
-⇒ sur une place de marché, **c'est la médiane qui tranche**. Toutes les lignes ci-dessus la
-publient, et la fourchette est donnée à côté pour que tu voies l'étalement.
+⇒ on a marketplace, **the median is what settles it**. Every row above publishes it, and the
+range is given next to it so that you can see the spread.
 
-### Ce que le projet a mesuré sur ces deux modules
+### What the project measured on these two modules
 
-Ces valeurs viennent du dossier `hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md`, où **chacune
-cite la mesure dont elle sort** — ⛔ jamais une reprise de fiche technique.
+These values come from the folder `hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md`, where **each one
+cites the measurement it comes from** — ⛔ never a copy of a datasheet.
 
 | | BME680 | BH1750 |
 |---|---|---|
-| Adresse I²C **mesurée** | `0x77` (§13.3) | `0x23` (§13.3) |
-| Comment elle a été établie | lecture d'un registre d'identité, puis des coefficients d'usine (§13.6 bis) | par **stimulus lumineux** — il n'a aucun registre à lire (§13.16.8) |
-| Broche d'adresse | `SDO` mesuré à 3,3 V ⇒ `0x77` | `ADDR` **laissé libre** ⇒ `0x23`, déterministe, **5 réponses sur 5** |
-| Tension | +3,3 V mesuré au multimètre, carte allumée | 3 – 5 V (sachet) |
-| Barrette | **fournie non soudée** | **fournie non soudée** |
+| I²C address **measured** | `0x77` (§13.3) | `0x23` (§13.3) |
+| How it was established | reading an identity register, then the factory coefficients (§13.6 bis) | by **light stimulus** — it has no register to read (§13.16.8) |
+| Address pin | `SDO` measured at 3.3 V ⇒ `0x77` | `ADDR` **left free** ⇒ `0x23`, deterministic, **5 answers out of 5** |
+| Voltage | +3.3 V measured with the multimeter, board powered | 3 – 5 V (bag) |
+| Pin header | **supplied unsoldered** | **supplied unsoldered** |
 
-🔴 **Les deux se soudent, et ⛔ ils ne se câblent pas pareil.** Aucun des breakouts ne s'aligne
-« première broche avec première broche » : sur ces deux modules, **`SDA` et `SCL` sont croisés** l'un
-par rapport à l'autre. Le schéma de câblage est le sujet de la marche suivante — d'ici là, les
-photos sont là :
-[BME680 avant soudure](cablage/2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg) ·
-[BH1750 côté broches](cablage/2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg) ·
-[BH1750 sérigraphie V322](cablage/2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg) ·
-[BH1750 sérigraphie et sachet](cablage/2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg)
+🔴 **Both are soldered, and ⛔ they are not wired the same way.** Neither breakout lines up
+"first pin with first pin": on these two modules, **`SDA` and `SCL` are crossed** relative
+to each other. The wiring diagram is the subject of the next step — until then, the
+photos are here:
+[BME680 before soldering](cablage/2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg) ·
+[BH1750 pin side](cablage/2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg) ·
+[BH1750 silkscreen V322](cablage/2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg) ·
+[BH1750 silkscreen and bag](cablage/2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg)
 
-⚠️ **Le brochage I²C de la carte est `SDA = GPIO15`, `SCL = GPIO7`** — et une source tierce les
-donnait **inversés**. Mesure et sérigraphie en **§13.1** du dossier capteurs.
+⚠️ **The board's I²C pinout is `SDA = GPIO15`, `SCL = GPIO7`** — and a third-party source gave
+them **swapped**. Measurement and silkscreen in **§13.1** of the sensors folder.
 
 ---
 
-## Ce qui est sur le prototype et **hors des deux paliers**
+## What is on the prototype and **outside both tiers**
 
-Ces deux modules sont visibles sur les photos et présents dans le dossier de mesure. Ils ne sont
-**dans aucun palier**, et voici **pourquoi** — ⛔ un composant du prototype absent de cette page
-sans motif écrit serait un défaut.
+These two modules are visible on the photos and present in the measurement folder. They are
+**in no tier**, and here is **why** — ⛔ a component of the prototype absent from this page
+without a written reason would be a defect.
 
-| Module | Référence exacte | Prix relevé | Date du relevé | Source | Pourquoi il n'est **pas** au catalogue |
+| Module | Exact reference | Price surveyed | Survey date | Source | Why it is **not** in the catalogue |
 |---|---|---|---|---|---|
-| Capteur de distance | **TOF050C-VL6180X** (⛔ **PAS** un VL53L0X) | **3,21 €** (1 annonce le nommant explicitement) | 2026-09-06 | `https://www.aliexpress.com/w/wholesale-TOF050C-VL6180X.html` | 🔴 **L'exemplaire testé est doublement défaillant** : son **étage analogique est mort** — aucune réaction à une variation de lumière de **~2 280×**, alors que son étage numérique répond parfaitement — **et** sa présence **empêche la carte de démarrer** (écran noir, processeur arrêté, plus d'USB). ⇒ ⛔ hors V1. |
-| Capteur de courant | **INA219**, module **CJMCU** (shunt `R100`, 0,1 Ω) | médiane **1,87 €** (3 annonces, 1,80 – 2,41 €) | 2026-09-06 | `https://www.aliexpress.com/w/wholesale-INA219-CJMCU.html` | Décision projet : **pas maintenant**. Il a été **physiquement retiré du bus le 2026-08-21** et la lecture correspondante supprimée du code. ⇒ la consommation **ne sera pas mesurée en V1**. |
+| Distance sensor | **TOF050C-VL6180X** (⛔ **NOT** a VL53L0X) | **3.21 €** (1 listing naming it explicitly) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c3w7WL8h) — affiliate link | 🔴 **The tested unit is doubly defective**: its **analog stage is dead** — no reaction to a light variation of **~2 280×**, while its digital stage answers perfectly — **and** its presence **prevents the board from booting** (black screen, processor halted, no more USB). ⇒ ⛔ outside V1. |
+| Current sensor | **INA219**, module **CJMCU** (shunt `R100`, 0.1 Ω) | median **1.87 €** (3 listings, 1.80 – 2.41 €) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c3vm4Fkp) — affiliate link | Project decision: **not now**. It was **physically removed from the bus on 2026-08-21** and the corresponding reading removed from the code. ⇒ power consumption **will not be measured in V1**. |
 
-Ces deux modules sont sur les photos du prototype, et **les légendes le disent** : ⛔ ce que tu y
-vois n'est pas ce que tu achètes.
-[BH1750 **et INA219** soudés côte à côte](cablage/2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg) ·
-[le prototype en main — **quatre** modules, dont deux hors palier](cablage/2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg)
+These two modules are on the photos of the prototype, and **the captions say so**: ⛔ what you
+see there is not what you buy.
+[BH1750 **and INA219** soldered side by side](cablage/2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg) ·
+[the prototype in hand — **four** modules, two of them outside the tiers](cablage/2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg)
 
-🔴 **Piège si tu cherches un INA219 toi-même** : sur 12 résultats relevés, **9 étaient des puces
-nues** à souder (boîtiers SOP8, SOIC-8, SC70-6) — jusqu'à 41,68 € pour un sachet de 50. Ce que tu
-veux est un **module** avec bornier et broches. Le nom seul ne suffit pas à trier.
+🔴 **Trap if you look for an INA219 yourself**: out of 12 results surveyed, **9 were bare
+chips** to solder (SOP8, SOIC-8, SC70-6 packages) — up to 41.68 € for a bag of 50. What you
+want is a **module** with a terminal block and pins. The name alone is not enough to sort them.
 
 ---
 
-## Les sources qu'on n'a pas pu atteindre
+## The sources we could not reach
 
-Écrit parce que c'est une information, ⛔ pas un trou : **10 sources tentées le 2026-09-06, 10 sans
-prix exploitable.**
+Written because it is information, ⛔ not a gap: **10 sources tried on 2026-09-06, 10 without a
+usable price.**
 
-⚠️ Chaque ligne porte **l'adresse exacte** qui a été tentée et **la date de la tentative** : ⛔ un
-nom de boutique ne se re-tente pas, une URL si.
+⚠️ Each row carries **the exact address** that was tried and **the date of the attempt**: ⛔ a
+shop name cannot be retried, a URL can.
 
-| Adresse tentée | Date de la tentative | Résultat |
+| Address tried | Date of the attempt | Result |
 |---|---|---|
 | `https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm` | 2026-09-06 | HTTP 403 |
-| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 | délai dépassé à 60 s |
+| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 | timed out at 60 s |
 | `https://www.tinytronics.nl/en/search?query=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 | HTTP 403 |
 | `https://eckstein-shop.de/en/search?sSearch=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 | HTTP 403 |
 | `https://octopart.com/search?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 | HTTP 403 |
 | `https://www.adafruit.com/?q=BME680` | 2026-09-06 | HTTP 403 |
 | `https://www.gotronic.fr/search.php?q=BME680` | 2026-09-06 | HTTP 404 |
 | `https://www.welectron.com/catalogsearch/result/?q=BH1750` | 2026-09-06 | HTTP 404 |
-| `https://www.berrybase.de/search?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 | page rendue, **aucune fiche produit** |
-| `https://thepihut.com/search?q=BME680` | 2026-09-06 | page rendue, « no results found » |
+| `https://www.berrybase.de/search?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 | page rendered, **no product page** |
+| `https://thepihut.com/search?q=BME680` | 2026-09-06 | page rendered, "no results found" |
 
-Une seule alternative européenne a répondu, et c'est **un produit différent** : Pimoroni vend son
-propre « BME680 Breakout » à **11,05 GBP** hors TVA (relevé le 2026-09-06) — ⛔ ce n'est pas le
-module 6 broches du prototype.
+Only one European alternative answered, and it is **a different product**: Pimoroni sells its
+own "BME680 Breakout" at **11.05 GBP** excluding VAT (surveyed on 2026-09-06) — ⛔ it is not the
+6-pin module of the prototype.
 
-⚠️ **Ce que ces prix ne contiennent pas** : ni le port, ni les taxes à l'import, ni le délai. Et
-aucune fiche produit n'a été ouverte une par une — ce sont les prix des pages de résultats, où une
-fiche peut porter des variantes plus ou moins chères.
+⚠️ **What these prices do not contain**: neither shipping, nor import taxes, nor lead time. And
+no product page was opened one by one — these are the prices of the results pages, where a
+product page may carry cheaper or more expensive variants.
 
 ---
 
-## Liens affiliés
+## Affiliate links
 
-**Cette page ne porte aucun lien affilié.** Les URL ci-dessus sont des adresses de recherche nues.
+**This page carries no affiliate link.** The URLs above are bare search addresses.
 
-⚠️ Si ça change un jour, ça se dira **ici**, à cette place. Mettre en place une affiliation n'est pas
-une case à cocher — ça demande de s'inscrire quelque part, de le déclarer, et de tenir la promesse
-dans la durée. C'est donc porté comme un sujet à part entière, ⛔ pas comme une ligne de bas de page.
+⚠️ If that changes one day, it will be said **here**, in this place. Setting up an affiliation is not
+a box to tick — it means signing up somewhere, declaring it, and keeping the promise
+over time. It is therefore carried as a subject in its own right, ⛔ not as a footnote line.
 
-<!-- ⛔ ANNOTATION, PAS UNE REECRITURE (NFR3) : les deux paragraphes
-     ci-dessus restent MOT POUR MOT. Ce qui suit les complete — le sujet
-     annonce « a part entiere » a desormais sa page, et le point de bascule
-     s'ecrit ici, la ou vit deja la phrase d'etat. -->
+<!-- ⛔ ANNOTATION, NOT A REWRITE (NFR3): the two paragraphs
+     above stay WORD FOR WORD. What follows completes them — the subject
+     announced "in its own right" now has its page, and the switch-over
+     point is written here, where the status sentence already lives. -->
 
-### Annotation du 2026-09-07 — le sujet a sa page, et le point de bascule est écrit
+### Annotation of 2026-09-07 — the subject has its page, and the switch-over point is written
 
-Le sujet annoncé « à part entière » ci-dessus **a désormais sa page** :
-[les liens affiliés](affiliation.md). Elle dit quels programmes existent réellement pour les
-fournisseurs que **cette** page cite, à quelles conditions, ce que la loi française et européenne
-oblige à déclarer — chaque fait avec son adresse et sa date, chaque fait non vérifiable **déclaré**
-comme tel — et ce que l'owner doit signer lui-même.
+The subject announced "in its own right" above **now has its page**:
+[the affiliate links](affiliation.md). It says which programmes really exist for the
+suppliers that **this** page cites, on which terms, what French and European law
+requires to be declared — each fact with its address and its date, each unverifiable fact **declared**
+as such — and what the owner must sign themselves.
 
-**Le point de bascule**, c'est-à-dire ce qui doit être vrai pour que la phrase d'état ci-dessus
-change :
+**The switch-over point**, that is, what must be true for the status sentence above to
+change:
 
-1. **le programme doit être ouvert à ce dépôt** — aujourd'hui **inconnu, ⛔ pas acquis** : les
-   conditions d'admission d'AliExpress sont derrière une authentification, et celles de Waveshare,
-   **publiques et lues le 2026-09-07**, disent inviter *« primarily »* des personnes ayant une
-   présence sur **GitHub** — or ce dépôt y est **privé** ;
-   ⚠️ *annoté le 2026-09-15 (`dn8-8`) : ce dépôt y est **public** depuis ce jour ;*
-2. **l'owner doit ouvrir le compte lui-même** et accepter les conditions générales — ⛔ ce n'est pas
-   un geste qu'un agent peut faire à sa place ;
-3. **les deux phrases d'état doivent être réécrites** — celle-ci et celle de la page ci-dessus. Elles
-   cesseront de dire « aucun » pour dire ce qui est vrai ; ⛔ elles ne s'effaceront pas.
+1. **the programme must be open to this repository** — today **unknown, ⛔ not acquired**: the
+   admission terms of AliExpress are behind an authentication, and those of Waveshare,
+   **public and read on 2026-09-07**, say they invite *"primarily"* people with a
+   presence on **GitHub** — and this repository is **private** there;
+   ⚠️ *annotated on 2026-09-15 (`dn8-8`): this repository is **public** there since that day;*
+2. **the owner must open the account themselves** and accept the terms and conditions — ⛔ this is not
+   a gesture that an agent can make in their place;
+3. **both status sentences must be rewritten** — this one and the one of the page above. They
+   will stop saying "no" to say what is true; ⛔ they will not be erased.
 
-⚠️ **Et ça se dira ici, à cette place.** Ce n'est pas une intention : c'est **gardé mécaniquement,
-dans les deux sens**. Tant qu'aucune adresse publiée ne porte de marqueur d'affiliation, les deux
-pages doivent l'**affirmer** ; le jour où l'une en porte un, l'affirmation devient fausse et la
-vérification **rougit** — y compris si personne n'a pensé à revenir écrire ici.
+⚠️ **And it will be said here, in this place.** This is not an intention: it is **guarded mechanically,
+in both directions**. As long as no published address carries an affiliate marker, both
+pages must **assert it**; the day one of them carries one, the assertion becomes false and the
+check **turns red** — even if nobody thought of coming back to write here.
+
+<!-- ⛔ ANNOTATION, NOT A REWRITE (NFR3): the status sentence at the top of
+     this section stays, translated from its original, and so do the three
+     conditions above. The declaration in force is written BELOW them, as
+     point 3 of the switch-over point says it would be. -->
+
+### Annotation of 2026-09-15 (`dn6-6`) — the switch-over has happened
+
+**This page carries affiliate links.** The five AliExpress rows above — the board, the two sensors
+of the "DeskNode + Ambiance" tier, and the two modules outside the tiers — each carry, in their
+`Source` cell, a tracked link of the **AliExpress affiliate programme** (the AliExpress Portals
+programme), with the words **`affiliate link`** written right next to the link. If you buy through
+one of them, the owner of this repository may be paid a commission by the programme — or nothing,
+depending on the seller: the terms read on the programme's portal are on
+[the affiliate links page](affiliation.md), section 3.
+
+⚠️ The status sentence at the top of this section **stays**, translated from its original: it was
+true until 2026-09-15, and the rule is to annotate, ⛔ not to erase. **What is in force is this
+annotation.**
+
+**Where each link comes from.** The owner generated the five links on 2026-09-15 with the
+programme's batch link tool, from the **same five search pages** where the prices above were read on
+2026-09-06 — so each `Source` cell is still the source of its price. The correspondence between each
+link code and the bare search address it was generated from is published in
+[the survey of 2026-09-15](../mesures/dn6-6/T1-releves-du-2026-09-15.txt), so that a price can be
+checked again **without clicking a tracked link**. ⚠️ The destination of the links was ⛔ **not**
+opened by the agent that wrote this annotation — a click is counted by the programme — and checking
+it is a gesture of the owner. ⛔ No price, no date and none of the 10 addresses tried was changed
+on 2026-09-15.
+
+⚠️ The two modules outside the tiers carry a tracked link too: that does ⛔ **not** put them back in a
+tier, and their reasons for exclusion above are unchanged.
+
+**The switch-over point, condition by condition, as of 2026-09-15:**
+
+1. **the programme is open to this repository** — for **AliExpress, yes**: the owner's affiliate
+   account is active (read by the owner on the programme's portal on 2026-09-15). For **Waveshare,
+   not yet**: the application is **waiting for approval**, and ⛔ no Waveshare link is published here;
+2. **the owner opened the account themselves** and accepted the programme's rules — a gesture of the
+   owner, ⛔ not of an agent;
+3. **both status sentences are annotated** — this one, and the one of
+   [the affiliate links page](affiliation.md): the old sentence stays, the new one is written below
+   it. The check that guarded the old promise was rewritten the same day to guard the new one:
+   **every tracked address is declared, in its place** — on this page, in its own cell, next to the
+   words `affiliate link` — and those words never decorate an address that is not tracked.
 
 ---
 
 ## Licence
 
-Cette page est de la documentation : **CC-BY-SA-4.0**, comme le reste de ce répertoire. Voir
+This page is documentation: **CC-BY-SA-4.0**, like the rest of this directory. See
 [LICENSING.md](../LICENSING.md).

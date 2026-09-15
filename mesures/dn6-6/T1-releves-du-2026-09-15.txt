@@ -1,0 +1,146 @@
+==============================================================================
+dn6-6 / T1 — LES RELEVES DU 2026-09-15 : CE QUI A ETE LU, PAR QUI, AVEC QUOI
+==============================================================================
+date       : 2026-09-15
+depot      : desknode, SHA de depart a8c691211da23dae49c7b8f04829625c19a80a93
+contrat    : chaque fait porte son ADRESSE (ou l'aveu qu'elle n'a pas ete
+             relevee), sa DATE et sa METHODE. Un fait lu par l'owner est ecrit
+             comme un RELEVE OWNER, ⛔ jamais comme une lecture de l'agent.
+
+⚠️ CE FICHIER EST DANS LE CORPUS DE `tools/verif_affiliation_dn65.py` (tout
+   `.md` + `.txt` suivi). ⇒ un lien suivi y est designe PAR SON CODE SEUL
+   (`_c3yKWEah`), ⛔ jamais par son adresse entiere : l'adresse entiere d'un
+   lien marque n'a le droit de vivre QUE dans `docs/bom.md`, a cote de sa
+   mention — c'est le controle (c5) de la marche.
+
+── (a) WAVESHARE — LA PAGE DU PROGRAMME, RELUE PAR L'AGENT ────────────────
+
+  adresse  : https://www.waveshare.com/join_affiliate.html
+  date     : 2026-09-15T13:49:31+02:00
+  methode  : `curl -sS -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+             AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0
+             Safari/537.36"` — un EN-TETE DE NAVIGATEUR (la lecon de `dn6-5` :
+             « non atteint » est une propriete de la methode, ⛔ pas de l'adresse)
+  reponse  : HTTP 200 · 105653 octets · sha256 bbcf7a1c643c3ccb… ·
+             URL effective identique (aucune redirection)
+  extrait  : texte rendu (balises retirees, `<script>`/`<style>` retires,
+             entites decodees, blancs replies), lignes 373 a 418 de ce rendu,
+             RECOPIEES SANS RETOUCHE — ⛔ l'adresse e-mail du programme est
+             masquee par la page elle-meme (« [email protected] ») :
+
+    373 Who can Join
+    374 Whether you're a college student, an individual electronics maker, a DIY electronics hobbyist, a tech enthusiast, a member of a business group, or even a tech novice, we warmly welcome you to become a Waveshare partner seller!
+    375 At this time, we are primarily inviting individuals with a presence or influence on platforms like YouTube, GitHub, Reddit, Discord, or similar channels to join us.
+    376 Frequently Asked Questions
+    377 Q1: What is our base commission?
+    378 You will receive a 2% commission for every order placed through your affiliate link.
+    379 Q2: What is the validity period of URL tracking?
+    380 At least 72 hours.
+    381 Flexible Tracking: Your link remains active until the customer's browser session expires.
+    382 Q3: How to Receive Commissions via PayPal?
+    383 Payment Method:
+    384 All payouts are processed via PayPal. A valid PayPal account is required to receive payments.
+    385 Minimum Payout Threshold:
+    386 Commissions will be eligible for payout once the total reaches US$5.
+    387 Payment Schedule:
+    388 Payouts are processed before the 15th of each month, usually on the 15th.
+    389 PayPal handling fee:
+    390 Normally, PayPal charges a handling fee of 4.4% + US$0.30, but the exact amount may vary in real-time based on PayPal's policies.
+    396 Q5: What types of promotions are not permitted?
+    397 To ensure fairness and maintain the integrity of the Waveshare® Affiliate Program, the following promotional methods are strictly prohibited. This list is not exhaustive and includes, but is not limited to, the following practices:
+    414 Manual Quotation Services / Promoting Specific Partner Seller Products
+    415 Providing manual quotation services for Waveshare® products / Promoting or directing traffic to specific third-party sellers of Waveshare® products instead of the official Waveshare® store
+
+  ⇒ la page affiche TOUJOURS « At least 72 hours. », le meme jour que le
+    releve de l'owner (d). Le taux de base est inchange (2 %), et la
+    rubrique Who can Join nomme toujours GitHub.
+  ⇒ l'interdit « directing traffic to specific third-party sellers of
+    Waveshare® products instead of the official Waveshare® store » est
+    RECOPIE ici parce que la carte de la page d'achat pointe vers AliExpress :
+    l'owner l'ASSUME (decision owner du 2026-09-15), ⛔ il ne l'ignore pas.
+
+── (b) ALIEXPRESS — LE RELEVE OWNER, ⛔ PAS UNE LECTURE DE L'AGENT ─────────
+
+  qui      : l'owner, le 2026-09-15 (releve transmis au cadrage de la marche)
+  methode  : lecture par l'owner dans un navigateur connecte au portail
+             AliExpress Portals (son compte) — ⛔ l'agent n'a PAS de compte, et
+             ⛔ n'a rien relu : le portail est derriere une authentification
+             (HTTP 302 vers la connexion, mesure de `dn6-5` du 2026-09-07)
+  adresse  : https://portals.aliexpress.com/ (le portail)
+             ⚠️ l'adresse EXACTE du document de regles n'a PAS ete relevee —
+             c'est DECLARE, ⛔ pas reconstitue
+  document : « Affiliate Program Rules », version du 2025-08-01
+  ce qu'il dit, tel que l'owner l'a releve :
+    · commission : 7 % pour « Other Categories » si le VENDEUR est affilie
+      au programme, et 0 sinon (§5.1.5.5 des regles) ;
+    · plafond : 50 USD de commission par commande ;
+    · retrait par virement bancaire : seuil de paiement 16 USD, frais de
+      15 USD par retrait ;
+    · duree de suivi : ⛔ ECRITE NULLE PART dans les regles ;
+    · interdits releves : acheter via ses propres liens (§3.7.4) — d'ou le
+      « ⛔ sans acheter » du geste de verification au clic — et modifier la
+      marque « AliExpress ».
+  e-mail   : l'owner a recu l'e-mail « Your affiliate account is ready »
+             (releve owner du 2026-09-15 ; ⛔ ni son adresse d'expedition ni
+             son corps ne sont recopies ici : il est au nom de l'owner)
+  ⇒ trois des « quatre conditions inconnues » de `dn6-5` sont fermees (seuil,
+    plafond, approbation acquise) ; la DUREE DE SUIVI reste inconnue.
+
+── (c) LES CINQ LIENS SUIVIS — PAR LEUR CODE, ET LEUR ORIGINE ─────────────
+
+  qui      : l'owner, le 2026-09-15
+  methode  : outil « Générer des liens (Lot) » du portail AliExpress Portals,
+             a partir des cinq adresses de recherche nues de la page d'achat,
+             « 0 erreur » (releve owner)
+  hote     : les cinq pointent sur le redirecteur de suivi d'AliExpress
+             (`s.click.aliexpress.com`, chemin `/e/<code>`) — ecrit SANS
+             schema ici, pour la raison donnee en tete de fichier
+
+  ⚠️ L'ADRESSE DE RECHERCHE NUE est relue par `git show
+     a8c691211da23dae49c7b8f04829625c19a80a93:docs/bom.md` (la page francaise
+     au SHA de depart), ligne par ligne. C'est la page ou le prix de la ligne
+     a ete lu le 2026-09-06 : cette correspondance garde chaque prix
+     RE-VERIFIABLE sans cliquer un lien suivi — et la page anglaise, elle, ne
+     porte plus AUCUNE adresse `wholesale-`.
+
+  code         ligne de la page anglaise (docs/bom.md)        adresse de recherche nue d'origine (l. au SHA de depart)
+  -----------  ---------------------------------------------  ----------------------------------------------------------
+  _c3yKWEah    l.27  Touchscreen development board (2.8B)     https://www.aliexpress.com/w/wholesale-Waveshare-ESP32-S3-Touch-LCD-2.8B.html (l.27)
+  _c4Dp3sBL    l.95  Temperature / humidity / … (BME680)       https://www.aliexpress.com/w/wholesale-BME680-module.html (l.88)
+  _c4OQ98X7    l.96  Light sensor (BH1750)                    https://www.aliexpress.com/w/wholesale-BH1750-GY-302.html (l.89)
+  _c3w7WL8h    l.183 Distance sensor (TOF050C-VL6180X)        https://www.aliexpress.com/w/wholesale-TOF050C-VL6180X.html (l.176)
+  _c3vm4Fkp    l.184 Current sensor (INA219)                  https://www.aliexpress.com/w/wholesale-INA219-CJMCU.html (l.177)
+
+  ⚠️ LA LIGNE DU CAPTEUR DE DISTANCE porte un lien suivi vers un module que la
+     page declare DOUBLEMENT DEFAILLANT et hors V1 : c'est la liste de l'owner,
+     posee telle quelle, et la ligne garde son motif d'exclusion intact.
+  ⚠️ La destination de chaque lien (« il ouvre la recherche du bon module »)
+     est un RELEVE OWNER, ⛔ pas une mesure de l'agent — voir (e).
+
+── (d) WAVESHARE — L'ECART DES 72 H, DECLARE, ⛔ PAS TRANCHE ───────────────
+
+  releve owner   : le 2026-09-15, l'owner a releve un suivi « desormais limite
+                   a la session du navigateur » (methode : lecture par
+                   l'owner ; ⚠️ l'adresse ou il l'a lu n'a PAS ete relevee)
+  releve agent   : le 2026-09-15 13:49, la page publique du programme affiche
+                   TOUJOURS « At least 72 hours. » puis « Flexible Tracking:
+                   Your link remains active until the customer's browser
+                   session expires. » — (a) ci-dessus, lignes 380-381
+  ⇒ les DEUX sont ecrits dans `docs/affiliation.md` §3, dates, avec leur
+    methode. ⛔ La page ne publie pas que les 72 h ont disparu ; ⛔ elle ne
+    publie pas non plus que le releve de l'owner est faux. Ce qui trancherait :
+    l'espace affilie Waveshare, que la candidature « Waiting for approval » ne
+    donne pas encore. ⛔ Aucun lien Waveshare n'est pose par cette marche.
+
+── (e) CE QUE L'AGENT N'A ⛔ PAS FAIT, DECLARE ─────────────────────────────
+
+  ⛔ AUCUNE requete HTTP vers le redirecteur de suivi d'AliExpress ni vers
+     aucun des cinq liens : chaque requete serait un clic COMPTE sur le compte
+     de l'owner, et les regles du programme sanctionnent le trafic
+     artificiel. Les seules requetes reseau de ce releve sont celle de (a),
+     vers `www.waveshare.com`.
+  ⛔ La destination des liens n'est donc PAS verifiee par l'agent : c'est un
+     GESTE OWNER (cliquer une fois chaque lien, ⛔ sans acheter), ecrit dans
+     `docs/affiliation.md` §6 avec son porteur, et au ledger de planification.
+  ⛔ Aucun compte cree, aucune condition acceptee, aucun lien genere par
+     l'agent. ⛔ Aucun lien Waveshare, ⛔ aucun fichier de financement GitHub.

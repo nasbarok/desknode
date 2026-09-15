@@ -1,0 +1,685 @@
+==============================================================================
+dn6-6 / T0 — LES BORNES DE DEPART, RE-TIREES PAR LA COMMANDE AVANT TOUTE ECRITURE
+  Passe jouee le 2026-09-15 de 13:31:27 a 13:49:19 (+02:00), sorties sous le
+  scratchpad de session (⛔ jamais dans l'arbre pendant la passe), versees ici
+  APRES la passe par `composer_T0.py` (relit les sorties, ⛔ aucune valeur tapee).
+  Scripts integraux au § 6.
+==============================================================================
+
+── 1. LA QUIESCENCE, VERIFIEE AVANT DE LANCER (2026-09-15T13:30+02:00) ─────
+  `git status --porcelain` desknode = VIDE · 0 stash dans les deux depots ·
+  cockpit = le dossier de la marche (non suivi), `epic-dn6-context.md` (modifie
+  par le cadrage) et `docs/dashboard_desktop_project/desknode.mp4` (non suivi,
+  voulu par `dn8-9`) — ⛔ rien d'autre. Aucun `verif_*`, `run_gates`, `idf.py`
+  ni `dn_console` en cours (`ps`).
+  ⚠️ Pendant la passe, l'agent n'a ecrit QUE dans le scratchpad (scripts de la
+  passe) : empreintes AVANT = APRES au § 2. La premiere ecriture de la marche
+  dans un arbre (`docs/bom.md`) est posterieure a 13:49:19.
+
+── 2. L'ETAT DES DEPOTS ET LES EMPREINTES ──────────────────────────────────
+  === dn6-6 / passe T0 — debut 2026-09-15T13:31:27+02:00 ===
+  HEAD desknode : a8c691211da23dae49c7b8f04829625c19a80a93  (branche main)
+  HEAD cockpit  : a9a5f87223908d2e548ea0bdbefce9f45ac5603d  (branche desknode-p0-p1-clos)
+  git status --porcelain desknode :
+  git status --porcelain cockpit :
+     M _bmad-output/implementation-artifacts/epic-dn6-context.md
+    ?? _bmad-output/implementation-artifacts/dn6-6-la-liste-d-achat-parle-anglais-et-porte-ses-liens-affilies.md
+    ?? docs/dashboard_desktop_project/desknode.mp4
+  EMPREINTE desknode AVANT (contenu) : 1fa5c7aa1fc8284a
+  EMPREINTE desknode AVANT (index)   : c4a3c26661b5b5c7
+  EMPREINTE cockpit  AVANT (implementation-artifacts suivi) : 094844e112fde2c2
+  git rev-list --left-right --count origin/main...main : 0	0
+  wc -l ledger : 8722
+  wc -l docs/bom.md docs/affiliation.md : 265 282
+  git ls-files '*.md' '*.txt' | wc -l : 609
+  git grep -c 'https://s\.click\.aliexpress\.com' (tout l'arbre suivi) :
+    tools/verif_affiliation_dn65.py:1
+  git grep -c 'wholesale-' -- docs/bom.md : docs/bom.md:5
+  ls docs/bom*.md : docs/bom.md
+  ls .github/FUNDING.yml : ls: cannot access '.github/FUNDING.yml': No such file or directory
+
+  EMPREINTE desknode APRES (contenu) : 1fa5c7aa1fc8284a
+  EMPREINTE desknode APRES (index)   : c4a3c26661b5b5c7
+  EMPREINTE cockpit  APRES (implementation-artifacts suivi) : 094844e112fde2c2
+  git status --porcelain desknode (apres) :
+  git status --porcelain cockpit (apres) :
+     M _bmad-output/implementation-artifacts/epic-dn6-context.md
+    ?? _bmad-output/implementation-artifacts/dn6-6-la-liste-d-achat-parle-anglais-et-porte-ses-liens-affilies.md
+    ?? docs/dashboard_desktop_project/desknode.mp4
+  === fin 2026-09-15T13:49:19+02:00 ===
+
+── 3. LE COMPTE DE CHAQUE GATE (tir isole au premier plan, timeout 900 s) ──
+  ⚠️ rc lu sur `$?`, ⛔ jamais par grep ; le BILAN est la ligne `^BILAN` de la
+     sortie. `verif_campagne_dn56.py` n'est PAS jouee comme gate : son CONTRAT
+     l'est, par le pilote du § 4 (le harnais de l'agent plafonne un tir au
+     premier plan a 600 s, et tue les tirs longs en arriere-plan).
+  verif_affiliation_dn65.py          rc=0       2.14 s  BILAN : 23 OK, 0 KO 
+  verif_banc_langue_dn73.py          rc=0       2.50 s  BILAN : 81 OK, 0 KO 
+  verif_bme680_retard_dn45.py        rc=0       0.04 s  BILAN : 15 OK, 0 KO 
+  verif_boitier_dn64.py --cockpit    rc=0       0.43 s  BILAN : 29 OK, 0 KO 
+  verif_bom_dn61.py                  rc=0       0.05 s  BILAN : 24 OK, 0 KO 
+  verif_cablage_dn62.py              rc=0       0.08 s  BILAN : 37 OK, 0 KO 
+  verif_courbe_dn413.py              rc=0      10.23 s  ⛔ aucune ligne BILAN
+  verif_cumul_ambient_dn45.py        rc=0       1.48 s  BILAN : 23 OK, 0 KO 
+  verif_d4_nvs_dn45.py               rc=0       0.38 s  BILAN : 6 OK, 0 KO 
+  verif_decoupe_horloge_dn418.py     rc=0       6.13 s  ⛔ aucune ligne BILAN
+  verif_demarrage_dn443.py           rc=0       0.69 s  BILAN : 58 OK, 0 KO 
+  verif_dossier_d5_dn45.py --cockpit rc=0       4.99 s  BILAN : 12 OK, 0 KO 
+  verif_dossier_dn415.py --cockpit   rc=1       8.44 s  BILAN : 23 OK, 10 KO 
+  verif_entree_dn82.py               rc=0       0.20 s  BILAN : 45 OK, 0 KO 
+  verif_flash_dn72.py                rc=0       0.22 s  BILAN : 30 OK, 0 KO 
+  verif_harnais_dn413.py             rc=0       9.20 s  ⛔ aucune ligne BILAN
+  verif_harnais_dn81.py --cockpit    rc=0       5.55 s  BILAN : 28 OK, 0 KO 
+  verif_hist_dn413.py                rc=0       4.07 s  ⛔ aucune ligne BILAN
+  verif_installeur_dn71.py           rc=0       0.26 s  BILAN : 28 OK, 0 KO 
+  verif_instruments_dn423.py         rc=0       0.67 s  BILAN : 163 OK, 0 KO 
+  verif_journal_soak_dn45.py         rc=0       0.10 s  BILAN : 26 OK, 0 KO 
+  verif_langue_dalle_dn73.py         rc=0       0.11 s  BILAN : 61 OK, 0 KO 
+  verif_langues_dn442.py             rc=0       0.72 s  BILAN : 31 OK, 0 KO 
+  verif_ledger_dn416.py --cockpit    rc=0       0.82 s  BILAN : 36 OK, 0 KO 
+  verif_lhm_ps_dn83.py               rc=0      19.16 s  BILAN : 26 OK, 0 KO 
+  verif_licences_dn52.py             rc=0       1.03 s  BILAN : 34 OK, 0 KO 
+  verif_lissage_dn45.py              rc=0       0.22 s  BILAN : 21 OK, 0 KO 
+  verif_miroir_horloge_dn418.py      rc=0       0.08 s  ⛔ aucune ligne BILAN
+  verif_page_dn722.py                rc=0       0.16 s  BILAN : 56 OK, 0 KO 
+  verif_paliers_dn441.py             rc=0       0.20 s  BILAN : 42 OK, 0 KO 
+  verif_photos_dn63.py               rc=0       0.41 s  BILAN : 28 OK, 0 KO 
+  verif_placement_dn74.py            rc=0       0.08 s  BILAN : 42 OK, 0 KO 
+  verif_polices_dn440.py             rc=0       0.06 s  BILAN : 11 OK, 0 KO 
+  verif_preconditions_dn76.py        rc=0       0.20 s  BILAN : 55 OK, 0 KO 
+  verif_prerequis_dn75.py            rc=0       0.23 s  BILAN : 51 OK, 0 KO 
+  verif_rebouclage_dn45.py           rc=0       3.18 s  BILAN : 30 OK, 0 KO 
+  verif_reception_dn85.py            rc=0       0.17 s  BILAN : 16 OK, 0 KO 
+  verif_reprise_horloge_dn418.py     rc=0       0.12 s  ⛔ aucune ligne BILAN
+  verif_selection_dn49.py            rc=0       0.10 s  ⛔ aucune ligne BILAN
+  verif_serie_dn412.py               rc=0       1.72 s  BILAN : 50 OK / 0 KO 
+  verif_source_lhm_dn48.py           rc=0       3.97 s  ⛔ aucune ligne BILAN
+  verif_sr03.py                      rc=2       0.04 s  ⛔ aucune ligne BILAN
+  verif_temoin_filtre_dn447.py       rc=0       1.81 s  BILAN : 5 OK, 0 KO 
+  verif_veille_dn33.py               rc=0       8.00 s  BILAN : 267 OK · 0 KO 
+  verif_verrou_lvgl_dn413.py         rc=0      15.41 s  ⛔ aucune ligne BILAN
+  verif_vitrine_dn84.py              rc=0       0.09 s  BILAN : 16 OK, 0 KO 
+  verif_xip_dn422.py                 rc=0       0.05 s  BILAN : 10 OK / 0 KO 
+  verif_campagne_dn440.py --cockpit  rc=0     130.15 s  BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien BILAN : 62 OK, 0 KO 
+  ⚠️ gates SANS ligne BILAN : leur compte est lu dans leur propre forme de fin
+     (lignes `[OK`/`[KO`, sinon lignes ✅/❌ — methode de mesures/dn8-9/T0) :
+     verif_courbe_dn413               [OK 58 · [KO 0 · ✅ lignes 1 · ❌ lignes 0 · derniere : ✅ 58 contrôles passent, 0 échec.
+     verif_decoupe_horloge_dn418      [OK 0 · [KO 0 · ✅ lignes 7 · ❌ lignes 0 · derniere : ✅ TOUT TIENT.
+     verif_harnais_dn413              [OK 22 · [KO 0 · ✅ lignes 1 · ❌ lignes 0 · derniere : ✅ 22 contrôles passent, 0 échec.
+     verif_hist_dn413                 [OK 56 · [KO 0 · ✅ lignes 1 · ❌ lignes 0 · derniere : ✅ 56 contrôles passent, 0 échec.
+     verif_miroir_horloge_dn418       [OK 0 · [KO 0 · ✅ lignes 18 · ❌ lignes 0 · derniere : ✅ LE MIROIR TIENT.
+     verif_reprise_horloge_dn418      [OK 0 · [KO 0 · ✅ lignes 50 · ❌ lignes 0 · derniere : ✅ LES 12 SCENES TIENNENT.
+     verif_selection_dn49             [OK 70 · [KO 0 · ✅ lignes 1 · ❌ lignes 0 · derniere : MESURENT sur la carte, et les constats sensoriels sont l'OWNER.
+     verif_source_lhm_dn48            [OK 46 · [KO 0 · ✅ lignes 3 · ❌ lignes 0 · derniere : service coupe pendant que l'agent tourne, sur la tour.
+     verif_sr03                       [OK 0 · [KO 0 · ✅ lignes 0 · ❌ lignes 0 · derniere : TLS aboutit puis le flux HTTP/2 casse (INTERNAL_ERROR).
+     verif_verrou_lvgl_dn413          [OK 60 · [KO 0 · ✅ lignes 1 · ❌ lignes 0 · derniere : ✅ 60 contrôles passent, 0 échec.
+
+── 4. LE CONTRAT DE `verif_campagne_dn56.py`, PAR LE PILOTE PAR LOTS ───────
+  ⚠️ Ce n'est PAS la gate : `pilote_dn56.py` IMPORTE `tools/verif_campagne_dn56.py`
+     et appelle SES `cibles()`, `liste_mutants()`, `joue()`, `libelles_de()` et
+     `EXCEPTIONS`, puis rejoue ses 8 controles. Deux lots (reprise par index).
+  (c1) VERBATIM, telle que la ligne `ctrl()` de la gate l'imprimerait :
+    [OK ] des gates declarent une campagne de mutants                23 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_lhm_ps_dn83.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_reception_dn85.py, tools/verif_temoin_filtre_dn447.py, tools/verif_vitrine_dn84.py
+       tools/verif_affiliation_dn65.py         38 mutant(s)
+       tools/verif_banc_langue_dn73.py         63 mutant(s)
+       tools/verif_boitier_dn64.py             35 mutant(s)
+       tools/verif_bom_dn61.py                 31 mutant(s)
+       tools/verif_cablage_dn62.py             40 mutant(s)
+       tools/verif_demarrage_dn443.py          48 mutant(s)
+       tools/verif_dossier_d5_dn45.py           3 mutant(s)
+       tools/verif_entree_dn82.py              24 mutant(s)
+       tools/verif_flash_dn72.py               41 mutant(s)
+       tools/verif_harnais_dn81.py             15 mutant(s)
+       tools/verif_installeur_dn71.py          40 mutant(s)
+       tools/verif_langue_dalle_dn73.py        34 mutant(s)
+       tools/verif_langues_dn442.py            25 mutant(s)
+       tools/verif_lhm_ps_dn83.py              15 mutant(s)
+       tools/verif_licences_dn52.py            40 mutant(s)
+       tools/verif_page_dn722.py               32 mutant(s)
+       tools/verif_photos_dn63.py              32 mutant(s)
+       tools/verif_placement_dn74.py           25 mutant(s)
+       tools/verif_preconditions_dn76.py       32 mutant(s)
+       tools/verif_prerequis_dn75.py           31 mutant(s)
+       tools/verif_reception_dn85.py           38 mutant(s)
+       tools/verif_temoin_filtre_dn447.py       9 mutant(s)
+       tools/verif_vitrine_dn84.py             27 mutant(s)
+  PLAN : 23 cible(s), 718 mutant(s), 0 `--liste-mutants` mort(s)
+  LOT : index 0 ⇒ 439 sur 718, 442.9 s
+  LOT : index 439 ⇒ 718 sur 718, 308.3 s
+    [OK ] des gates declarent une campagne de mutants                23 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_lhm_ps_dn83.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_reception_dn85.py, tools/verif_temoin_filtre_dn447.py, tools/verif_vitrine_dn84.py
+    [OK ] toute cible repond, et aucun mutant ne meurt               718 mutant(s) confronte(s) sur 23 cible(s)
+    [OK ] tout mutant rend rc=1                                      aucun mutant devenu MUET
+    [OK ] tout mutant rouge a bien imprime un BILAN                  aucune sortie en amont
+    [OK ] tout mutant rouge porte au moins un [KO ] nomme            chaque mutant vise un controle
+    [OK ] aucune exception n'a survecu au defaut qu'elle excuse      1 exception(s) declaree(s), 1 encore justifiee(s)
+    [OK ] toute cible s'analyse a l'AST                              2 fichier(s) lu(s) dans la portee de la cle
+    [OK ] cle valide (aucun libelle >= 58)                           44 libelle(s) lu(s) a l'AST, le plus long fait 56
+    mutants par cible (joues / sains au contrat) :
+       tools/verif_affiliation_dn65.py         38 /  38
+       tools/verif_banc_langue_dn73.py         63 /  63
+       tools/verif_boitier_dn64.py             35 /  35
+       tools/verif_bom_dn61.py                 31 /  31
+       tools/verif_cablage_dn62.py             40 /  40
+       tools/verif_demarrage_dn443.py          48 /  48
+       tools/verif_dossier_d5_dn45.py           3 /   3
+       tools/verif_entree_dn82.py              24 /  24
+       tools/verif_flash_dn72.py               41 /  41
+       tools/verif_harnais_dn81.py             15 /  15
+       tools/verif_installeur_dn71.py          40 /  40
+       tools/verif_langue_dalle_dn73.py        34 /  34
+       tools/verif_langues_dn442.py            25 /  24
+       tools/verif_lhm_ps_dn83.py              15 /  15
+       tools/verif_licences_dn52.py            40 /  40
+       tools/verif_page_dn722.py               32 /  32
+       tools/verif_photos_dn63.py              32 /  32
+       tools/verif_placement_dn74.py           25 /  25
+       tools/verif_preconditions_dn76.py       32 /  32
+       tools/verif_prerequis_dn75.py           31 /  31
+       tools/verif_reception_dn85.py           38 /  38
+       tools/verif_temoin_filtre_dn447.py       9 /   9
+       tools/verif_vitrine_dn84.py             27 /  27
+    duree cumulee des mutants : 751.0 s
+  BILAN (pilote, ⛔ pas la gate) : 8 OK, 0 KO
+
+── 5. LES BORNES DU DOSSIER DE LA MARCHE, LUES DANS LES SORTIES CI-DESSUS ──
+  (a) `verif_affiliation_dn65.py` — (c2), (c3), (c5), (c6) :
+      [OK ] (c2) la population des fournisseurs se DERIVE              2 domaine(s) : aliexpress.com · waveshare.com
+      [OK ] (c3) le releve couvre la BOM, DANS LES DEUX SENS           2 domaine(s) confronte(s), 6 ligne(s) de releve
+      [OK ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                476 adresse(s) relue(s) dans 609 fichier(s) de texte suivis (`.md` + `.txt`), 0 marqueur, 0 redirecteur
+      [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR, « ne porte aucun lien affilié » des deux cotes
+  (b) `verif_dossier_dn415.py` aux TROIS conditions :
+    verif_dossier_dn415.py --cockpit <present> (/home/nasbarok/projects/compagnon_project) rc=1 8.13 s  BILAN : 23 OK, 10 KO 
+    verif_dossier_dn415.py --cockpit <vide> (/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/42e9685c-c328-44dc-b561-53406b0d1239/scratchpad/dn66/T0/cockpit-vide) rc=1 4.93 s  BILAN : 24 OK, 51 KO 
+    verif_dossier_dn415.py --cockpit <inexistant> (/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/42e9685c-c328-44dc-b561-53406b0d1239/scratchpad/dn66/T0/cockpit-inexistant-dn66) rc=4 4.83 s  BILAN : 25 OK, 0 KO 
+    ── DETAIL LIGNE A LIGNE, condition <present> : 10 [KO ] ──
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5843) dont `sprint-change-proposal-2026-08-31.md` qui intr
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ifacts/sprint-status-desknode.yaml [vl53l0x] #1 (l.384) dn4-7-le-tof-porte-t-il-vraiment: blocked  # 🔒 HORS
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.5267) `done` depuis mi-août) : **on séquence par dépendanc
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:rint-change-proposal-2026-08-31.md [vl53l0x] #1 (l.23) | « VL53L0X » | `TOF050C-VL6180X` — réfuté à l'inven
+      [KO ] toute occurrence de l'arbre est AU MANIFESTE             ⛔ 4 occurrence(s) de l'arbre SANS ligne de manifeste (sur 199 arbitree(s)) — chacune est listee ci-dessus
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:on-artifacts/sprint-status-desknode.yaml [vl53l0x] #1 « dn4-7-le-tof-porte-t-il-vraiment: blocked #  »
+      [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 1 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 196) — soit le constat a disparu, soit une occurrence DEJA ARBITREE vient d'etre echappee : dans ce cas RETIRER sa ligne de manifeste dans le MEME geste (AC40.5.f ii)
+      [KO ] le TEXTE a change sous un verdict inchange               cockpit:/sprint-status-desknode.yaml [busid-en-dur] #1 (l.390)
+             divergence au caractere 73 (sur 119 / 119)
+             manifeste …-ne-le-dit: in-progress # 📌 renvoi dn4-22 (2026-08-2…
+             arbre     …-ne-le-dit: in-progress # 🟢 v0.1 [cc 2026-08-31] · 📌…
+                                                  ^
+      [KO ] la citation du manifeste colle au TEXTE de l'arbre       ⛔ 1 ligne(s) DERIVEE(S) : t-status-desknode.yaml:390
+      [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 205 (manifeste) vs 208 (arbre), ecart -3 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l'arbre : cockpit:tifacts/deferred-work.md [vl53l0x] #1 'dont `sprint-change-proposal-2026-08-31.' · cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' · cockpit:cts/epics-desknode-v1.md [vl53l0x] #1 '`done` depuis mi-août) : **on séquence p' · cockpit:e-proposal-2026-08-31.md [vl53l0x] #1 '| « VL53L0X » | `TOF050C-VL6180X` — réfu' || 1 FANTOME(S) au manifeste : cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke'
+    ── DETAIL LIGNE A LIGNE, condition <vide> : 51 [KO ] ──
+      [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     ad-output/planning-artifacts/sprint-change-proposal-*.md
+      [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     tput/planning-artifacts/briefs/brief-desknode-2026-08-14
+      [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     _bmad-output/planning-artifacts/epics-desknode-v1.md
+      [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     _bmad-output/implementation-artifacts/deferred-work.md
+      [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     put/implementation-artifacts/sprint-status-desknode.yaml
+      [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     .claude/skills/desknode-board
+      [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     _bmad-output/implementation-artifacts
+      [KO ] aucun saut subi (illisible / surface absente)            0 illisible(s), 7 surface(s) absente(s)
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:.claude/skills/desknode-board/SKILL.md [340..350] #1 « perimes (`facade`, `vl53l0x`, `340..350`, `5 »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:.claude/skills/desknode-board/SKILL.md [506..516] #1 « perimes (`facade`, `vl53l0x`, `340..350`, `5 »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:.claude/skills/desknode-board/SKILL.md [facade] #1 « perimes (`facade`, `vl53l0x`, `340..350`, `5 »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:.claude/skills/desknode-board/SKILL.md [vl53l0x] #1 « perimes (`facade`, `vl53l0x`, `340..350`, `5 »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:ts/code-reviews/cr-dn4-17-desknode.patch [busid-en-dur] #1 « -powershell.exe -command "& 'c:\program file »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:s/code-reviews/cr-dn4-2-delta-diff.patch [busid-en-dur] #1 « +> ⚠ **busid `3-7`, pas `3-1`.** le skill `/ »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [340..350] #1 « *« toute coordonnee tactile publiee est deso »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [340..350] #1 « - ⚪ **[desknode][instrument][→ prochain pass »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [340..350] #1 « atteint la bande `y = 340..350`, parce que ` »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [340..350] #1 « contre un releve deja publie** (elle reprodu »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [506..516] #1 « **controler la formule contre un releve deja »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [506..516] #1 « rectangle reel pose par lvgl** (`dn_ui_widge »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [busid-en-dur] #1 « (`--busid 3-1`, forme nue, executable) du re »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [busid-en-dur] #1 « d'alternance wsl↔com3), le `readme.md` et pl »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [busid-en-dur] #1 « pareil.** le cadrage comptait **17** « busid »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « **0 occurrence ajoutee** de `vl53l0x`, de `3 »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « **2026-08-17 13:13:42**, dont le titre dit * »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « - ⚪ **[doc][a corriger en correct-course] le »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « 13:13:42** (`b554a4e`, titre : *« le montage »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « `addendum.md:143` — le **ventilateur 200 mm  »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « decision owner du 2026-08-17 : le module ser »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « (une url nommee « vl6180x » qui rend en http »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « **0 occurrence ajoutee** de `vl53l0x`, de `3 »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « **la preuve, chiffree** : l'epic annoncait * »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « *« vl53l0x, ina219 sur ce meme bus »* — narr »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « - ⚪ **[desknode][doc][→ prochain passage sur »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « > les 29 occurrences de `vl53l0x` une par un »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « `dn4-15` a lu les **29** occurrences de `vl5 »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « `hardware/` en portent **18** — `capteurs-i2 »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « bloque bas apres une periode de fonctionneme »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « globaux sur `readme.md` + `hardware/` sont * »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « inchanges), ⛔ **aucun verdict touche** ; les »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « l'entree de la session dn1-4 annoncait : *«  »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « legitimes** — des **refutations** (*« le 3ᵉ  »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « ⇒ [dn4-16 2026-08-30] close · porteur : clos »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « ⇒ [dn4-16 2026-08-30] connaissance · porteur »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « ⚠ **une seule correction a cette entree, et  »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:1-toolchain-build-flash-log-serie-wsl.md [busid-en-dur] #1 « - [x] [review][patch] 🔴 **l'etape indispensa »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:1-toolchain-build-flash-log-serie-wsl.md [busid-en-dur] #1 « → **busid = `3-1`** (`303a:1001`). `bind` ok »
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:1-toolchain-build-flash-log-serie-wsl.md [busid-en-dur] #1 « → ecrite. **aucun placeholder orphelin** : ` »
+      [KO ] … et d'autres fantomes                                   131 au total
+      [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 131 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 196) — soit le constat a disparu, soit une occurrence DEJA ARBITREE vient d'etre echappee : dans ce cas RETIRER sa ligne de manifeste dans le MEME geste (AC40.5.f ii)
+      [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 205 (manifeste) vs 65 (arbre), ecart +140 — CE QUI LE COMPOSE : 131 FANTOME(S) au manifeste : cockpit:/desknode-board/SKILL.md [340..350] #1 'périmés (`façade`, `VL53L0X`, `340..350`' · cockpit:/desknode-board/SKILL.md [506..516] #1 'périmés (`façade`, `VL53L0X`, `340..350`' · cockpit:/desknode-board/SKILL.md [facade] #1 'périmés (`façade`, `VL53L0X`, `340..350`' · cockpit:/desknode-board/SKILL.md [vl53l0x] #1 'périmés (`façade`, `VL53L0X`, `340..350`'
+    ── DETAIL LIGNE A LIGNE, condition <inexistant> : 0 [KO ] ──
+      (aucun [KO ])
+  (c) (c29) de `verif_cablage_dn62.py` rejoue AVEC et SANS `docs/bom.md`
+      (`c29_sans_bom.py`, qui importe la gate — ⛔ pas la gate) :
+      (c29) AVEC docs/bom.md : 8 notion(s) · SANS DEFINITION : aucune · temoin negatif « DeskNode Turbo » a 0 : True
+      (c29) SANS docs/bom.md : 8 notion(s) · SANS DEFINITION : aucune · temoin negatif « DeskNode Turbo » a 0 : True
+         BH1750                 glosee par : README.md · docs/cablage.md
+         BME680                 glosee par : README.md · docs/cablage.md
+         DeskNode               glosee par : README.md · docs/bom.md · docs/cablage.md
+         DeskNode + Ambiance    glosee par : README.md · docs/bom.md · docs/cablage.md
+         GT911                  glosee par : docs/cablage.md
+         PCF85063A              glosee par : docs/cablage.md
+         QMI8658                glosee par : docs/cablage.md
+         TCA9554                glosee par : docs/cablage.md
+      ⇒ ⛔ AUCUNE notion n'est glosee par la SEULE page d'achat : elle glose
+        `DeskNode` et `DeskNode + Ambiance`, que `docs/cablage.md` et le README
+        glosent aussi. La traduction ⛔ n'exige rien de (c29) — a condition que
+        la page anglaise garde une glose lisible par `glose()` (verifie en T7).
+  (d) confrontation aux bornes du Code Map du dossier (cadrage du 2026-09-15) :
+      dn61 24/0 · dn65 23/0 · dn62 37/0 · dn52 34/0 · dn63 28/0 · dn64 29/0 ·
+      dn85 16/0 · dn84 16/0 · dn416 36/0 · dn415 23 OK / 10 KO rc=1 · (c5) 476
+      adresses dans 609 fichiers · (c2) 2 domaines, (c3) 6 lignes · ledger
+      8 722 lignes — ⇒ TOUTES RETROUVEES a l'identique (§ 3 et § 5 a/b ci-dessus,
+      `wc -l` au § 2). Le detail de dn415 <present> est celui du Code Map : 1 ligne
+      DERIVEE (`sprint-status-desknode.yaml:390`), 4 occurrences SANS ligne,
+      1 FANTOME, somme 205 vs 208.
+  (e) derniere passe complete publiee (non rejouee ici, citee) :
+      `47 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 49 gates (1040s)`
+      (`mesures/dn8-9/releve-cloture.md:169`) — la ROUGE est `verif_dossier_dn415`,
+      la NON-JOUABLE `verif_sr03` (rc=2, temoin absent), les deux RETROUVEES au § 3.
+
+── 6. LES SCRIPTS DE LA PASSE, INTEGRAUX ────────────────────────────────────
+  ── passe.sh ──
+  | #!/usr/bin/env bash
+  | # dn6-6 — passe de mesure (T0 / T7). Reprend la forme de mesures/dn8-9/T0-borne-entree.txt § 5,
+  | # RESTREINTE a ce que le dossier de dn6-6 exige :
+  | #   passe.sh <et> entete     HEAD, etat git, empreintes AVANT                       (premier plan)
+  | #   passe.sh <et> gates      toutes les tools/verif_*.py SAUF dn56 et dn440, une par une (premier plan)
+  | #   passe.sh <et> dn440      verif_campagne_dn440.py SEULE                          (premier plan)
+  | #   passe.sh <et> dn415      verif_dossier_dn415.py aux TROIS conditions, sortie brute gardee
+  | #   passe.sh <et> fin        empreintes APRES + etat git
+  | # Le contrat de verif_campagne_dn56.py est joue a part, par pilote_dn56.py (import de SES fonctions).
+  | # Sorties sous $SCR/<et>/ — ⛔ jamais dans l'arbre pendant la passe. rc lu sur `$?`, ⛔ jamais par grep.
+  | set -u
+  | SCR=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/42e9685c-c328-44dc-b561-53406b0d1239/scratchpad/dn66
+  | ET="$1"; ETAPE="$2"; OUT="$SCR/$ET"; mkdir -p "$OUT/gates"
+  | DN=/home/nasbarok/projects/desknode
+  | CK=/home/nasbarok/projects/compagnon_project
+  | cd "$DN" || exit 9
+  | emp()    { ( cd "$DN" && git ls-files -z | xargs -0 sha256sum ) | sha256sum | cut -c1-16; }
+  | empidx() { ( cd "$DN" && git ls-files -s ) | sha256sum | cut -c1-16; }
+  | empck()  { ( cd "$CK" && git ls-files -z -- _bmad-output/implementation-artifacts | xargs -0 sha256sum ) | sha256sum | cut -c1-16; }
+  | R="$OUT/resume.txt"
+  | duree() { python3 -c "print(f'{$2-$1:.2f}')"; }
+  | tir_gate() {  # $1 = chemin de la gate, $2 = fichier de compte
+  |   local g="$1" tsv="$2" n args t0 t1 rc b
+  |   n=$(basename "$g" .py)
+  |   args=()
+  |   grep -q -- 'add_argument("--cockpit"' "$g" && args=(--cockpit "$CK")
+  |   t0=$(date +%s.%N)
+  |   timeout 900 python3 "$g" "${args[@]}" > "$OUT/gates/$n.txt" 2>&1; rc=$?
+  |   t1=$(date +%s.%N)
+  |   b=$(grep -E '^BILAN' "$OUT/gates/$n.txt" | tr '\n' ' ' )
+  |   printf '%-34s rc=%-3s %8s s  %s\n' "$n.py${args:+ --cockpit}" "$rc" "$(duree "$t0" "$t1")" "${b:-⛔ aucune ligne BILAN}" >> "$tsv"
+  | }
+  | case "$ETAPE" in
+  | entete)
+  |   {
+  |   echo "=== dn6-6 / passe $ET — debut $(date -Iseconds) ==="
+  |   echo "HEAD desknode : $(git -C "$DN" rev-parse HEAD)  (branche $(git -C "$DN" rev-parse --abbrev-ref HEAD))"
+  |   echo "HEAD cockpit  : $(git -C "$CK" rev-parse HEAD)  (branche $(git -C "$CK" rev-parse --abbrev-ref HEAD))"
+  |   echo "git status --porcelain desknode :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  |   echo "git status --porcelain cockpit :"; git -C "$CK" status --porcelain | sed 's/^/  /'
+  |   echo "EMPREINTE desknode AVANT (contenu) : $(emp)"
+  |   echo "EMPREINTE desknode AVANT (index)   : $(empidx)"
+  |   echo "EMPREINTE cockpit  AVANT (implementation-artifacts suivi) : $(empck)"
+  |   echo "git rev-list --left-right --count origin/main...main : $(git rev-list --left-right --count origin/main...main 2>&1)"
+  |   echo "wc -l ledger : $(wc -l < "$CK/_bmad-output/implementation-artifacts/deferred-work.md")"
+  |   echo "wc -l docs/bom.md docs/affiliation.md : $(wc -l < docs/bom.md) $(wc -l < docs/affiliation.md)"
+  |   echo "git ls-files '*.md' '*.txt' | wc -l : $(git ls-files '*.md' '*.txt' | wc -l)"
+  |   echo "git grep -c 'https://s\.click\.aliexpress\.com' (tout l'arbre suivi) :"; git grep -c 'https://s\.click\.aliexpress\.com' | sed 's/^/  /'
+  |   echo "git grep -c 'wholesale-' -- docs/bom.md : $(git grep -c 'wholesale-' -- docs/bom.md 2>/dev/null || echo 0)"
+  |   echo "ls docs/bom*.md : $(ls docs/bom*.md)"
+  |   echo "ls .github/FUNDING.yml : $(ls .github/FUNDING.yml 2>&1)"
+  |   echo
+  |   } > "$R"
+  |   ;;
+  | gates)
+  |   : > "$OUT/gates.tsv"
+  |   for g in tools/verif_*.py; do
+  |     case "$(basename "$g")" in verif_campagne_dn56.py|verif_campagne_dn440.py) continue ;; esac
+  |     tir_gate "$g" "$OUT/gates.tsv"
+  |   done
+  |   echo "=== gates fini $(date -Iseconds) ===" >> "$OUT/gates.fini"
+  |   ;;
+  | dn440)
+  |   : > "$OUT/gates-dn440.tsv"
+  |   tir_gate tools/verif_campagne_dn440.py "$OUT/gates-dn440.tsv"
+  |   echo "=== dn440 fini $(date -Iseconds) ===" >> "$OUT/dn440.fini"
+  |   ;;
+  | dn415)
+  |   VIDE="$SCR/$ET/cockpit-vide"; rm -rf "$VIDE"; mkdir -p "$VIDE"
+  |   INEX="$SCR/$ET/cockpit-inexistant-dn66"; rm -rf "$INEX"
+  |   : > "$OUT/dn415.tsv"
+  |   for cond in present vide inexistant; do
+  |     case "$cond" in present) C="$CK" ;; vide) C="$VIDE" ;; inexistant) C="$INEX" ;; esac
+  |     t0=$(date +%s.%N)
+  |     timeout 600 python3 tools/verif_dossier_dn415.py --cockpit "$C" > "$OUT/dn415-$cond.txt" 2>&1; rc=$?
+  |     t1=$(date +%s.%N)
+  |     b=$(grep -E '^BILAN' "$OUT/dn415-$cond.txt" | tr '\n' ' ')
+  |     printf 'verif_dossier_dn415.py --cockpit <%s> (%s) rc=%s %s s  %s\n' "$cond" "$C" "$rc" "$(duree "$t0" "$t1")" "${b:-⛔ aucune ligne BILAN}" >> "$OUT/dn415.tsv"
+  |   done
+  |   ;;
+  | fin)
+  |   {
+  |   echo "EMPREINTE desknode APRES (contenu) : $(emp)"
+  |   echo "EMPREINTE desknode APRES (index)   : $(empidx)"
+  |   echo "EMPREINTE cockpit  APRES (implementation-artifacts suivi) : $(empck)"
+  |   echo "git status --porcelain desknode (apres) :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  |   echo "git status --porcelain cockpit (apres) :"; git -C "$CK" status --porcelain | sed 's/^/  /'
+  |   echo "=== fin $(date -Iseconds) ==="
+  |   } >> "$R"
+  |   ;;
+  | *) echo "etape inconnue : $ETAPE" >&2; exit 2 ;;
+  | esac
+
+  ── pilote_dn56.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — le CONTRAT de tools/verif_campagne_dn56.py, rejoue PAR LOTS (< 600 s par tir d'outil).
+  | # ⚠️ Ce n'est PAS la gate : c'est un pilote qui IMPORTE ses fonctions (`cibles()`, `liste_mutants()`,
+  | #    `joue()`, `libelles_de()`, `EXCEPTIONS`, `LARGEUR_LIBELLE`) et rejoue ses 8 controles a
+  | #    l'identique, par lots avec index de reprise. Methode de mesures/dn8-5 (memoire
+  | #    « le harnais tue les tirs longs en arriere-plan »).
+  | # Usage :
+  | #   pilote_dn56.py <et> plan                 decouvre cibles + mutants, ecrit plan.json, imprime (c1) VERBATIM
+  | #   pilote_dn56.py <et> lot <budget_s>       joue les mutants a partir de l'index de reprise, s'arrete au budget
+  | #   pilote_dn56.py <et> bilan                rejoue les 8 controles sur les resultats, imprime BILAN
+  | import importlib.util
+  | import json
+  | import os
+  | import sys
+  | import time
+  | 
+  | DN = "/home/nasbarok/projects/desknode"
+  | SCR = "/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/42e9685c-c328-44dc-b561-53406b0d1239/scratchpad/dn66"
+  | et, etape = sys.argv[1], sys.argv[2]
+  | OUT = os.path.join(SCR, et, "dn56")
+  | os.makedirs(OUT, exist_ok=True)
+  | spec = importlib.util.spec_from_file_location("dn56", os.path.join(DN, "tools", "verif_campagne_dn56.py"))
+  | dn56 = importlib.util.module_from_spec(spec)
+  | spec.loader.exec_module(dn56)
+  | PLAN = os.path.join(OUT, "plan.json")
+  | RES = os.path.join(OUT, "resultats.jsonl")
+  | 
+  | 
+  | def ligne(ok, libelle, detail):
+  |     return "  [%s] %-58s %s" % ("OK " if ok else "KO ", libelle, detail)
+  | 
+  | 
+  | if etape == "plan":
+  |     cs = dn56.cibles()
+  |     rel = [os.path.relpath(c, dn56.RACINE) for c in cs]
+  |     print(ligne(bool(cs), "des gates declarent une campagne de mutants",
+  |                 "%d cible(s) : %s" % (len(cs), ", ".join(rel)) if cs
+  |                 else "⛔ AUCUNE — le glob ou la detection AST sont casses"))
+  |     plan, morts = [], []
+  |     for c in cs:
+  |         r = os.path.relpath(c, dn56.RACINE)
+  |         nums, sortie = dn56.liste_mutants(c)
+  |         if nums is None:
+  |             morts.append("%s (⛔ `--liste-mutants` a echoue : %s)" % (r, sortie.strip()[:60]))
+  |             continue
+  |         for n in nums:
+  |             plan.append([c, r, n])
+  |         print("     %-38s %3d mutant(s)" % (r, len(nums)))
+  |     json.dump({"cibles": cs, "plan": plan, "morts": morts}, open(PLAN, "w"))
+  |     if os.path.exists(RES):
+  |         os.remove(RES)
+  |     print("PLAN : %d cible(s), %d mutant(s), %d `--liste-mutants` mort(s)" % (len(cs), len(plan), len(morts)))
+  | elif etape == "lot":
+  |     budget = float(sys.argv[3])
+  |     p = json.load(open(PLAN))
+  |     faits = sum(1 for _ in open(RES)) if os.path.exists(RES) else 0
+  |     t0 = time.time()
+  |     i = faits
+  |     with open(RES, "a") as fh:
+  |         while i < len(p["plan"]) and time.time() - t0 < budget:
+  |             c, r, n = p["plan"][i]
+  |             t = time.time()
+  |             rc, bilan, kos, _out = dn56.joue(c, n)
+  |             fh.write(json.dumps({"i": i, "gate": r, "n": n, "rc": rc, "bilan": bilan, "kos": kos,
+  |                                  "s": round(time.time() - t, 2)}) + "\n")
+  |             fh.flush()
+  |             i += 1
+  |     print("LOT : index %d ⇒ %d sur %d, %.1f s" % (faits, i, len(p["plan"]), time.time() - t0))
+  | elif etape == "bilan":
+  |     p = json.load(open(PLAN))
+  |     res = [json.loads(l) for l in open(RES)]
+  |     ok = ko = 0
+  |     out = []
+  | 
+  |     def ctrl(v, lib, det):
+  |         global ok, ko
+  |         if v:
+  |             ok += 1
+  |         else:
+  |             ko += 1
+  |         out.append(ligne(v, lib, det))
+  | 
+  |     cs = p["cibles"]
+  |     rel = [os.path.relpath(c, dn56.RACINE) for c in cs]
+  |     ctrl(bool(cs), "des gates declarent une campagne de mutants",
+  |          "%d cible(s) : %s" % (len(cs), ", ".join(rel)))
+  |     muets, sans_bilan, sans_ko, morts = [], [], [], list(p["morts"])
+  |     exc_util, exc_per = [], []
+  |     par_gate = {}
+  |     for x in res:
+  |         cle = (x["gate"], x["n"])
+  |         etiq = "%s#%d" % cle
+  |         sain = x["rc"] == 1 and x["bilan"] and x["kos"] > 0
+  |         par_gate.setdefault(x["gate"], [0, 0])
+  |         par_gate[x["gate"]][0] += 1
+  |         par_gate[x["gate"]][1] += 1 if sain else 0
+  |         if cle in dn56.EXCEPTIONS:
+  |             (exc_per if sain else exc_util).append(etiq)
+  |             continue
+  |         if x["rc"] is None:
+  |             morts.append("%s (mort ou timeout)" % etiq)
+  |         elif x["rc"] != 1:
+  |             muets.append("%s (rc=%s)" % (etiq, x["rc"]))
+  |         elif not x["bilan"]:
+  |             sans_bilan.append(etiq)
+  |         elif x["kos"] == 0:
+  |             sans_ko.append(etiq)
+  |     complet = len(res) == len(p["plan"])
+  |     ctrl(not morts and complet, "toute cible repond, et aucun mutant ne meurt",
+  |          "%d mutant(s) confronte(s) sur %d cible(s)" % (len(res), len(cs))
+  |          if not morts and complet else "⛔ %s%s" % (" · ".join(morts),
+  |                                                     "" if complet else " (PLAN INCOMPLET %d/%d)" % (len(res), len(p["plan"]))))
+  |     ctrl(not muets, "tout mutant rend rc=1",
+  |          "aucun mutant devenu MUET" if not muets else "⛔ NE ROUGISSENT PLUS : " + " · ".join(muets))
+  |     ctrl(not sans_bilan, "tout mutant rouge a bien imprime un BILAN",
+  |          "aucune sortie en amont" if not sans_bilan else "⛔ rc=1 SANS BILAN : " + " · ".join(sans_bilan))
+  |     ctrl(not sans_ko, "tout mutant rouge porte au moins un [KO ] nomme",
+  |          "chaque mutant vise un controle" if not sans_ko else "⛔ rouge SANS [KO ] : " + " · ".join(sans_ko))
+  |     ctrl(not exc_per, "aucune exception n'a survecu au defaut qu'elle excuse",
+  |          "%d exception(s) declaree(s), %d encore justifiee(s)" % (len(dn56.EXCEPTIONS), len(exc_util))
+  |          if not exc_per else "⛔ PERIMEE(S) : " + " · ".join(exc_per))
+  |     portee = [os.path.join(dn56.RACINE, "tools", "verif_licences_dn52.py"),
+  |               os.path.join(dn56.RACINE, "tools", "verif_campagne_dn56.py")]
+  |     libs, ill = [], []
+  |     for c in portee:
+  |         l = dn56.libelles_de(c)
+  |         if l is None:
+  |             ill.append(c)
+  |         else:
+  |             libs += l
+  |     ctrl(not ill, "toute cible s'analyse a l'AST", "%d fichier(s) lu(s) dans la portee de la cle" % len(portee))
+  |     longs = [l for l in libs if len(l) >= dn56.LARGEUR_LIBELLE]
+  |     ctrl(not longs, "cle valide (aucun libelle >= %d)" % dn56.LARGEUR_LIBELLE,
+  |          "%d libelle(s) lu(s) a l'AST, le plus long fait %d" % (len(libs), max(len(l) for l in libs))
+  |          if not longs else "⛔ %d libelle(s) debordent" % len(longs))
+  |     print("\n".join(out))
+  |     print("  mutants par cible (joues / sains au contrat) :")
+  |     for g in sorted(par_gate):
+  |         print("     %-38s %3d / %3d" % (g, par_gate[g][0], par_gate[g][1]))
+  |     print("  duree cumulee des mutants : %.1f s" % sum(x["s"] for x in res))
+  |     print("BILAN (pilote, ⛔ pas la gate) : %d OK, %d KO" % (ok, ko))
+
+  ── c29_sans_bom.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — (c29) de tools/verif_cablage_dn62.py rejoue AVEC et SANS `docs/bom.md` dans `prose`.
+  | # ⚠️ Ce n'est pas la gate : le module est IMPORTE (glose, tables, colonne, cellules, RE_PALIER_CITE,
+  | #    TEMOIN_NOTION, PAGE_REL, README_REL), et les lignes de (c29) de `main()` sont rejouees a
+  | #    l'identique. Il dit, notion par notion, QUELS fichiers la glosent — donc lesquelles ne l'etaient
+  | #    QUE par la page d'achat.
+  | import importlib.util
+  | import os
+  | import sys
+  | 
+  | DN = sys.argv[1] if len(sys.argv) > 1 else "/home/nasbarok/projects/desknode"
+  | spec = importlib.util.spec_from_file_location("dn62", os.path.join(DN, "tools", "verif_cablage_dn62.py"))
+  | m = importlib.util.module_from_spec(spec)
+  | spec.loader.exec_module(m)
+  | lire = lambda r: open(os.path.join(DN, r), encoding="utf-8").read()
+  | page, readme = lire(m.PAGE_REL), lire(m.README_REL)
+  | notions = set(m.RE_PALIER_CITE.findall(page))
+  | for ent, corps in m.tables(page):
+  |     k_a, k_c = m.colonne(ent, "adresse"), m.colonne(ent, "composant")
+  |     if k_a is None or k_c is None:
+  |         continue
+  |     for l in corps:
+  |         c = m.cellules(l)
+  |         if k_c < len(c) and c[k_c].strip(" —-–*`"):
+  |             notions.add(c[k_c].strip(" —-–*`").split()[0])
+  | for avec in (True, False):
+  |     prose = {m.PAGE_REL: page, m.README_REL: readme}
+  |     if avec:
+  |         prose["docs/bom.md"] = lire("docs/bom.md")
+  |     orph = sorted(n for n in notions if not m.glose(n, prose))
+  |     tem = not m.glose(m.TEMOIN_NOTION, prose)
+  |     print("(c29) %s docs/bom.md : %d notion(s) · SANS DEFINITION : %s · temoin negatif « %s » a 0 : %s"
+  |           % ("AVEC" if avec else "SANS", len(notions), " · ".join(orph) or "aucune", m.TEMOIN_NOTION, tem))
+  | prose = {m.PAGE_REL: page, m.README_REL: readme, "docs/bom.md": lire("docs/bom.md")}
+  | for n in sorted(notions):
+  |     sites = m.glose(n, prose)
+  |     print("   %-22s glosee par : %s" % (n, " · ".join(sorted({s.split(":")[0] for s in sites})) or "⛔ PERSONNE"))
+
+  ── ko_detail.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — le DETAIL ligne a ligne des [KO ] d'une sortie de gate : chaque ligne `[KO ]` et ses lignes
+  | # de continuation (indentees de 9 blancs ou plus, ⛔ un `[OK ]`, ⛔ un titre `──`).
+  | # Mode --normalise : les numeros de ligne `(l.N)` et `:N` de fin sont CONSERVES (⛔ normalises) —
+  | # la lecon de dn8-9 : un diff qui normalise les numeros de ligne a dit « memes KO » sur un KO de plus.
+  | import sys
+  | out, garde = [], False
+  | for l in open(sys.argv[1], encoding="utf-8", errors="replace").read().split("\n"):
+  |     if l.lstrip().startswith("[KO ]"):
+  |         out.append(l.rstrip()); garde = True
+  |     elif garde and l.startswith(" " * 9) and not l.lstrip().startswith(("[OK ]", "──")):
+  |         out.append(l.rstrip())
+  |     else:
+  |         garde = False
+  | print("\n".join(out))
+
+  ── composer_T0.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — compose mesures/dn6-6/T0-bornes-depart.txt a partir des sorties BRUTES de la passe T0.
+  | # ⛔ Aucune valeur tapee a la main : tout est relu dans T0/ (resume, tsv, sorties de gates, pilote).
+  | import os, re
+  | S = os.path.dirname(os.path.abspath(__file__))
+  | T = os.path.join(S, "T0")
+  | lire = lambda n: open(os.path.join(T, n), encoding="utf-8").read().rstrip("\n")
+  | ind = lambda txt, n=2: "\n".join((" " * n + l) if l else "" for l in txt.split("\n"))
+  | def lignes_de(gate, motif):
+  |     return [l for l in lire("gates/%s.txt" % gate).split("\n") if re.search(motif, l)]
+  | out = []
+  | A = out.append
+  | A("=" * 78)
+  | A("dn6-6 / T0 — LES BORNES DE DEPART, RE-TIREES PAR LA COMMANDE AVANT TOUTE ECRITURE")
+  | A("  Passe jouee le 2026-09-15 de 13:31:27 a 13:49:19 (+02:00), sorties sous le")
+  | A("  scratchpad de session (⛔ jamais dans l'arbre pendant la passe), versees ici")
+  | A("  APRES la passe par `composer_T0.py` (relit les sorties, ⛔ aucune valeur tapee).")
+  | A("  Scripts integraux au § 6.")
+  | A("=" * 78)
+  | A("")
+  | A("── 1. LA QUIESCENCE, VERIFIEE AVANT DE LANCER (2026-09-15T13:30+02:00) ─────")
+  | A("  `git status --porcelain` desknode = VIDE · 0 stash dans les deux depots ·")
+  | A("  cockpit = le dossier de la marche (non suivi), `epic-dn6-context.md` (modifie")
+  | A("  par le cadrage) et `docs/dashboard_desktop_project/desknode.mp4` (non suivi,")
+  | A("  voulu par `dn8-9`) — ⛔ rien d'autre. Aucun `verif_*`, `run_gates`, `idf.py`")
+  | A("  ni `dn_console` en cours (`ps`).")
+  | A("  ⚠️ Pendant la passe, l'agent n'a ecrit QUE dans le scratchpad (scripts de la")
+  | A("  passe) : empreintes AVANT = APRES au § 2. La premiere ecriture de la marche")
+  | A("  dans un arbre (`docs/bom.md`) est posterieure a 13:49:19.")
+  | A("")
+  | A("── 2. L'ETAT DES DEPOTS ET LES EMPREINTES ──────────────────────────────────")
+  | A(ind(lire("resume.txt")))
+  | A("")
+  | A("── 3. LE COMPTE DE CHAQUE GATE (tir isole au premier plan, timeout 900 s) ──")
+  | A("  ⚠️ rc lu sur `$?`, ⛔ jamais par grep ; le BILAN est la ligne `^BILAN` de la")
+  | A("     sortie. `verif_campagne_dn56.py` n'est PAS jouee comme gate : son CONTRAT")
+  | A("     l'est, par le pilote du § 4 (le harnais de l'agent plafonne un tir au")
+  | A("     premier plan a 600 s, et tue les tirs longs en arriere-plan).")
+  | A(ind(lire("gates.tsv")))
+  | A(ind(lire("gates-dn440.tsv")))
+  | A("  ⚠️ gates SANS ligne BILAN : leur compte est lu dans leur propre forme de fin")
+  | A("     (lignes `[OK`/`[KO`, sinon lignes ✅/❌ — methode de mesures/dn8-9/T0) :")
+  | for l in lire("gates.tsv").split("\n"):
+  |     if "aucune ligne BILAN" not in l:
+  |         continue
+  |     n = l.split()[0][:-3]
+  |     txt = lire("gates/%s.txt" % n)
+  |     der = [x for x in txt.split("\n") if x.strip()][-1:] or [""]
+  |     A("     %-32s [OK %d · [KO %d · ✅ lignes %d · ❌ lignes %d · derniere : %s"
+  |       % (n, len(re.findall(r"\[OK", txt)), len(re.findall(r"\[KO", txt)),
+  |          sum(1 for x in txt.split("\n") if "✅" in x), sum(1 for x in txt.split("\n") if "❌" in x),
+  |          der[0].strip()[:70]))
+  | A("")
+  | A("── 4. LE CONTRAT DE `verif_campagne_dn56.py`, PAR LE PILOTE PAR LOTS ───────")
+  | A("  ⚠️ Ce n'est PAS la gate : `pilote_dn56.py` IMPORTE `tools/verif_campagne_dn56.py`")
+  | A("     et appelle SES `cibles()`, `liste_mutants()`, `joue()`, `libelles_de()` et")
+  | A("     `EXCEPTIONS`, puis rejoue ses 8 controles. Deux lots (reprise par index).")
+  | A("  (c1) VERBATIM, telle que la ligne `ctrl()` de la gate l'imprimerait :")
+  | A(ind(lire("dn56-plan.txt")))
+  | A(ind(lire("dn56-lots.txt")))
+  | A(ind(lire("dn56-bilan.txt")))
+  | A("")
+  | A("── 5. LES BORNES DU DOSSIER DE LA MARCHE, LUES DANS LES SORTIES CI-DESSUS ──")
+  | A("  (a) `verif_affiliation_dn65.py` — (c2), (c3), (c5), (c6) :")
+  | A(ind("\n".join(lignes_de("verif_affiliation_dn65", r"\[(OK|KO) \] \((c2|c3|c5|c6)\)")), 4))
+  | A("  (b) `verif_dossier_dn415.py` aux TROIS conditions :")
+  | A(ind(lire("dn415.tsv"), 4))
+  | for c in ("present", "vide", "inexistant"):
+  |     ko = lire("dn415-%s.ko" % c)
+  |     n = ko.count("[KO ]")
+  |     A("    ── DETAIL LIGNE A LIGNE, condition <%s> : %d [KO ] ──" % (c, n))
+  |     A(ind(ko, 4) if ko.strip() else "      (aucun [KO ])")
+  | A("  (c) (c29) de `verif_cablage_dn62.py` rejoue AVEC et SANS `docs/bom.md`")
+  | A("      (`c29_sans_bom.py`, qui importe la gate — ⛔ pas la gate) :")
+  | A(ind(lire("c29.txt"), 6))
+  | A("      ⇒ ⛔ AUCUNE notion n'est glosee par la SEULE page d'achat : elle glose")
+  | A("        `DeskNode` et `DeskNode + Ambiance`, que `docs/cablage.md` et le README")
+  | A("        glosent aussi. La traduction ⛔ n'exige rien de (c29) — a condition que")
+  | A("        la page anglaise garde une glose lisible par `glose()` (verifie en T7).")
+  | A("  (d) confrontation aux bornes du Code Map du dossier (cadrage du 2026-09-15) :")
+  | A("      dn61 24/0 · dn65 23/0 · dn62 37/0 · dn52 34/0 · dn63 28/0 · dn64 29/0 ·")
+  | A("      dn85 16/0 · dn84 16/0 · dn416 36/0 · dn415 23 OK / 10 KO rc=1 · (c5) 476")
+  | A("      adresses dans 609 fichiers · (c2) 2 domaines, (c3) 6 lignes · ledger")
+  | A("      8 722 lignes — ⇒ TOUTES RETROUVEES a l'identique (§ 3 et § 5 a/b ci-dessus,")
+  | A("      `wc -l` au § 2). Le detail de dn415 <present> est celui du Code Map : 1 ligne")
+  | A("      DERIVEE (`sprint-status-desknode.yaml:390`), 4 occurrences SANS ligne,")
+  | A("      1 FANTOME, somme 205 vs 208.")
+  | A("  (e) derniere passe complete publiee (non rejouee ici, citee) :")
+  | A("      `47 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 49 gates (1040s)`")
+  | A("      (`mesures/dn8-9/releve-cloture.md:169`) — la ROUGE est `verif_dossier_dn415`,")
+  | A("      la NON-JOUABLE `verif_sr03` (rc=2, temoin absent), les deux RETROUVEES au § 3.")
+  | A("")
+  | A("── 6. LES SCRIPTS DE LA PASSE, INTEGRAUX ────────────────────────────────────")
+  | for f in ("passe.sh", "pilote_dn56.py", "c29_sans_bom.py", "ko_detail.py", "composer_T0.py"):
+  |     A("  ── %s ──" % f)
+  |     A("\n".join("  | " + l for l in open(os.path.join(S, f), encoding="utf-8").read().rstrip("\n").split("\n")))
+  |     A("")
+  | print("\n".join(out))
+

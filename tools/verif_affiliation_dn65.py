@@ -40,6 +40,33 @@ exemple « toute adresse marquee est declaree ligne a ligne »), et l'ecrire.
 ⇒ (c6) et (c7), eux, restent VERTS si l'annotation est faite dans les regles —
   c'est mesure, et le temoin est dans `mesures/dn6-5/T3`.
 
+── 🆕 2026-09-15 (`dn6-6`) — L'ENGAGEMENT A CHANGE, ET (c5) AVEC LUI ────────
+
+⚠️ ANNOTATION, ⛔ PAS UNE REECRITURE (NFR3) : les deux blocs ci-dessus disent
+   ce que (c5) gardait JUSQU'AU 2026-09-15 — « ⛔ aucune adresse publiee n'est
+   marquee » — et le remede qu'ils nommaient. Il est applique, DANS LE MEME
+   COMMIT QUE LES LIENS, sur decision owner du 2026-09-15 : `docs/bom.md`
+   passe en anglais (UNE seule page) et porte les cinq liens suivis
+   AliExpress Portals de l'owner, un par ligne AliExpress.
+   (c5)  GARDE DESORMAIS LE NOUVEL ENGAGEMENT : toute adresse marquee du
+         corpus est dans `docs/bom.md`, ET son unite — la CELLULE de table qui
+         la porte, sinon son unite de declaration (`unites()`) — porte la
+         mention `affiliate link`. Une adresse marquee ailleurs, ou sans sa
+         mention, le fait rougir EN LA NOMMANT — ⛔ sans son schema `https://`,
+         pour qu'un releve qui recopie la sortie ⛔ ne replante pas l'adresse.
+   (c24) EST SA RECIPROQUE, NEUVE : toute cellule de table de la page d'achat
+         qui porte `affiliate link` porte une adresse marquee. Une mention qui
+         decore une adresse NUE est une declaration fausse DANS L'AUTRE SENS.
+   (c6)  LIT DEUX LANGUES, FICHIER PAR FICHIER : la page d'achat declare en
+         anglais (`carries no affiliate link` / `carries affiliate links`),
+         `docs/affiliation.md` reste francaise (`NEG`/`POS`, inchanges).
+   (c7)(c9) lisent les ancres ANGLAISES (`## Affiliate links`, la phrase
+         d'origine traduite, `switch-over point`).
+   ⚠️ « (c5) reste ROUGE meme apres que les deux pages ont ete annotees » est
+      donc PERIME depuis ce jour : c'etait vrai tant que la gate n'etait pas
+      rouverte, et elle l'est. ⛔ Ce n'est pas un assouplissement : ignorer
+      `s.click.` aurait laisse passer un lien NON DECLARE n'importe ou.
+
 ── 🔴 LA POPULATION SE **DERIVE** DE `docs/bom.md`, ⛔ ELLE NE S'ENUMERE PAS ─
 
 Mesure du 2026-09-07 : les cellules `Source` des tables de BOM ne citent
@@ -156,10 +183,15 @@ A_TITRE_OWNER = "## 6. Ce que l'owner doit faire lui-même"
 A_TITRE_BASCULE = "## 7. Le point de bascule"
 A_TITRE_REMESURE = "## 8. Comment ces nombres se re-mesurent"
 A_PAS_CONSEIL = "Ce n'est pas un conseil juridique"
-A_SECTION_BOM = "## Liens affiliés"
-A_DECL_BOM = ("**Cette page ne porte aucun lien affilié.** Les URL ci-dessus "
-              "sont des adresses de recherche nues.")
-A_BASCULE_BOM = "point de bascule"
+# 🆕 2026-09-15 (`dn6-6`) — LES TROIS ANCRES DE LA PAGE D'ACHAT SONT ANGLAISES.
+#    Jusqu'a ce jour : `## Liens affiliés`, « **Cette page ne porte aucun lien
+#    affilié.** Les URL ci-dessus sont des adresses de recherche nues. » et
+#    `point de bascule`. La phrase d'origine est TRADUITE mot pour mot et
+#    reste en place (NFR3) : c'est elle que (c7) exige intacte.
+A_SECTION_BOM = "## Affiliate links"
+A_DECL_BOM = ("**This page carries no affiliate link.** The URLs above "
+              "are bare search addresses.")
+A_BASCULE_BOM = "switch-over point"
 
 # ── CE QUI SIGNE UN LIEN AFFILIE ──────────────────────────────────────────
 # ⚠️ LE MARQUEUR EST CHERCHE **DANS L'ADRESSE**, ⛔ pas dans la prose : la page
@@ -259,8 +291,30 @@ REDIRECTIONS = ("s.click.aliexpress.com", "a.aliexpress.com",
 #    ⛔ pas un rouge. ⇒ on les REUTILISE, on ne les redefinit pas.
 NEG = "ne porte aucun lien affilié"
 POS = "porte des liens affiliés"
-RE_DECL_GRAS = re.compile(
-    r"\*\*[^*]{0,300}?(" + NEG + r"|" + POS + r")[^*]{0,300}?\*\*")
+# 🆕 2026-09-15 (`dn6-6`) — LA PAGE D'ACHAT DECLARE EN ANGLAIS. ⚠️ Le commentaire
+#    ci-dessus est PERIME pour elle : `(c9)` de `verif_bom_dn61.py` lit desormais
+#    `DECL_NEG`/`DECL_POS`, et ce sont ces deux litteraux-la qui sont recopies
+#    ici. `docs/affiliation.md` reste francaise : `NEG`/`POS` sont les siens.
+NEG_BOM = "carries no affiliate link"
+POS_BOM = "carries affiliate links"
+
+
+def _re_decl(neg, pos):
+    return re.compile(r"\*\*[^*]{0,300}?(" + neg + r"|" + pos
+                      + r")[^*]{0,300}?\*\*")
+
+
+RE_DECL_GRAS = _re_decl(NEG, POS)
+RE_DECL_GRAS_BOM = _re_decl(NEG_BOM, POS_BOM)
+# ⚠️ LA MENTION est le litteral `affiliate link` — (singulier ou pluriel), ⛔ pas
+#    « no affiliate link » : une cellule qui dit n'en porter aucune ⛔ ne
+#    declare pas l'adresse qu'elle porterait.
+RE_MENTION = re.compile(r"(?<!no )\baffiliate links?\b", re.I)
+# La forme publiee d'une cellule suivie : `[texte](adresse) — affiliate link`.
+# ⚠️ Elle ne sert QU'AUX MUTANTS 2, 40, 42 : les controles, eux, lisent la
+#    mention par `RE_MENTION` dans l'unite, ⛔ par cette forme exacte.
+RE_CELLULE_SUIVIE = re.compile(
+    r"\[([^\]]*)\]\((https?://[^)\s]+)\)\s*—\s*affiliate link")
 
 RE_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 RE_MOTIF = re.compile(r"HTTP\s*\d{3}|authentification|d[ée]lai d[ée]pass"
@@ -294,9 +348,16 @@ RE_MONTANT = re.compile(r"\d+(?:[.,]\d+)?\s*(?:€|EUR|USD|GBP)"
 # 🔴 `paliers?|seuils?` SONT DANS LA LISTE, ET C'EST UNE MESURE : un jalon
 #    ecrit avec un montant HORS des quatre valeurs nommees — « palier posé à
 #    300 € » — passait (c15) ET (c16). Le MOT compte, ⛔ pas que le chiffre.
+# 🆕 2026-09-15 (`dn6-6`) : la page d'achat est anglaise ⇒ le vocabulaire
+#    ANGLAIS est AJOUTE au francais (⛔ il ne le remplace pas : la page
+#    d'affiliation et les releves restent francais). `tiers?` est le `paliers?`
+#    de la page anglaise, et c'est la meme mesure qui l'exige (mutant 17).
 RE_PROJECTION = re.compile(
     r"par carte|par mois|revenus?|jalons?|objectifs?|rapporter"
-    r"|paliers?|seuils?", re.I)
+    r"|paliers?|seuils?"
+    r"|\bper (?:card|month)\b|\brevenues?\b|\bincome\b|\bmilestones?\b"
+    r"|\btargets?\b|\bgoals?\b|\bearn(?:s|ed|ing|ings)?\b|\btiers?\b"
+    r"|\bthresholds?\b", re.I)
 # ⚠️ L'EXCEPTION EST FALSIFIABLE, ET ELLE FERME UN FAUX KO MESURE :
 #    `docs/bom.md` ecrit « Coût du palier, au 2026-09-06 : environ … ≈ 41 € ».
 #    C'est un PRIX, ⛔ pas un jalon de revenus — et un prix est le territoire
@@ -322,9 +383,28 @@ RE_PROJECTION = re.compile(
 #    population. ⛔ `commission` n'y est PAS : un montant de commission est un
 #    gain, et les quatre valeurs de jalon restent gardees par (c15), qui ⛔ n'a
 #    aucune exemption.
+# 🆕 2026-09-15 (`dn6-6`) : equivalents ANGLAIS ajoutes (« Cost of the tier »
+#    de la page d'achat est la phrase exacte qui l'exige). ⛔ `rate` n'y est
+#    PAS : un taux de commission est un gain, ⛔ une condition de versement.
 RE_EXEMPT_CONDITION = re.compile(
-    r"co[uû]ts?|prix|tarifs?|versements?|paiements?|frais", re.I)
+    r"co[uû]ts?|prix|tarifs?|versements?|paiements?|frais"
+    r"|\bcosts?\b|\bprices?\b|\bpricing\b|\bpayments?\b|\bpayouts?\b"
+    r"|\bfees?\b", re.I)
 PORTEE_PROJECTION = 200
+# 🆕 2026-09-15 (`dn6-6`) — `threshold` QUALIFIE PAR UN MOT DE VERSEMENT EST UNE
+#    CONDITION, ⛔ pas un jalon — et c'est un FAUX KO MESURE qui l'exige, sur du
+#    texte que personne n'a ecrit pour cette gate. Des l'ajout du vocabulaire
+#    anglais, la ligne `dn6-5` de `docs/roadmap.md` (« US$5 PayPal payout
+#    threshold ») a fait rougir (c16). La regle « le mot de condition se lit
+#    DEVANT le montant » est juste en francais (« seuil de versement : US$5 ») ;
+#    en anglais le mot qui qualifie PRECEDE LE NOM qu'il qualifie, et peut donc
+#    suivre le montant (« US$5 payout threshold »).
+#    ⇒ exception ETROITE : SEUL `threshold`, et SEULEMENT immediatement precede
+#      de `payout`/`payment`/`withdrawal`. ⛔ `payout target`, `payment goal`
+#      ou `revenue threshold` restent des projections — le mutant 44 replante
+#      la derniere et doit rougir.
+RE_SEUIL_DE_VERSEMENT = re.compile(
+    r"\b(?:payouts?|payments?|withdrawals?)\s+$", re.I)
 # ⚠️ LA CLAUSE SE COUPE SUR UN POINT DE PHRASE, ⛔ PAS SUR UNE DECIMALE :
 #    `re.split(r"[.\n]", …)` coupait « rapporterait environ 0.44 € par carte »
 #    juste apres le `0`, et le revenu projete sortait VERT — la meme phrase
@@ -337,9 +417,13 @@ REFUS_PORTEUR = ("a nommer", "à nommer", "tbd", "a definir", "à définir",
                  "a preciser", "à préciser", "inconnu", "?", "-", "—", "")
 
 # Ce qui fait d'un paragraphe de prose un paragraphe de FOURNISSEUR.
+# 🆕 2026-09-15 (`dn6-6`) : la page d'achat est anglaise — le fabricant non
+#    relevable y est nomme par `Manufacturer`. Vocabulaire anglais AJOUTE.
 RE_FOURNISSEUR = re.compile(
     r"fabricant|fournisseur|boutique|vendeur|revendeur|distributeur"
-    r"|constructeur|place de march[ée]", re.I)
+    r"|constructeur|place de march[ée]"
+    r"|\b(?:manufacturer|supplier|shop|store|seller|reseller|retailer"
+    r"|distributor|marketplace|vendor)s?\b", re.I)
 
 # 🔴 LA LECON DE CETTE MARCHE, INSTALLEE EN CONTROLE (c23) : « non atteint »
 #    est une propriete de la METHODE de recuperation, ⛔ pas de l'adresse. Un
@@ -407,19 +491,28 @@ CIBLES[2] = ("c3",)
 MUTANTS[3] = ("retire de la page un domaine de la table des adresses "
               "tentees ⇒ la 2e population cesse d'etre publiee en entier")
 CIBLES[3] = ("c4",)
-MUTANTS[4] = ("POSE UN LIEN AFFILIE dans `docs/bom.md` sans toucher aux "
-              "declarations ⇒ l'etat et l'affirmation se contredisent")
-# ⚠️ CIBLE DOUBLE, MESUREE : l'adresse marquee existe (c5) ET les deux pages
-#    jurent encore qu'il n'y en a aucune (c6). C'est la ligne 3 de la matrice.
-CIBLES[4] = ("c5", "c6")
-MUTANTS[5] = ("retourne la phrase d'etat de `docs/affiliation.md` : elle "
-              "affirme porter des liens la ou l'etat mesure est ZERO")
+# 🆕 2026-09-15 (`dn6-6`) — LES MUTANTS 2, 4, 5, 17 SONT RE-ANCRES, ET LES
+#    CIBLES DE 4/6/23/31/36/37/38 SUIVENT LA MESURE. Les declarations en
+#    vigueur disent desormais PORTER des liens : un marqueur replante SANS
+#    mention ⛔ fait plus rougir (c6), il fait rougir le NOUVEL (c5). Les
+#    descriptions d'origine sont nommees ici plutot qu'effacees (NFR3) :
+#      4 — « POSE UN LIEN AFFILIE dans `docs/bom.md` sans toucher aux
+#            declarations ⇒ l'etat et l'affirmation se contredisent » (c5,c6)
+#      5 — « retourne la phrase d'etat de `docs/affiliation.md` : elle affirme
+#            porter des liens la ou l'etat mesure est ZERO » (c6)
+MUTANTS[4] = ("POSE UN LIEN AFFILIE dans `docs/bom.md` HORS de toute unite qui "
+              "le declare (une adresse tentee) ⇒ un lien NON DECLARE")
+CIBLES[4] = ("c5",)
+MUTANTS[5] = ("rebascule la declaration EN VIGUEUR de `docs/affiliation.md` "
+              "a « aucun » alors que la page d'achat publie ses liens")
 CIBLES[5] = ("c6",)
 MUTANTS[6] = ("reecrit la phrase d'etat de `docs/bom.md` — la faute que "
               "`NFR3` interdit : annoter, ⛔ ne pas effacer")
 # ⚠️ CIBLE DOUBLE, MESUREE : la phrase reecrite n'est plus la phrase d'origine
 #    (c7) et elle cesse d'etre une declaration lisible en gras (c6).
-CIBLES[6] = ("c7", "c6")
+# 🆕 2026-09-15 (`dn6-6`) : SIMPLE depuis ce jour, MESURE — la phrase reecrite
+#    n'est plus la DERNIERE declaration : la neuve, en dessous, fait foi.
+CIBLES[6] = ("c7",)
 MUTANTS[7] = ("retire de `docs/bom.md` le renvoi vers la page d'affiliation")
 CIBLES[7] = ("c8",)
 MUTANTS[8] = ("fait pointer ce renvoi sur un fichier INEXISTANT")
@@ -458,7 +551,7 @@ MUTANTS[16] = ("replante un JALON CHIFFRE dans `docs/affiliation.md`")
 # ⚠️ CIBLE DOUBLE, MESUREE : la phrase replantee porte un montant ET le mot
 #    `jalon` — elle est donc AUSSI une projection de revenu.
 CIBLES[16] = ("c15", "c16")
-MUTANTS[17] = ("replante un JALON CHIFFRE dans `docs/bom.md`")
+MUTANTS[17] = ("replante un JALON CHIFFRE dans `docs/bom.md` (en anglais)")
 # ⚠️ CIBLE DOUBLE **DEPUIS LA REVUE**, ET C'EST MESURE : la charge porte le mot
 #    `palier`, entre depuis dans les mots de projection ⇒ elle est AUSSI un
 #    revenu projete. La cible dit ce que le mutant FAIT.
@@ -489,7 +582,10 @@ MUTANTS[23] = ("casse toutes les adresses de `docs/bom.md` ⇒ la population "
 #    page, donc la table des adresses tentees ne correspond plus a rien (c4) —
 #    et depuis que (c3) regarde les DEUX sens, ses lignes de releve deviennent
 #    toutes ORPHELINES (c3). La cible dit ce que le mutant FAIT.
-CIBLES[23] = ("c2", "c4", "c3")
+# 🆕 2026-09-15 (`dn6-6`) : QUINTUPLE, MESURE — casser les schemas efface AUSSI
+#    les cinq liens suivis : les deux pages disent encore PORTER des liens (c6),
+#    et les cinq mentions ne portent plus d'adresse marquee (c24).
+CIBLES[23] = ("c2", "c4", "c3", "c6", "c24")
 MUTANTS[24] = ("retire une cible de `CIBLES` ⇒ un controle garde par ZERO "
                "mutant, le risque que `dn6-1` avait paye")
 CIBLES[24] = ("c20",)
@@ -523,7 +619,9 @@ MUTANTS[31] = ("pose dans `docs/bom.md` une adresse de REDIRECTEUR "
                "(`s.click.`) — la branche que ⛔ AUCUN mutant ne gardait")
 # ⚠️ CIBLE DOUBLE, MESUREE : l'adresse existe (c5) et les deux pages jurent
 #    encore qu'il n'y en a aucune (c6).
-CIBLES[31] = ("c5", "c6")
+# 🆕 2026-09-15 (`dn6-6`) : SIMPLE, MESURE — posee en prose SANS mention, elle
+#    rougit le nouvel (c5) ; les deux declarations disent deja PORTER.
+CIBLES[31] = ("c5",)
 MUTANTS[32] = ("garde au releve la ligne d'un fournisseur que la BOM ne "
                "nomme PLUS ⇒ le SENS INVERSE de (c3)")
 CIBLES[32] = ("c3",)
@@ -545,10 +643,10 @@ CIBLES[35] = ("c23",)
 #    CONTROLE (`c5` restait vise par 4/30/31), ⛔ pas de la BRANCHE.
 MUTANTS[36] = ("replante un marqueur AMBIGU (`?tag=`) sur un hote de "
                "boutique DERIVE de la BOM ⇒ la 3e branche de (c5)")
-CIBLES[36] = ("c5", "c6")
+CIBLES[36] = ("c5",)          # 🆕 dn6-6 : (c6) ne rougit plus, MESURE
 MUTANTS[37] = ("replante un marqueur AMBIGU sur un SOUS-DOMAINE de boutique "
                "⇒ la clause `h.endswith('.' + b)` de est_boutique()")
-CIBLES[37] = ("c5", "c6")
+CIBLES[37] = ("c5",)          # 🆕 dn6-6 : (c6) ne rougit plus, MESURE
 
 # 🔴 AJOUTE PAR `dn7-1` LE 2026-09-08 — IL GARDE LA DESCENTE DE `linkid` CHEZ
 #    LES AMBIGUS. ⛔ Sans lui, le jeton sortirait du motif FRANC sans que rien
@@ -556,12 +654,34 @@ CIBLES[37] = ("c5", "c6")
 #    FALSIFIABLE, ⛔ pas une exception declaree.
 MUTANTS[38] = ("replante un `?linkid=` — le jeton DESCENDU chez les ambigus "
                "le 2026-09-08 — sur un hote de boutique DERIVE de la BOM")
-CIBLES[38] = ("c5", "c6")
+CIBLES[38] = ("c5",)          # 🆕 dn6-6 : (c6) ne rougit plus, MESURE
+
+# 🆕 2026-09-15 (`dn6-6`) — UN MUTANT PAR BRANCHE NEUVE DU NOUVEL ENGAGEMENT,
+#    chacun replantant une faute de l'I/O Matrix du dossier de la marche.
+MUTANTS[39] = ("copie une adresse marquee de la page d'achat, EN ENTIER, dans "
+               "`docs/affiliation.md` ⇒ un lien marque HORS de la page d'achat")
+CIBLES[39] = ("c5",)
+MUTANTS[40] = ("retire `affiliate link` d'une cellule `Source` — l'adresse "
+               "marquee RESTE ⇒ un lien affilie SANS sa mention")
+CIBLES[40] = ("c5",)
+MUTANTS[41] = ("pose `affiliate link` a cote d'une adresse NUE (une adresse "
+               "tentee) ⇒ une mention qui ne declare RIEN")
+CIBLES[41] = ("c24",)
+MUTANTS[42] = ("remplace les liens suivis par des recherches NUES, mentions "
+               "retirees ⇒ les deux pages disent encore PORTER des liens")
+CIBLES[42] = ("c6",)
+MUTANTS[43] = ("ajoute au releve une ligne pour le REDIRECTEUR lui-meme "
+               "(`s.click.aliexpress.com`) ⇒ il n'est PAS un fournisseur")
+CIBLES[43] = ("c3",)
+MUTANTS[44] = ("replante « the revenue threshold is set at 300 € » ⇒ `threshold` "
+               "NON qualifie par un mot de versement reste une projection")
+CIBLES[44] = ("c16",)
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL, hors le controle final qui le confronte.
 #    Il se PERIME si on ajoute un controle sans le mettre a jour — et c'est
 #    voulu : c'est ce qui rend (z) FALSIFIABLE.
-CONTROLES_PREVUS = 23
+# 🆕 2026-09-15 (`dn6-6`) : 23 ⇒ 24, (c24) la reciproque du nouvel engagement.
+CONTROLES_PREVUS = 24
 
 _MUTANT = 0
 
@@ -731,6 +851,60 @@ def est_boutique(h, boutiques):
     return any(h == b or h.endswith("." + b) for b in boutiques)
 
 
+def est_redirecteur(h):
+    return any(h == x or h.endswith("." + x) for x in REDIRECTIONS)
+
+
+def domaine_de(h):
+    """Le domaine auquel une cellule `Source` ATTRIBUE son hote.
+
+    🆕 2026-09-15 (`dn6-6`) — UN REDIRECTEUR SOUS-DOMAINE COMPTE POUR SON
+       DOMAINE PARENT. Les cinq cellules `Source` AliExpress de la page d'achat
+       pointent desormais sur `s.click.aliexpress.com`. Pris tel quel, cet hote
+       devenait un TROISIEME domaine de la population 1 : (c3) exigeait une
+       ligne de releve pour le redirecteur ET declarait orphelines les lignes
+       `aliexpress.com` — un rouge qu'aucune redaction juste n'eteignait.
+       ⇒ un hote de `REDIRECTIONS` a trois etiquettes ou plus est attribue a
+         ses deux dernieres (`s.click.aliexpress.com` ⇒ `aliexpress.com`).
+    ⚠️ CE QUE CA NE FAIT PAS : un redirecteur a deux etiquettes (`amzn.to`) reste
+       lui-meme, et un sous-domaine qui n'est PAS un redirecteur (`sale.`)
+       n'est pas touche ici — `hote()` ne retire que `www.`.
+    ⛔ Le mutant 43 replante la faute inverse : une ligne de releve pour le
+       redirecteur lui-meme, qui doit rougir (c3) comme ORPHELINE."""
+    for x in REDIRECTIONS:
+        if (h == x or h.endswith("." + x)) and x.count(".") >= 2:
+            return ".".join(x.split(".")[-2:])
+    return h
+
+
+def marque(u, boutiques):
+    """Le TYPE de marque d'une adresse, ou None — l'unique classement de (c5),
+    (c6) et (c24). ⛔ Trois copies de ce test divergeraient."""
+    h = hote(u)
+    if est_redirecteur(h):
+        return "REDIRECTEUR"
+    if RE_MARQUEUR_FRANC.search(u):
+        return "marqueur franc"
+    if RE_MARQUEUR_AMBIGU.search(u) and est_boutique(h, boutiques):
+        return "marqueur sur BOUTIQUE"
+    return None
+
+
+def montre(u):
+    """Une adresse marquee IMPRIMABLE : ⛔ sans schema, ET TRONQUEE — toujours.
+
+    🆕 2026-09-15 (`dn6-6`) — `u[:56]` imprimait l'adresse EN ENTIER des qu'elle
+       est courte (un lien suivi fait 43 caracteres), schema compris. Un releve
+       de `mesures/` qui recopie la sortie la REPLANTAIT alors dans le corpus,
+       et (c5) rougissait sur son propre compte rendu. Sans `https://`, `RE_URL`
+       ⛔ ne la voit plus ; et la coupe a 28 caracteres (ou 6 de moins que
+       l'adresse, si elle est plus courte) garantit qu'⛔ aucune adresse n'est
+       recopiee ENTIERE, meme sans schema : la trace NOMME, elle ⛔ ne republie
+       pas (mesure du 2026-09-15 : `…/e/<code>` sortait complet a 40)."""
+    s = re.sub(r"^https?://", "", u)
+    return s[:min(28, max(1, len(s) - 6))] + "…"
+
+
 def cible_lien(depuis, href):
     """La cible d'un lien markdown, NORMALISEE en chemin du depot.
 
@@ -766,6 +940,52 @@ def unites(texte):
     return [u for u in out if u]
 
 
+def unite_autour(texte, pos):
+    """L'UNITE qui porte la position `pos` : la CELLULE de table si la ligne en
+    est une, sinon l'unite de declaration de `unites()` (meme regle de coupe).
+
+    🆕 2026-09-15 (`dn6-6`) — c'est la maille du NOUVEL engagement de (c5) : la
+       mention doit vivre A COTE de l'adresse, ⛔ n'importe ou dans la page.
+       Une ligne de table porte plusieurs cellules : la mention d'une autre
+       cellule ⛔ ne declare pas celle-ci."""
+    deb = texte.rfind("\n", 0, pos) + 1
+    fin = texte.find("\n", pos)
+    fin = len(texte) if fin < 0 else fin
+    ligne = texte[deb:fin]
+    if ligne.strip().startswith("|"):
+        k = deb
+        for morceau in ligne.split("|"):
+            if k <= pos < k + len(morceau):
+                return morceau
+            k += len(morceau) + 1
+        return ligne
+    lignes = texte.split("\n")
+    k, idx = 0, 0
+    for idx, brut in enumerate(lignes):
+        if k + len(brut) >= pos:
+            break
+        k += len(brut) + 1
+    out, cur, cible = [], None, None
+    for i, brut in enumerate(lignes):
+        s_ = re.sub(r"^\s*>\s?", "", brut).strip()
+        if not s_:
+            if cur is not None:
+                out.append(cur)
+            cur = None
+        else:
+            debut = (s_.startswith(("|", "- ", "* ", "#", "```"))
+                     or re.match(r"^\d+\. ", s_) is not None)
+            if debut or cur is None:
+                if cur is not None:
+                    out.append(cur)
+                cur = [s_, i]
+            else:
+                cur[0] += " " + s_
+        if i == idx:
+            cible = cur
+    return cible[0] if cible else ligne
+
+
 def populations(bom):
     """LES DEUX POPULATIONS, DERIVEES DE `docs/bom.md`.
 
@@ -779,13 +999,15 @@ def populations(bom):
     for h, corps in tables(bom):
         i_src = next((k for k, n in enumerate(h)
                       if n.lower().startswith("source")), None)
+        # 🆕 2026-09-15 (`dn6-6`) : `Address tried` (page anglaise) — `adresse`
+        #    reste lu, ⛔ il ne sert plus a la page d'achat.
         i_ten = next((k for k, n in enumerate(h)
-                      if "adresse" in n.lower()), None)
+                      if "adresse" in n.lower() or "address" in n.lower()), None)
         for c in corps:
             if i_src is not None:
-                pop1.update(hote(u) for u in RE_URL.findall(c[i_src]))
+                pop1.update(domaine_de(hote(u)) for u in RE_URL.findall(c[i_src]))
             if i_ten is not None:
-                pop2.update(hote(u) for u in RE_URL.findall(c[i_ten]))
+                pop2.update(domaine_de(hote(u)) for u in RE_URL.findall(c[i_ten]))
     for h, corps in tables(bom):
         en_table.add(" | ".join(h))
         for c in corps:
@@ -810,23 +1032,24 @@ def populations(bom):
             hors_table.append(l)
     for para in re.split(r"\n\s*\n", "\n".join(hors_table)):
         if RE_FOURNISSEUR.search(para):
-            pop1.update(hote(u) for u in RE_URL.findall(para))
+            pop1.update(domaine_de(hote(u)) for u in RE_URL.findall(para))
     return {d for d in pop1 if d}, {d for d in pop2 if d}
 
 
-def declarations(texte):
-    """Les phrases d'etat, LUES EN GRAS — ⛔ pas dans la prose explicative."""
-    return [m.group(1) for m in RE_DECL_GRAS.finditer(texte)]
+def declarations(texte, rx=RE_DECL_GRAS):
+    """Les phrases d'etat, LUES EN GRAS — ⛔ pas dans la prose explicative.
+    🆕 2026-09-15 (`dn6-6`) : `rx` dit la LANGUE du fichier lu."""
+    return [m.group(1) for m in rx.finditer(texte)]
 
 
-def declaration_en_vigueur(texte):
+def declaration_en_vigueur(texte, rx=RE_DECL_GRAS):
     """LA DERNIERE declaration en gras — celle qui fait foi.
 
     🔴 ⛔ PAS « toutes » : `NFR3` fait ANNOTER plutot qu'effacer, donc le jour
        ou l'etat bascule la phrase perimee RESTE au-dessus de la neuve. Exiger
        que TOUTES concordent rendrait la bascule inecrivable autrement qu'en
        effacant — le contraire de la regle qu'on pretend garder."""
-    d = declarations(texte)
+    d = declarations(texte, rx)
     return d[-1] if d else None
 
 
@@ -874,9 +1097,19 @@ def muter(etat):
                    + bloc.replace("`waveshare.com`", "`ce fabricant`")
                    + A_TITRE_TENTEES + suite)
     elif _MUTANT == 2:
-        p[BOM] = p[BOM].replace(
-            "https://www.aliexpress.com/w/wholesale-INA219-CJMCU.html",
-            "https://www.reichelt.de/w/ina219-cjmcu")
+        # 🆕 2026-09-15 (`dn6-6`) : l'ancre etait l'adresse de recherche nue de
+        #    l'INA219. La cellule porte desormais un lien suivi et sa mention :
+        #    la faute « la BOM change de fournisseur » remplace la CELLULE
+        #    entiere, et l'ancre est DERIVEE (la ligne `INA219` de la table).
+        lignes = p[BOM].split("\n")
+        k = next((i for i, l in enumerate(lignes)
+                  if l.strip().startswith("|") and "INA219" in l
+                  and RE_CELLULE_SUIVIE.search(l)), None)
+        if k is None:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        lignes[k] = RE_CELLULE_SUIVIE.sub(
+            "[reichelt](https://www.reichelt.de/w/ina219-cjmcu)", lignes[k], 1)
+        p[BOM] = "\n".join(lignes)
     elif _MUTANT == 3:
         if A_TITRE_TENTEES not in p[PAGE] or A_TITRE_LOI not in p[PAGE]:
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
@@ -888,13 +1121,18 @@ def muter(etat):
     elif _MUTANT == 4:
         # 🔴 LA FAUTE REELLE : une adresse de la table de BOM devient un lien
         #    marque, et ⛔ PERSONNE ne revient corriger les deux phrases.
+        # 🆕 2026-09-15 (`dn6-6`) : l'adresse de recherche du BH1750 n'existe
+        #    plus. Le marqueur est pose sur une adresse TENTEE — une unite qui
+        #    ⛔ declare rien — et c'est le NOUVEL (c5) qui doit la voir.
         p[BOM] = p[BOM].replace(
-            "https://www.aliexpress.com/w/wholesale-BH1750-GY-302.html",
-            "https://www.aliexpress.com/w/wholesale-BH1750-GY-302.html"
-            "?aff_trace_key=dn65", 1)
+            "https://www.adafruit.com/?q=BME680",
+            "https://www.adafruit.com/?q=BME680&aff_trace_key=dn65", 1)
     elif _MUTANT == 5:
-        p[PAGE] = p[PAGE].replace("**Ce dépôt " + NEG + ".**",
-                                  "**Ce dépôt " + POS + ".**")
+        # 🆕 2026-09-15 (`dn6-6`) : la faute d'origine retournait la phrase
+        #    NEG en POS. La phrase NEG reste (NFR3) et la POS est ecrite EN
+        #    DESSOUS : la faute est desormais de REBASCULER celle qui fait foi.
+        p[PAGE] = p[PAGE].replace("**Ce dépôt " + POS + ".**",
+                                  "**Ce dépôt " + NEG + ".**")
     elif _MUTANT == 6:
         p[BOM] = p[BOM].replace(A_DECL_BOM, "Rien à signaler de ce côté.")
     elif _MUTANT == 7:
@@ -932,7 +1170,10 @@ def muter(etat):
         p[PAGE] += ("\n⚠️ Le premier jalon est atteint à 5 000 € de "
                     "commissions cumulées.\n")
     elif _MUTANT == 17:
-        p[BOM] += ("\n⚠️ Le premier palier chiffré est posé à 1 000 € de "
+        # 🆕 2026-09-15 (`dn6-6`) : la charge est ecrite dans la langue de la
+        #    page d'achat — « Le premier palier chiffré est posé à 1 000 € de
+        #    commissions. » jusqu'a ce jour.
+        p[BOM] += ("\n⚠️ The first tier is set at 1 000 € of "
                    "commissions.\n")
     elif _MUTANT == 18:
         p[PAGE] += ("\n⇒ à ce taux, ça rapporterait environ 0,44 € par carte "
@@ -997,6 +1238,10 @@ def muter(etat):
         #    identifiant de suivi n'a ete ecrit, « verifiable a la lecture du
         #    diff ». Un code qui a l'AIR vrai rend cette promesse invérifiable
         #    a l'oeil. Seul l'HOTE compte pour la branche REDIRECTEUR.
+        # 🆕 2026-09-15 (`dn6-6`) : la promesse d'`AC-A3` est PERIMEE — cinq
+        #    identifiants de l'owner vivent dans la page d'achat. Le code reste
+        #    FABRIQUE pour une autre raison, toujours vraie : ⛔ un mutant ne
+        #    porte pas les codes de l'owner (les mutants 39/40/42 les DERIVENT).
         p[BOM] += "\n\nhttps://s.click.aliexpress.com/e/_TEMOIN31FABRIQUE\n"
     elif _MUTANT == 32:
         p[PAGE] = p[PAGE].replace(
@@ -1029,6 +1274,48 @@ def muter(etat):
         #    est le redirecteur de documentation Microsoft, et c'est
         #    EXACTEMENT ce que cette descente cesse d'epingler.
         p[BOM] += "\n\nhttps://www.aliexpress.com/item/1006.html?linkid=dn71\n"
+    elif _MUTANT == 39:
+        # ⚠️ L'ADRESSE EST **DERIVEE** de la page d'achat, ⛔ recopiee ici : ce
+        #    fichier ⛔ ne porte pas les codes de l'owner.
+        u = next((x for x in RE_URL.findall(p[BOM])
+                  if est_redirecteur(hote(x))), None)
+        if u is None:
+            return e                      # plus aucun lien suivi ⇒ rc=3
+        p[PAGE] += "\n\nLien relevé : %s\n" % u
+    elif _MUTANT == 40:
+        lignes = p[BOM].split("\n")
+        k = next((i for i, l in enumerate(lignes)
+                  if l.strip().startswith("|") and RE_CELLULE_SUIVIE.search(l)),
+                 None)
+        if k is None:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        m = RE_CELLULE_SUIVIE.search(lignes[k])
+        lignes[k] = (lignes[k][:m.start()] + "[%s](%s)" % (m.group(1), m.group(2))
+                     + lignes[k][m.end():])
+        p[BOM] = "\n".join(lignes)
+    elif _MUTANT == 41:
+        p[BOM] = p[BOM].replace(
+            "| `https://thepihut.com/search?q=BME680` |",
+            "| `https://thepihut.com/search?q=BME680` — affiliate link |", 1)
+    elif _MUTANT == 42:
+        # 🔴 LA FAUTE REELLE, ET ELLE EST SILENCIEUSE : les liens s'en vont, les
+        #    deux phrases « PORTE des liens » restent.
+        p[BOM] = RE_CELLULE_SUIVIE.sub(
+            lambda m: ("`https://www.aliexpress.com/w/wholesale-TEMOIN42.html`"
+                       if est_redirecteur(hote(m.group(2))) else m.group(0)),
+            p[BOM])
+    elif _MUTANT == 43:
+        p[PAGE] = p[PAGE].replace(
+            "\n| `waveshare.com` | *la boutique elle-même* |",
+            "\n| `s.click.aliexpress.com` | *le redirecteur des liens suivis* | "
+            "— | `https://portals.aliexpress.com/` | 2026-09-15 | ✅ **LU** "
+            "(méthode : lecture par l'owner dans un navigateur connecté). |"
+            "\n| `waveshare.com` | *la boutique elle-même* |", 1)
+    elif _MUTANT == 44:
+        if "docs/roadmap.md" not in p:
+            return e                      # fichier hors corpus ⇒ NO-OP ⇒ rc=3
+        p["docs/roadmap.md"] += ("\n\nREPLANTED: the revenue threshold is set "
+                                 "at 300 €.\n")
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e
@@ -1226,7 +1513,7 @@ def main():
               % (" · ".join(absents) or "—", " · ".join(intrus) or "—"))
 
     # ── (c5)(c6) LES DEUX SENS DE LA DECLARATION ───────────────────────────
-    print("\n── (c5)(c6) L'ETAT MESURE, PUIS LA CONCORDANCE ───────────────────")
+    print("\n── (c5)(c24)(c6) L'ENGAGEMENT, SA RECIPROQUE, LA CONCORDANCE ─────")
     # ⚠️ PIEGE NE DE L'ELARGISSEMENT AUX `.txt`, ECRIT PLUTOT QUE DECOUVERT :
     #    les fichiers de `mesures/` sont SUIVIS, donc RELUS. Un temoin qui
     #    recopierait dans son compte rendu une adresse marquee EN ENTIER ferait
@@ -1246,42 +1533,79 @@ def main():
     #    DECLARATION. Ce que le depot AFFIRME de lui-meme se lit sur ce qu'il
     #    PUBLIE comme ses adresses, ⛔ pas sur ce qu'il cite.
     boutiques = tuple(sorted(pop1 | pop2))
+    # 🆕 2026-09-15 (`dn6-6`) — `marques` porte desormais (fichier, adresse,
+    #    type, position) : le NOUVEL engagement se juge a la PLACE de
+    #    l'adresse, ⛔ plus a sa seule existence.
     marques, n_url = [], 0
     for f in sorted(prose):
         for m in RE_URL.finditer(prose[f]):
             n_url += 1
-            u = m.group(0)
-            h = hote(u)
-            if any(h == x or h.endswith("." + x) for x in REDIRECTIONS):
-                marques.append("%s : %s (REDIRECTEUR)" % (f, u[:56]))
-            elif RE_MARQUEUR_FRANC.search(u):
-                marques.append("%s : %s (marqueur franc)" % (f, u[:56]))
-            elif (RE_MARQUEUR_AMBIGU.search(u)
-                  and est_boutique(h, boutiques)):
-                marques.append("%s : %s (marqueur sur BOUTIQUE)" % (f, u[:56]))
-    ctrl(not marques, "(c5) ⛔ aucune adresse publiee n'est MARQUEE",
+            t = marque(m.group(0), boutiques)
+            if t:
+                marques.append((f, m.group(0), t, m.start()))
+    # 🆕 2026-09-15 (`dn6-6`) — (c5) EST REMPLACE, ⛔ PAS ASSOUPLI. Sa premiere
+    #    redaction (« ⛔ aucune adresse publiee n'est MARQUEE ») etait un
+    #    ENGAGEMENT, et sa docstring nommait le remede : le controle du NOUVEL
+    #    engagement. Le voici : une adresse marquee n'a le droit de vivre QUE
+    #    dans la page d'achat, et SEULEMENT dans une unite qui la declare.
+    #    ⛔ Ignorer `s.click.` aurait laisse un lien NON DECLARE passer partout.
+    hors_page, sans_mention = [], []
+    for f, u, t, pos in marques:
+        if f != BOM:
+            hors_page.append("%s : %s (%s)" % (f, montre(u), t))
+        elif not RE_MENTION.search(unite_autour(prose[f], pos)):
+            sans_mention.append("%s (%s)" % (montre(u), t))
+    ctrl(not hors_page and not sans_mention,
+         "(c5) toute adresse MARQUEE est declaree, a sa place",
          "%d adresse(s) relue(s) dans %d fichier(s) de texte suivis "
-         "(`.md` + `.txt`), 0 marqueur, 0 redirecteur" % (n_url, len(prose))
-         if not marques
-         else "⛔ %d ADRESSE(S) MARQUEE(S) : %s — l'affirmation « aucun lien "
-              "affilie » est DEVENUE FAUSSE"
-              % (len(marques), " · ".join(marques[:2])))
+         "(`.md` + `.txt`), %d marquee(s) — toutes dans `%s`, chacune "
+         "avec `affiliate link` dans son unite" % (n_url, len(prose),
+                                                  len(marques), BOM)
+         if not hors_page and not sans_mention
+         else "⛔ %d HORS DE LA PAGE D'ACHAT : %s · %d SANS SA MENTION dans "
+              "son unite : %s — un lien affilie NON DECLARE"
+              % (len(hors_page), " · ".join(hors_page[:2]) or "—",
+                 len(sans_mention), " · ".join(sans_mention[:2]) or "—"))
 
-    vig = {BOM: declaration_en_vigueur(bom),
-           PAGE: declaration_en_vigueur(page)}
-    publiees = [x for x in marques
-                if x.startswith(BOM + " :") or x.startswith(PAGE + " :")]
-    attendue = NEG if not publiees else POS
+    # 🆕 2026-09-15 (`dn6-6`) — (c24), LA RECIPROQUE : une mention qui ⛔ ne
+    #    porte AUCUNE adresse marquee est une declaration FAUSSE dans l'autre
+    #    sens. Elle se lit A LA CELLULE, comme la moitie « a sa place » de (c5).
+    decorees, n_mentions = [], 0
+    for h_, corps_ in tables(bom):
+        for c_ in corps_:
+            for cel in c_:
+                if not RE_MENTION.search(cel):
+                    continue
+                n_mentions += 1
+                if not any(marque(u, boutiques) for u in RE_URL.findall(cel)):
+                    decorees.append(montre(nu(cel).strip("`[] ")))
+    ctrl(not decorees,
+         "(c24) toute mention `affiliate link` porte son adresse",
+         "%d cellule(s) portant la mention, toutes sur une adresse marquee"
+         % n_mentions if not decorees
+         else "⛔ %d MENTION(S) SUR UNE ADRESSE NUE : %s — la page "
+              "declarerait un lien affilie qui n'existe pas"
+              % (len(decorees), " · ".join(decorees[:2])))
+
+    # 🆕 2026-09-15 (`dn6-6`) — (c6) LIT CHAQUE FICHIER DANS SA LANGUE : la page
+    #    d'achat en anglais, la page d'affiliation en francais. L'ETAT, lui,
+    #    reste celui des DEUX pages qui portent la declaration.
+    vig = {BOM: declaration_en_vigueur(bom, RE_DECL_GRAS_BOM),
+           PAGE: declaration_en_vigueur(page, RE_DECL_GRAS)}
+    publiees = [x for x in marques if x[0] in (BOM, PAGE)]
+    attendue = ({BOM: NEG_BOM, PAGE: NEG} if not publiees
+                else {BOM: POS_BOM, PAGE: POS})
     absentes = sorted(f for f, d in vig.items() if d is None)
     fautives = sorted(f for f, d in vig.items()
-                      if d is not None and d != attendue)
+                      if d is not None and d != attendue[f])
     ctrl(not absentes and not fautives,
          "(c6) l'affirmation CONCORDE avec l'etat mesure",
-         "2 declarations EN VIGUEUR, « %s » des deux cotes" % attendue
+         "2 declarations EN VIGUEUR : « %s » (%s) · « %s » (%s)"
+         % (attendue[BOM], BOM, attendue[PAGE], PAGE)
          if not absentes and not fautives
-         else ("⛔ %d CONTRADICTION(S) — l'etat mesure dit « %s », la "
-               "declaration EN VIGUEUR dit l'inverse : %s"
-               % (len(fautives), attendue, " · ".join(fautives))
+         else ("⛔ %d CONTRADICTION(S) — l'etat mesure (%d adresse(s) "
+               "marquee(s) publiee(s)) contredit la declaration EN VIGUEUR "
+               "de : %s" % (len(fautives), len(publiees), " · ".join(fautives))
                if fautives else
                "⛔ DECLARATION ABSENTE de %s — ⛔ le silence ne vaut pas "
                "« non »" % " · ".join(absentes)))
@@ -1479,6 +1803,10 @@ def main():
             #    « 300 € de commissions par mois » sortait VERT parce que le
             #    montant precedait le mot. Une projection ⛔ ne s'ecrit pas
             #    dans un seul ordre.
+            if (m.group(0).lower().startswith("threshold")
+                    and RE_SEUIL_DE_VERSEMENT.search(
+                        txt[max(0, m.start() - 24):m.start()])):
+                continue          # une CONDITION publiee, ⛔ un jalon
             deb = max(0, m.start() - PORTEE_PROJECTION)
             brut = txt[deb:m.start() + PORTEE_PROJECTION]
             rel = m.start() - deb
@@ -1576,7 +1904,8 @@ def main():
     print("   ni FRAIS. Un taux faux mais date et source la laisse VERTE —")
     print("   rouvrir la source est le seul chemin. Elle ne prouve pas non")
     print("   plus que le mutant rougisse BIEN le controle qu'il declare :")
-    print("   ca, c'est `mesures/dn6-5/T3`, qui relit A COLONNE FIXE.")
+    print("   ca, c'est `mesures/dn6-5/T3` puis `mesures/dn6-6/T3`, qui relisent")
+    print("   A COLONNE FIXE.")
     return bilan(1 if ko_total[0] else 0)
 
 

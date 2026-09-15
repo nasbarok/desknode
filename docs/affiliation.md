@@ -11,6 +11,14 @@ acceptée, aucun identifiant de suivi n'a été écrit nulle part dans ce dépô
 sur le diff** de la marche qui a produit cette page. S'inscrire est un **geste de l'owner** ; ce qui
 est livré ici, c'est **ce qu'il faut savoir avant de le faire**, et **ce qu'il faudra écrire après**.
 
+⚠️ **Annoté le 2026-09-15 (`dn6-6`) — le paragraphe ci-dessus est PÉRIMÉ, ⛔ pas effacé.** Ce jour-là,
+l'owner a ouvert **lui-même** son compte au programme d'affiliation d'AliExpress (AliExpress Portals),
+en a accepté les règles, et a généré les liens suivis : cinq identifiants de suivi sont désormais
+écrits dans ce dépôt, **tous** dans [ce qu'il faut acheter](bom.md), chacun à côté de la mention
+`affiliate link`. ⛔ Aucun agent n'a créé de compte, accepté de conditions ni généré de lien. Ce que
+cette page livre depuis ce jour, c'est **ce qu'il fallait écrire après** : §2, §3, §5, §6 et §7 sont
+annotés, datés, chaque fait neuf avec son adresse, sa date et sa méthode.
+
 ⛔ **Et il n'y a aucun chiffre de palier de revenus dans ce dépôt.** Des seuils chiffrés avaient été
 esquissés pendant la rédaction de la nomenclature ; ils ont été **sortis du périmètre par décision de
 l'owner le 2026-09-06**, et ils ne sont réintroduits **ni ici, ni dans
@@ -28,12 +36,24 @@ renvoyer vers la boutique.
 
 ⇒ **c'est mécaniquement détectable**, et c'est exactement ce que fait la vérification décrite au §8 :
 elle relit toutes les adresses publiées par ce dépôt et compte celles qui portent une marque.
+⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : elle vérifie désormais aussi leur **place** — une adresse marquée
+⛔ n'a le droit de vivre que dans la page d'achat, dans une cellule qui porte la mention `affiliate link`,
+et cette mention ⛔ ne décore jamais une adresse nue.
 
 ---
 
 ## 2. L'état mesuré, et comment il se vérifie
 
 🔵 **Ce dépôt ne porte aucun lien affilié.**
+
+⚠️ **Annoté le 2026-09-15 (`dn6-6`) — la phrase d'état ci-dessus est PÉRIMÉE, ⛔ pas effacée** : elle
+était vraie jusqu'à ce jour. Celle qui fait foi est écrite en dessous, comme le §7 l'annonçait.
+
+🔵 **Ce dépôt porte des liens affiliés.** Cinq, et **seulement** dans [ce qu'il faut acheter](bom.md) :
+un lien suivi du programme d'affiliation d'AliExpress dans la cellule `Source` de chacune des cinq
+lignes AliExpress — la carte, les deux capteurs du palier « DeskNode + Ambiance », et les deux modules
+hors palier — chacun avec la mention `affiliate link` dans la même cellule. ⛔ **Aucun lien Waveshare** :
+la candidature attend son approbation, et elle est **hors de la marche qui a posé ces liens** (§6).
 
 Relevé le 2026-09-07 sur **tous les fichiers de texte suivis par git** — les pages `.md` **et** les
 relevés `.txt`, ⛔ pas un échantillon : **0** adresse portant un marqueur d'affiliation, **0** sur un
@@ -50,6 +70,15 @@ propriété de la gate, et un `.log` neuf ⛔ n'est vu par personne.
 Les adresses de [ce qu'il faut acheter](bom.md) sont des **adresses de recherche nues** — elles
 mènent à une page de résultats, et personne n'est payé si vous cliquez.
 
+⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : les deux zéros et les « adresses de recherche nues » ci-dessus sont
+**périmés pour cinq adresses**. Re-mesuré ce jour par la vérification du §8 : **5** adresses marquées,
+toutes sur le redirecteur de suivi d'AliExpress, toutes dans la page d'achat, chacune avec sa mention.
+Un achat passé par l'un de ces liens peut rémunérer l'owner — ou non : les conditions relevées sont au
+§3. Les **dix** adresses tentées de la page d'achat, elles, restent nues. La correspondance entre
+chaque lien suivi (désigné par son seul code, ⛔ jamais par son adresse entière) et l'adresse de
+recherche nue d'où l'owner l'a généré est dans
+[le relevé du 2026-09-15](../mesures/dn6-6/T1-releves-du-2026-09-15.txt).
+
 ⚠️ **Ces deux zéros ⛔ ne sont pas un instantané** : ils sont **re-dérivés à chaque tir** de la
 vérification du §8, sur la population que `git ls-files` rend. Un chiffre publié que rien ne
 confronte est un défaut ; ceux-ci sont confrontés.
@@ -58,6 +87,10 @@ confronte est un défaut ; ceux-ci sont confrontés.
 adresse n'est marquée, les deux pages **doivent le dire** ; le jour où l'une l'est, la phrase
 ci-dessus devient fausse et la vérification **rougit** — même si personne n'a pensé à mettre la
 déclaration à jour. Le point de bascule est écrit au §7.
+⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : ce jour est venu, et la vérification a été **rouverte le même jour**
+pour garder le **nouvel** engagement — toute adresse marquée est déclarée, à sa place, et toute mention
+porte une adresse marquée. Retirer les liens sans remettre la phrase d'état à jour la fait rougir tout
+autant.
 
 ---
 
@@ -68,6 +101,9 @@ pas : ce sont les domaines des cellules `Source` de ses tables, plus le fabrican
 Mesuré le 2026-09-07, ça fait **deux** domaines — ⛔ pas onze. Le détail de la dérivation est dans
 [T1](../mesures/dn6-5/T1-population-bom.txt), le relevé brut dans
 [T2](../mesures/dn6-5/T2-releve-programmes.txt).
+⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : **toujours deux**. Les cinq cellules AliExpress pointent désormais sur
+le redirecteur de suivi `s.click.aliexpress.com`, que la vérification attribue à son domaine parent,
+`aliexpress.com` — ⛔ un redirecteur n'est pas un fournisseur.
 
 | Domaine | Programme, tel que sa page le nomme | Ce que sa propre page affiche | Adresse relevée | Date | Verdict |
 |---|---|---|---|---|---|
@@ -77,6 +113,24 @@ Mesuré le 2026-09-07, ça fait **deux** domaines — ⛔ pas onze. Le détail d
 | `aliexpress.com` | *le portail du programme* | — | `https://portals.aliexpress.com/` | 2026-09-07 | ⛔ **NON ATTEINT** (méthode : outil de récupération automatisée ; ⛔ pas re-tenté avec un en-tête de navigateur) — HTTP 302 vers le portail, puis une page réduite à son titre : c'est une application, ⛔ pas une page de conditions. Aucun taux, aucune condition lisible. |
 | `waveshare.com` | **Waveshare® Affiliate Program** | commission de base **2 %** par commande passée via le lien ; suivi valable **au moins 72 h** (et tant que dure la session du navigateur) ; versement **PayPal uniquement**, à partir de **US$5** cumulés, traité **avant le 15 du mois** ; frais PayPal annoncés **4,4 % + US$0,30** ; taux **renégociable** sur demande motivée ; une liste de promotions **interdites** est publiée | `https://www.waveshare.com/join_affiliate.html` | 2026-09-07 | ✅ **LU** (méthode : en-tête de navigateur) — page publiée par le fournisseur lui-même, section *Frequently Asked Questions*. |
 | `waveshare.com` | *la boutique elle-même* | — | `https://www.waveshare.com/` | 2026-09-07 | ✅ **ATTEINTE** (méthode : en-tête de navigateur) — répond normalement. |
+| `aliexpress.com` | **AliExpress Portals — « Affiliate Program Rules »**, version du 2025-08-01 | Commission : **7 %** pour « Other Categories » si le vendeur est affilié, **0** sinon (§5.1.5.5 des règles). Plafond : **50 USD** de commission par commande. Retrait par virement : seuil de paiement **16 USD**, frais de **15 USD** par retrait. Durée de suivi : ⛔ **écrite nulle part** dans les règles. | `https://portals.aliexpress.com/` — ⚠️ l'adresse exacte du document de règles n'a **pas** été relevée | 2026-09-15 | ✅ **LU PAR L'OWNER** (méthode : lecture par l'owner dans un navigateur connecté au portail) — relevé owner, ⛔ pas relu par l'agent : le portail exige le compte de l'owner. |
+| `waveshare.com` | **Waveshare® Affiliate Program** — relu le jour de la bascule | à *« What is the validity period of URL tracking? »*, la page affiche **toujours** *« At least 72 hours. »* puis *« Flexible Tracking: Your link remains active until the customer's browser session expires. »* ; *Who can Join* invite toujours *« primarily »* les présences sur **GitHub** ; la liste des promotions interdites nomme *« directing traffic to specific third-party sellers of Waveshare® products instead of the official Waveshare® store »* | `https://www.waveshare.com/join_affiliate.html` | 2026-09-15 | ✅ **LU** (méthode : en-tête de navigateur, `curl -A "Mozilla/5.0 …"`) — HTTP 200, 105 653 octets. |
+
+⚠️ **Annoté le 2026-09-15 (`dn6-6`) — DEUX RELEVÉS WAVESHARE DIVERGENT, ET LES DEUX SONT ÉCRITS, ⛔ PAS
+TRANCHÉS.** La ligne du 2026-09-07 ci-dessus écrit un suivi valable *« au moins 72 h »*. Le 2026-09-15,
+l'owner a relevé un suivi *« désormais limité à la session du navigateur »* (méthode : lecture par
+l'owner ; ⚠️ l'adresse où il l'a lu n'a pas été relevée). Le **même jour**, la page publique du
+programme, relue par l'agent avec un en-tête de navigateur (dernière ligne du tableau), affiche
+**toujours** *« At least 72 hours »*. ⇒ ⛔ cette page ne publie pas que les 72 h ont disparu, et ⛔ elle
+ne publie pas non plus que le relevé de l'owner est faux : ce qui les départagerait est l'espace
+affilié Waveshare, que la candidature en attente ne donne pas encore.
+⚠️ *Et la règle Waveshare citée ci-dessus* — ne pas diriger vers des vendeurs tiers — ⛔ est
+**assumée par l'owner**, ⛔ pas ignorée : la carte de la page d'achat pointe vers AliExpress. C'est une
+décision owner du 2026-09-15, écrite ici pour qu'elle ne se redécouvre pas.
+⚠️ *Ce que la ligne AliExpress du 2026-09-15 ⛔ ne dit pas* : l'adresse exacte du document de règles
+n'a pas été relevée, et la durée de suivi n'y est écrite nulle part — ⛔ ni l'une ni l'autre n'est
+comblée ici. L'owner a aussi reçu l'e-mail *« Your affiliate account is ready »* ; il est consigné dans
+[le relevé du 2026-09-15](../mesures/dn6-6/T1-releves-du-2026-09-15.txt), ⛔ pas recopié.
 
 > ⏪ **CE QUE CES DEUX LIGNES DISAIENT LE MÊME JOUR, ET QUI EST RÉFUTÉ — ⛔ pas effacé (`NFR3`) :**
 > les deux portaient un verdict d'échec, motivé par un **HTTP 403** — la première en le
@@ -99,6 +153,9 @@ Mesuré le 2026-09-07, ça fait **deux** domaines — ⛔ pas onze. Le détail d
 > ⛔ **Cette page ne la corrige pas** : le relevé de prix n'est pas son territoire, et une table de
 > prix se re-relève, ⛔ elle ne se rafistole pas. Le constat est **écrit au ledger de planification
 > avec son porteur**.
+> ⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : la page d'achat est désormais en anglais. La phrase citée y vit
+> **traduite** (*Manufacturer price not surveyable*), et elle y est **annotée comme réfutée**, datée,
+> juste en dessous — ⛔ toujours pas corrigée : le re-relevé du prix reste porté au ledger.
 
 ### 🔴 Ce qui est LU, ce qui reste inconnu, et pourquoi la différence compte
 
@@ -122,6 +179,12 @@ atteintes ne les affiche. Elles ⛔ ne se devinent pas ; elles se liront **depui
 fois un compte ouvert — et c'est un geste de l'owner (§6).
 ✅ **Pour Waveshare, ces quatre-là sont désormais LUES** (2 %, 72 h, US$5, approbation après
 confirmation de réception) — voir la ligne du tableau ci-dessus.
+⚠️ **Annoté le 2026-09-15 (`dn6-6`)** — pour AliExpress, **trois** des quatre sont fermées par le relevé
+de l'owner (ligne du 2026-09-15 du tableau) : le seuil de paiement et le plafond par commande sont
+**lus**, et l'approbation est **acquise** — le compte de l'owner est actif, même si le critère lui-même
+n'a pas été lu. ⛔ **La durée de suivi reste inconnue** : elle n'est écrite nulle part dans les règles
+relevées, et elle ⛔ ne se devine pas. ⚠️ Et pour Waveshare, le « 72 h » est **contesté** par le relevé de
+l'owner du même jour — les deux relevés sont écrits sous le tableau.
 
 ---
 
@@ -190,6 +253,16 @@ question se pose entière, et la mention explicite est le comportement sûr.
 dépôt de code privé sans audience publique a cessé d'être vraie. L'autre moitié de la condition —
 un lien marqué — ⛔ n'est pas remplie : l'état du §2 n'a pas changé.
 
+⚠️ **Annoté le 2026-09-15 (`dn6-6`) — l'autre moitié est remplie depuis ce jour** : cinq liens marqués
+sont publiés dans la page d'achat, et l'état du §2 a changé. La transparence du point 1 ci-dessus est
+donc **due**. La mention posée à côté de chaque lien est **`affiliate link`**, en anglais comme la page,
+dans la même cellule que le lien.
+⚠️ **Juxtaposé, ⛔ pas tranché** : l'article 5, I de la loi n° 2023-451 cité dans le tableau ci-dessus
+impose la mention « Publicité » **ou** « Collaboration commerciale » à l'influence commerciale ; la
+mention retenue par l'owner est `affiliate link`. Cette page ⛔ ne dit pas si l'une vaut l'autre, ni si
+le régime de l'influence commerciale s'applique à ce dépôt — ⛔ elle n'est pas un conseil, et seul
+l'owner peut aller chercher cette réponse-là.
+
 ---
 
 ## 6. Ce que l'owner doit faire lui-même
@@ -204,10 +277,23 @@ engage une personne : un compte, un contrat, une identité fiscale.
 | Décider si le dépôt **doit** porter des liens affiliés | c'est un arbitrage de projet, ⛔ pas une conséquence technique ; rien dans ce dépôt ne l'impose | **owner** |
 | Déclarer les sommes perçues et **immatriculer** l'activité si elle devient imposable | acte fiscal personnel ; ⛔ hors de tout dépôt de code | **owner** |
 | **Annoter les deux phrases d'état** le jour où un lien est posé — la périmée **reste**, la neuve s'écrit en dessous | c'est le geste qui rend la promesse vraie ; la vérification l'**exige**, elle ne peut pas l'écrire à sa place | **owner** |
+| 🆕 *(2026-09-15)* **Cliquer une fois chacun des cinq liens suivis** de la page d'achat, ⛔ sans acheter, et confirmer qu'il ouvre la recherche du bon module | un clic est **compté** par le programme sur le compte de l'owner, et ses règles sanctionnent le trafic artificiel : ⛔ un agent n'envoie aucune requête vers un lien suivi | **owner** |
+| 🆕 *(2026-09-15)* **Suivre la candidature Waveshare** — « Waiting for approval » — et, si elle est approuvée, relever la durée de suivi dans l'espace affilié avant tout lien Waveshare | la candidature et son espace affilié sont au nom de l'owner ; ⛔ elle est hors de la marche qui a posé les liens AliExpress | **owner** |
 
 ⚠️ **Le dernier n'est pas facultatif** : tant qu'il n'est pas fait, la vérification reste rouge. Elle
 est écrite pour ça — un lien marqué posé sans mise à jour de la déclaration est **exactement** le cas
 qu'elle attrape.
+
+⚠️ **Annoté le 2026-09-15 (`dn6-6`) — l'état des gestes ci-dessus, ce jour-là** :
+- *ouvrir un compte et accepter ses conditions* — **fait par l'owner** pour AliExpress ; pour Waveshare,
+  la candidature est déposée et **attend son approbation** ;
+- *lire les quatre conditions inconnues d'AliExpress* — **trois** lues par l'owner, ⛔ la durée de suivi
+  est écrite nulle part (§3) ;
+- *décider si le dépôt doit porter des liens affiliés* — **décidé par l'owner** : oui, sur la page d'achat ;
+- *déclarer les sommes perçues* — ⛔ rien à dire tant que rien n'est perçu, et ⛔ ce n'est pas le
+  territoire d'un dépôt ;
+- *annoter les deux phrases d'état* — **fait**, le même jour, dans les deux pages : la vérification ⛔ n'est
+  pas restée rouge.
 
 ---
 
@@ -235,8 +321,13 @@ qu'elle attrape.
    deux « privé aujourd'hui » de ce point ont cessé d'être vrais. Le critère de Waveshare reste
    **mou** et l'indice d'AliExpress reste un indice : seule une candidature, geste de l'owner
    (§6), tranchera.
+   ⚠️ **Annoté le 2026-09-15 (`dn6-6`)** : pour **AliExpress**, la condition est **réunie** — le compte de
+   l'owner est actif (relevé owner, §3). Pour **Waveshare**, ⛔ pas encore : la candidature attend son
+   approbation, et ⛔ aucun lien Waveshare n'est publié.
 2. **Un geste de l'owner** : ouvrir le compte, accepter les conditions générales, relever les quatre
    conditions inconnues (§6).
+   ⚠️ **Annoté le 2026-09-15 (`dn6-6`)** : **fait par l'owner** pour AliExpress — trois conditions sur
+   quatre relevées, la durée de suivi introuvable dans les règles.
 3. **Une annotation des deux phrases d'état** : celle du §2 de cette page, et celle de la section
    correspondante de [ce qu'il faut acheter](bom.md). ⛔ **Elles ne s'effacent pas** : la phrase
    périmée **reste**, et la nouvelle s'écrit **en dessous** — c'est la règle « annoter, ⛔ pas
@@ -244,10 +335,17 @@ qu'elle attrape.
    passe. ⚠️ **Et elle restera rouge ensuite**, jusqu'à ce que quelqu'un rouvre la vérification pour
    y écrire le **nouvel** engagement. C'est délibéré : changer une promesse publiée doit être un
    geste écrit, ⛔ pas une dérive silencieuse.
+   ⚠️ **Annoté le 2026-09-15 (`dn6-6`)** : **fait**, dans les deux pages, la périmée gardée au-dessus de
+   la neuve. ⛔ Et la vérification **n'est pas restée rouge** : elle a été rouverte **le même jour** pour y
+   écrire le nouvel engagement — toute adresse marquée est déclarée, à sa place, avec sa mention, et toute
+   mention porte une adresse marquée (`tools/verif_affiliation_dn65.py`, contrôles `(c5)` et `(c24)`).
 
 **Où ça se dira** : **ici**, au §2 et au §3 (le programme, ses conditions, son taux, sa date), **et**
 dans la section « Liens affiliés » de la page d'achat, à la place exacte où vit déjà la phrase d'état
 — parce que c'est là que se trouve le lecteur que ça concerne, au moment où il achète.
+⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : la page d'achat est passée **en anglais** le même jour, en une seule
+page ; cette section s'y appelle désormais `Affiliate links`, et la déclaration neuve y est écrite sous
+la phrase d'origine traduite.
 
 ⛔ **Ce qui ⛔ ne fait PAS partie du point de bascule** : un montant, un palier de revenus, une date
 cible. Ils ont été sortis du périmètre par l'owner, et les réintroduire par la porte du « point de
@@ -269,6 +367,9 @@ Rien ici n'est à croire sur parole. Depuis la racine du dépôt :
 Les bornes de départ et d'arrivée sont dans [T0](../mesures/dn6-5/T0-bornes-depart.txt) et
 [T7](../mesures/dn6-5/T7-bornes-arrivee.txt) ; la campagne de mutants et sa réciproque dans
 [T3](../mesures/dn6-5/T3-campagne-mutants.txt).
+⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : celles de la bascule sont dans
+[T0](../mesures/dn6-6/T0-bornes-depart.txt), [T1](../mesures/dn6-6/T1-releves-du-2026-09-15.txt),
+[T3](../mesures/dn6-6/T3-campagne-mutants.txt) et [T7](../mesures/dn6-6/T7-bornes-arrivee.txt).
 
 ⛔ **Ce que la vérification ne prouve pas** : elle ne dit **rien** de la vérité d'un taux ni de sa
 fraîcheur. Un taux faux mais daté et sourcé la laisse verte. Rouvrir la source est le seul chemin —

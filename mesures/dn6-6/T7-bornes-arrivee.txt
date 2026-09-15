@@ -1,0 +1,570 @@
+==============================================================================
+dn6-6 / T7 — LES BORNES D'ARRIVEE, RE-TIREES APRES LA DERNIERE ECRITURE DES DEUX DEPOTS
+==============================================================================
+  ⚠️ CE FICHIER NE PEUT PAS SE MESURER LUI-MEME. Pendant la passe, il existait sous la forme
+     d'un TALON d'une ligne (« PASSE EN COURS ») — pour que le lien du §8 de
+     `docs/affiliation.md` resolve —, et il est remplace par ce releve APRES la passe. Toute
+     gate qui relit les `.txt` suivis (`verif_affiliation_dn65.py` : nombre d'adresses et de
+     fichiers) voit donc, sur l'arbre committe, UN fichier plus long que pendant la passe.
+     ⛔ Il ⛔ porte aucune adresse marquee, aucun montant de jalon, aucun motif de dn415 :
+     les gates qu'il peut toucher sont re-tirees apres son ecriture, et leur compte est au
+     message du commit qui le publie (⛔ ici : un releve qui se cite rouvre la boucle).
+  ⚠️ PREMIERE PASSE T7 JOUEE PUIS ANNULEE, ECRIT PLUTOT QUE TU : une passe complete a tourne de
+     14:44 a 15:04 ; la relecture du diff a trouve ENSUITE une annotation de
+     `docs/affiliation.md` §3 inseree AU MILIEU d'une phrase d'origine (aucun mot perdu, mais la
+     phrase coupee en deux). Elle a ete deplacee apres son paragraphe, et la passe a ete
+     REJOUEE EN ENTIER (T7b, ci-dessous) : ⛔ une passe ne chevauche pas une ecriture. Les
+     comptes de la premiere passe etaient les memes ; seul T7b fait foi.
+
+── 1. L'ETAT DES DEPOTS ET LES EMPREINTES (passe T7b) ─────────────────────
+  ⚠️ L'arbre desknode est MIS EN INDEX (`git add` des fichiers de la marche, ⛔ commit) : c'est
+     l'arbre exact du commit, au talon de T7 pres. Le cockpit porte ses ecritures de cloture
+     (ledger, manifeste regenere en place, tracker, contexte d'epic, dossier de la marche).
+  === dn6-6 / passe T7b — debut 2026-09-15T15:06:28+02:00 ===
+  HEAD desknode : a8c691211da23dae49c7b8f04829625c19a80a93  (branche main)
+  HEAD cockpit  : a9a5f87223908d2e548ea0bdbefce9f45ac5603d  (branche desknode-p0-p1-clos)
+  git status --porcelain desknode :
+    M  CHANGELOG.md
+    M  docs/affiliation.md
+    M  docs/bom.md
+    M  docs/dn4-15-arbitrage.md
+    M  docs/roadmap.md
+    A  mesures/dn6-6/T0-bornes-depart.txt
+    A  mesures/dn6-6/T1-releves-du-2026-09-15.txt
+    A  mesures/dn6-6/T3-campagne-mutants.txt
+    A  mesures/dn6-6/T7-bornes-arrivee.txt
+    M  tools/verif_affiliation_dn65.py
+    M  tools/verif_bom_dn61.py
+    M  tools/verif_cablage_dn62.py
+  git status --porcelain cockpit :
+     M _bmad-output/implementation-artifacts/deferred-work.md
+     M _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md
+     M _bmad-output/implementation-artifacts/epic-dn6-context.md
+     M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+    ?? _bmad-output/implementation-artifacts/dn6-6-la-liste-d-achat-parle-anglais-et-porte-ses-liens-affilies.md
+    ?? docs/dashboard_desktop_project/desknode.mp4
+  EMPREINTE desknode AVANT (contenu) : ca1b89303924e9f7
+  EMPREINTE desknode AVANT (index)   : fe60ef0730887f32
+  EMPREINTE cockpit  AVANT (implementation-artifacts suivi) : 16aadf1685f5b074
+  git rev-list --left-right --count origin/main...main : 0	0
+  wc -l ledger : 8802
+  wc -l docs/bom.md docs/affiliation.md : 317 383
+  git ls-files '*.md' '*.txt' | wc -l : 613
+  git grep -c 'https://s\.click\.aliexpress\.com' (tout l'arbre suivi) :
+    docs/bom.md:5
+    tools/verif_affiliation_dn65.py:1
+  git grep -c 'wholesale-' -- docs/bom.md : 0
+  ls docs/bom*.md : docs/bom.md
+  ls .github/FUNDING.yml : ls: cannot access '.github/FUNDING.yml': No such file or directory
+
+  EMPREINTE desknode APRES (contenu) : ca1b89303924e9f7
+  EMPREINTE desknode APRES (index)   : fe60ef0730887f32
+  EMPREINTE cockpit  APRES (implementation-artifacts suivi) : 16aadf1685f5b074
+  git status --porcelain desknode (apres) :
+    M  CHANGELOG.md
+    M  docs/affiliation.md
+    M  docs/bom.md
+    M  docs/dn4-15-arbitrage.md
+    M  docs/roadmap.md
+    A  mesures/dn6-6/T0-bornes-depart.txt
+    A  mesures/dn6-6/T1-releves-du-2026-09-15.txt
+    A  mesures/dn6-6/T3-campagne-mutants.txt
+    A  mesures/dn6-6/T7-bornes-arrivee.txt
+    M  tools/verif_affiliation_dn65.py
+    M  tools/verif_bom_dn61.py
+    M  tools/verif_cablage_dn62.py
+  git status --porcelain cockpit (apres) :
+     M _bmad-output/implementation-artifacts/deferred-work.md
+     M _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md
+     M _bmad-output/implementation-artifacts/epic-dn6-context.md
+     M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+    ?? _bmad-output/implementation-artifacts/dn6-6-la-liste-d-achat-parle-anglais-et-porte-ses-liens-affilies.md
+    ?? docs/dashboard_desktop_project/desknode.mp4
+  === fin 2026-09-15T15:26:12+02:00 ===
+
+── 2. LE COMPTE DE CHAQUE GATE, CONFRONTE A T0 (`comparer.py`) ─────────────
+  gate                               T0 rc OK/KO      T7 rc OK/KO      verdict
+  verif_affiliation_dn65.py          rc=0     23/0    rc=0     24/0    ≠  (gate adaptee)
+  verif_banc_langue_dn73.py          rc=0     81/0    rc=0     81/0    =
+  verif_bme680_retard_dn45.py        rc=0     15/0    rc=0     15/0    =
+  verif_boitier_dn64.py              rc=0     29/0    rc=0     29/0    =
+  verif_bom_dn61.py                  rc=0     24/0    rc=0     24/0    =  (gate adaptee)
+  verif_cablage_dn62.py              rc=0     37/0    rc=0     37/0    =  (gate adaptee)
+  verif_campagne_dn440.py            rc=0     62/0    rc=0     62/0    =
+  verif_courbe_dn413.py              rc=0     58/0    rc=0     58/0    =
+  verif_cumul_ambient_dn45.py        rc=0     23/0    rc=0     23/0    =
+  verif_d4_nvs_dn45.py               rc=0      6/0    rc=0      6/0    =
+  verif_decoupe_horloge_dn418.py     rc=0      7/0    rc=0      7/0    =
+  verif_demarrage_dn443.py           rc=0     58/0    rc=0     58/0    =
+  verif_dossier_d5_dn45.py           rc=0     12/0    rc=0     12/0    =
+  verif_dossier_dn415.py             rc=1     23/10   rc=1     23/10   =
+  verif_entree_dn82.py               rc=0     45/0    rc=0     45/0    =
+  verif_flash_dn72.py                rc=0     30/0    rc=0     30/0    =
+  verif_harnais_dn413.py             rc=0     22/0    rc=0     22/0    =
+  verif_harnais_dn81.py              rc=0     28/0    rc=0     28/0    =
+  verif_hist_dn413.py                rc=0     56/0    rc=0     56/0    =
+  verif_installeur_dn71.py           rc=0     28/0    rc=0     28/0    =
+  verif_instruments_dn423.py         rc=0    163/0    rc=0    163/0    =
+  verif_journal_soak_dn45.py         rc=0     26/0    rc=0     26/0    =
+  verif_langue_dalle_dn73.py         rc=0     61/0    rc=0     61/0    =
+  verif_langues_dn442.py             rc=0     31/0    rc=0     31/0    =
+  verif_ledger_dn416.py              rc=0     36/0    rc=0     36/0    =
+  verif_lhm_ps_dn83.py               rc=0     26/0    rc=0     26/0    =
+  verif_licences_dn52.py             rc=0     34/0    rc=0     34/0    =
+  verif_lissage_dn45.py              rc=0     21/0    rc=0     21/0    =
+  verif_miroir_horloge_dn418.py      rc=0     18/0    rc=0     18/0    =
+  verif_page_dn722.py                rc=0     56/0    rc=0     56/0    =
+  verif_paliers_dn441.py             rc=0     42/0    rc=0     42/0    =
+  verif_photos_dn63.py               rc=0     28/0    rc=0     28/0    =
+  verif_placement_dn74.py            rc=0     42/0    rc=0     42/0    =
+  verif_polices_dn440.py             rc=0     11/0    rc=0     11/0    =
+  verif_preconditions_dn76.py        rc=0     55/0    rc=0     55/0    =
+  verif_prerequis_dn75.py            rc=0     51/0    rc=0     51/0    =
+  verif_rebouclage_dn45.py           rc=0     30/0    rc=0     30/0    =
+  verif_reception_dn85.py            rc=0     16/0    rc=0     16/0    =
+  verif_reprise_horloge_dn418.py     rc=0     50/0    rc=0     50/0    =
+  verif_selection_dn49.py            rc=0     70/0    rc=0     70/0    =
+  verif_serie_dn412.py               rc=0     50/0    rc=0     50/0    =
+  verif_source_lhm_dn48.py           rc=0     46/0    rc=0     46/0    =
+  verif_sr03.py                      rc=2      0/0    rc=2      0/0    =
+  verif_temoin_filtre_dn447.py       rc=0      5/0    rc=0      5/0    =
+  verif_veille_dn33.py               rc=0    267/0    rc=0    267/0    =
+  verif_verrou_lvgl_dn413.py         rc=0     60/0    rc=0     60/0    =
+  verif_vitrine_dn84.py              rc=0     16/0    rc=0     16/0    =
+  verif_xip_dn422.py                 rc=0     10/0    rc=0     10/0    =
+
+  gates comparees : 48 · identiques au compte : 47 · differentes : 1 · ⛔ refusees : 0
+  ⇒ la seule gate dont le compte change est `verif_affiliation_dn65.py` (23 ⇒ 24 OK : le
+    controle neuf `(c24)`) ; `verif_bom_dn61.py` et `verif_cablage_dn62.py` rendent le MEME
+    compte sur la page anglaise ; `verif_dossier_dn415.py` reste a 23 OK / 10 KO.
+  sorties brutes des tirs, telles quelles :
+  verif_affiliation_dn65.py          rc=0       4.69 s  BILAN : 24 OK, 0 KO 
+  verif_banc_langue_dn73.py          rc=0       2.43 s  BILAN : 81 OK, 0 KO 
+  verif_bme680_retard_dn45.py        rc=0       0.05 s  BILAN : 15 OK, 0 KO 
+  verif_boitier_dn64.py --cockpit    rc=0       0.35 s  BILAN : 29 OK, 0 KO 
+  verif_bom_dn61.py                  rc=0       0.06 s  BILAN : 24 OK, 0 KO 
+  verif_cablage_dn62.py              rc=0       0.11 s  BILAN : 37 OK, 0 KO 
+  verif_courbe_dn413.py              rc=0       9.77 s  ⛔ aucune ligne BILAN
+  verif_cumul_ambient_dn45.py        rc=0       1.26 s  BILAN : 23 OK, 0 KO 
+  verif_d4_nvs_dn45.py               rc=0       0.42 s  BILAN : 6 OK, 0 KO 
+  verif_decoupe_horloge_dn418.py     rc=0       6.35 s  ⛔ aucune ligne BILAN
+  verif_demarrage_dn443.py           rc=0       0.59 s  BILAN : 58 OK, 0 KO 
+  verif_dossier_d5_dn45.py --cockpit rc=0       1.18 s  BILAN : 12 OK, 0 KO 
+  verif_dossier_dn415.py --cockpit   rc=1       8.63 s  BILAN : 23 OK, 10 KO 
+  verif_entree_dn82.py               rc=0       0.15 s  BILAN : 45 OK, 0 KO 
+  verif_flash_dn72.py                rc=0       0.24 s  BILAN : 30 OK, 0 KO 
+  verif_harnais_dn413.py             rc=0       8.15 s  ⛔ aucune ligne BILAN
+  verif_harnais_dn81.py --cockpit    rc=0       5.84 s  BILAN : 28 OK, 0 KO 
+  verif_hist_dn413.py                rc=0       3.88 s  ⛔ aucune ligne BILAN
+  verif_installeur_dn71.py           rc=0       0.21 s  BILAN : 28 OK, 0 KO 
+  verif_instruments_dn423.py         rc=0       0.66 s  BILAN : 163 OK, 0 KO 
+  verif_journal_soak_dn45.py         rc=0       0.08 s  BILAN : 26 OK, 0 KO 
+  verif_langue_dalle_dn73.py         rc=0       0.15 s  BILAN : 61 OK, 0 KO 
+  verif_langues_dn442.py             rc=0       0.72 s  BILAN : 31 OK, 0 KO 
+  verif_ledger_dn416.py --cockpit    rc=0       0.95 s  BILAN : 36 OK, 0 KO 
+  verif_lhm_ps_dn83.py               rc=0      17.62 s  BILAN : 26 OK, 0 KO 
+  verif_licences_dn52.py             rc=0       0.89 s  BILAN : 34 OK, 0 KO 
+  verif_lissage_dn45.py              rc=0       0.16 s  BILAN : 21 OK, 0 KO 
+  verif_miroir_horloge_dn418.py      rc=0       0.07 s  ⛔ aucune ligne BILAN
+  verif_page_dn722.py                rc=0       0.14 s  BILAN : 56 OK, 0 KO 
+  verif_paliers_dn441.py             rc=0       0.25 s  BILAN : 42 OK, 0 KO 
+  verif_photos_dn63.py               rc=0       0.40 s  BILAN : 28 OK, 0 KO 
+  verif_placement_dn74.py            rc=0       0.09 s  BILAN : 42 OK, 0 KO 
+  verif_polices_dn440.py             rc=0       0.03 s  BILAN : 11 OK, 0 KO 
+  verif_preconditions_dn76.py        rc=0       0.20 s  BILAN : 55 OK, 0 KO 
+  verif_prerequis_dn75.py            rc=0       0.26 s  BILAN : 51 OK, 0 KO 
+  verif_rebouclage_dn45.py           rc=0       2.94 s  BILAN : 30 OK, 0 KO 
+  verif_reception_dn85.py            rc=0       0.15 s  BILAN : 16 OK, 0 KO 
+  verif_reprise_horloge_dn418.py     rc=0       0.10 s  ⛔ aucune ligne BILAN
+  verif_selection_dn49.py            rc=0       0.08 s  ⛔ aucune ligne BILAN
+  verif_serie_dn412.py               rc=0       1.70 s  BILAN : 50 OK / 0 KO 
+  verif_source_lhm_dn48.py           rc=0       4.11 s  ⛔ aucune ligne BILAN
+  verif_sr03.py                      rc=2       0.06 s  ⛔ aucune ligne BILAN
+  verif_temoin_filtre_dn447.py       rc=0       1.77 s  BILAN : 5 OK, 0 KO 
+  verif_veille_dn33.py               rc=0       6.93 s  BILAN : 267 OK · 0 KO 
+  verif_verrou_lvgl_dn413.py         rc=0      15.50 s  ⛔ aucune ligne BILAN
+  verif_vitrine_dn84.py              rc=0       0.15 s  BILAN : 16 OK, 0 KO 
+  verif_xip_dn422.py                 rc=0       0.05 s  BILAN : 10 OK / 0 KO 
+  verif_campagne_dn440.py --cockpit  rc=0     130.85 s  BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien BILAN : 62 OK, 0 KO 
+
+── 3. `verif_dossier_dn415.py` AUX TROIS CONDITIONS — LE DETAIL, LIGNE A LIGNE ─
+  verif_dossier_dn415.py --cockpit <present> (/home/nasbarok/projects/compagnon_project) rc=1 8.14 s  BILAN : 23 OK, 10 KO 
+  verif_dossier_dn415.py --cockpit <vide> (/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/42e9685c-c328-44dc-b561-53406b0d1239/scratchpad/dn66/T7b/cockpit-vide) rc=1 4.78 s  BILAN : 24 OK, 51 KO 
+  verif_dossier_dn415.py --cockpit <inexistant> (/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/42e9685c-c328-44dc-b561-53406b0d1239/scratchpad/dn66/T7b/cockpit-inexistant-dn66) rc=4 4.94 s  BILAN : 25 OK, 0 KO 
+  <present> : 10 [KO ] a T0, 10 a T7 · detail (lignes `[KO ]` ET continuations, numeros de
+        ligne CONSERVES) : IDENTIQUE octet pour octet
+  <vide> : 51 [KO ] a T0, 51 a T7 · detail (lignes `[KO ]` ET continuations, numeros de
+        ligne CONSERVES) : IDENTIQUE octet pour octet
+  <inexistant> : 0 [KO ] a T0, 0 a T7 · detail (lignes `[KO ]` ET continuations, numeros de
+        ligne CONSERVES) : IDENTIQUE octet pour octet
+  le detail <present> a T7, recopie :
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5843) dont `sprint-change-proposal-2026-08-31.md` qui intr
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ifacts/sprint-status-desknode.yaml [vl53l0x] #1 (l.384) dn4-7-le-tof-porte-t-il-vraiment: blocked  # 🔒 HORS
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.5267) `done` depuis mi-août) : **on séquence par dépendanc
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:rint-change-proposal-2026-08-31.md [vl53l0x] #1 (l.23) | « VL53L0X » | `TOF050C-VL6180X` — réfuté à l'inven
+      [KO ] toute occurrence de l'arbre est AU MANIFESTE             ⛔ 4 occurrence(s) de l'arbre SANS ligne de manifeste (sur 199 arbitree(s)) — chacune est listee ci-dessus
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:on-artifacts/sprint-status-desknode.yaml [vl53l0x] #1 « dn4-7-le-tof-porte-t-il-vraiment: blocked #  »
+      [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 1 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 196) — soit le constat a disparu, soit une occurrence DEJA ARBITREE vient d'etre echappee : dans ce cas RETIRER sa ligne de manifeste dans le MEME geste (AC40.5.f ii)
+      [KO ] le TEXTE a change sous un verdict inchange               cockpit:/sprint-status-desknode.yaml [busid-en-dur] #1 (l.390)
+             divergence au caractere 73 (sur 119 / 119)
+             manifeste …-ne-le-dit: in-progress # 📌 renvoi dn4-22 (2026-08-2…
+             arbre     …-ne-le-dit: in-progress # 🟢 v0.1 [cc 2026-08-31] · 📌…
+                                                  ^
+      [KO ] la citation du manifeste colle au TEXTE de l'arbre       ⛔ 1 ligne(s) DERIVEE(S) : t-status-desknode.yaml:390
+      [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 205 (manifeste) vs 208 (arbre), ecart -3 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l'arbre : cockpit:tifacts/deferred-work.md [vl53l0x] #1 'dont `sprint-change-proposal-2026-08-31.' · cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' · cockpit:cts/epics-desknode-v1.md [vl53l0x] #1 '`done` depuis mi-août) : **on séquence p' · cockpit:e-proposal-2026-08-31.md [vl53l0x] #1 '| « VL53L0X » | `TOF050C-VL6180X` — réfu' || 1 FANTOME(S) au manifeste : cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke'
+
+── 4. LE CONTRAT DE `verif_campagne_dn56.py`, PAR LE PILOTE PAR LOTS ───────
+  ⚠️ Ce n'est PAS la gate : meme pilote qu'a T0 (source integrale en T0 § 6).
+    [OK ] des gates declarent une campagne de mutants                23 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_lhm_ps_dn83.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_reception_dn85.py, tools/verif_temoin_filtre_dn447.py, tools/verif_vitrine_dn84.py
+       tools/verif_affiliation_dn65.py         44 mutant(s)
+       tools/verif_banc_langue_dn73.py         63 mutant(s)
+       tools/verif_boitier_dn64.py             35 mutant(s)
+       tools/verif_bom_dn61.py                 31 mutant(s)
+       tools/verif_cablage_dn62.py             40 mutant(s)
+       tools/verif_demarrage_dn443.py          48 mutant(s)
+       tools/verif_dossier_d5_dn45.py           3 mutant(s)
+       tools/verif_entree_dn82.py              24 mutant(s)
+       tools/verif_flash_dn72.py               41 mutant(s)
+       tools/verif_harnais_dn81.py             15 mutant(s)
+       tools/verif_installeur_dn71.py          40 mutant(s)
+       tools/verif_langue_dalle_dn73.py        34 mutant(s)
+       tools/verif_langues_dn442.py            25 mutant(s)
+       tools/verif_lhm_ps_dn83.py              15 mutant(s)
+       tools/verif_licences_dn52.py            40 mutant(s)
+       tools/verif_page_dn722.py               32 mutant(s)
+       tools/verif_photos_dn63.py              32 mutant(s)
+       tools/verif_placement_dn74.py           25 mutant(s)
+       tools/verif_preconditions_dn76.py       32 mutant(s)
+       tools/verif_prerequis_dn75.py           31 mutant(s)
+       tools/verif_reception_dn85.py           38 mutant(s)
+       tools/verif_temoin_filtre_dn447.py       9 mutant(s)
+       tools/verif_vitrine_dn84.py             27 mutant(s)
+  PLAN : 23 cible(s), 724 mutant(s), 0 `--liste-mutants` mort(s)
+  LOT : index 0 ⇒ 340 sur 724, 484.5 s
+  LOT : index 340 ⇒ 724 sur 724, 405.5 s
+    [OK ] des gates declarent une campagne de mutants                23 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_entree_dn82.py, tools/verif_flash_dn72.py, tools/verif_harnais_dn81.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_lhm_ps_dn83.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_preconditions_dn76.py, tools/verif_prerequis_dn75.py, tools/verif_reception_dn85.py, tools/verif_temoin_filtre_dn447.py, tools/verif_vitrine_dn84.py
+    [OK ] toute cible repond, et aucun mutant ne meurt               724 mutant(s) confronte(s) sur 23 cible(s)
+    [OK ] tout mutant rend rc=1                                      aucun mutant devenu MUET
+    [OK ] tout mutant rouge a bien imprime un BILAN                  aucune sortie en amont
+    [OK ] tout mutant rouge porte au moins un [KO ] nomme            chaque mutant vise un controle
+    [OK ] aucune exception n'a survecu au defaut qu'elle excuse      1 exception(s) declaree(s), 1 encore justifiee(s)
+    [OK ] toute cible s'analyse a l'AST                              2 fichier(s) lu(s) dans la portee de la cle
+    [OK ] cle valide (aucun libelle >= 58)                           44 libelle(s) lu(s) a l'AST, le plus long fait 56
+    mutants par cible (joues / sains au contrat) :
+       tools/verif_affiliation_dn65.py         44 /  44
+       tools/verif_banc_langue_dn73.py         63 /  63
+       tools/verif_boitier_dn64.py             35 /  35
+       tools/verif_bom_dn61.py                 31 /  31
+       tools/verif_cablage_dn62.py             40 /  40
+       tools/verif_demarrage_dn443.py          48 /  48
+       tools/verif_dossier_d5_dn45.py           3 /   3
+       tools/verif_entree_dn82.py              24 /  24
+       tools/verif_flash_dn72.py               41 /  41
+       tools/verif_harnais_dn81.py             15 /  15
+       tools/verif_installeur_dn71.py          40 /  40
+       tools/verif_langue_dalle_dn73.py        34 /  34
+       tools/verif_langues_dn442.py            25 /  24
+       tools/verif_lhm_ps_dn83.py              15 /  15
+       tools/verif_licences_dn52.py            40 /  40
+       tools/verif_page_dn722.py               32 /  32
+       tools/verif_photos_dn63.py              32 /  32
+       tools/verif_placement_dn74.py           25 /  25
+       tools/verif_preconditions_dn76.py       32 /  32
+       tools/verif_prerequis_dn75.py           31 /  31
+       tools/verif_reception_dn85.py           38 /  38
+       tools/verif_temoin_filtre_dn447.py       9 /   9
+       tools/verif_vitrine_dn84.py             27 /  27
+    duree cumulee des mutants : 889.9 s
+  BILAN (pilote, ⛔ pas la gate) : 8 OK, 0 KO
+  ⇒ 718 mutants a T0, 724 a T7 : +6, les mutants neufs 39 a 44 de `verif_affiliation_dn65.py`.
+
+── 5. (c29) DE `verif_cablage_dn62.py`, AVEC ET SANS LA PAGE D'ACHAT ───────
+  (c29) AVEC docs/bom.md : 8 notion(s) · SANS DEFINITION : aucune · temoin negatif « DeskNode Turbo » a 0 : True
+  (c29) SANS docs/bom.md : 8 notion(s) · SANS DEFINITION : aucune · temoin negatif « DeskNode Turbo » a 0 : True
+     BH1750                 glosee par : README.md · docs/cablage.md
+     BME680                 glosee par : README.md · docs/cablage.md
+     DeskNode               glosee par : README.md · docs/bom.md · docs/cablage.md
+     DeskNode + Ambiance    glosee par : README.md · docs/bom.md · docs/cablage.md
+     GT911                  glosee par : docs/cablage.md
+     PCF85063A              glosee par : docs/cablage.md
+     QMI8658                glosee par : docs/cablage.md
+     TCA9554                glosee par : docs/cablage.md
+  ⇒ IDENTIQUE a T0 : la page anglaise glose toujours `DeskNode` et `DeskNode + Ambiance`.
+
+── 6. LES CONTROLES DU DOSSIER QUI NE SONT PAS DES GATES ───────────────────
+  $ git diff --cached --stat a8c691211da23dae49c7b8f04829625c19a80a93 -- firmware agent hardware installeur .github README.md tools/run_gates.sh tools/verif_campagne_dn56.py
+    []  (⇒ AC-G3 : vide entre crochets)
+  $ git diff --cached --stat a8c691211da23dae49c7b8f04829625c19a80a93   (le perimetre entier de la marche)
+     CHANGELOG.md                               |  31 ++
+     docs/affiliation.md                        | 101 ++++
+     docs/bom.md                                | 414 +++++++++-------
+     docs/dn4-15-arbitrage.md                   |   4 +-
+     docs/roadmap.md                            |   3 +-
+     mesures/dn6-6/T0-bornes-depart.txt         | 685 +++++++++++++++++++++++++
+     mesures/dn6-6/T1-releves-du-2026-09-15.txt | 146 ++++++
+     mesures/dn6-6/T3-campagne-mutants.txt      | 770 +++++++++++++++++++++++++++++
+     mesures/dn6-6/T7-bornes-arrivee.txt        |   1 +
+     tools/verif_affiliation_dn65.py            | 469 +++++++++++++++---
+     tools/verif_bom_dn61.py                    | 172 +++++--
+     tools/verif_cablage_dn62.py                |  10 +
+     12 files changed, 2506 insertions(+), 300 deletions(-)
+  $ ls .github/FUNDING.yml : ls: cannot access '.github/FUNDING.yml': No such file or directory
+  $ ls docs/bom*.md : docs/bom.md
+  $ git grep -n 'https://s\.click\.aliexpress\.com' -- ':!docs/bom.md' ':!tools/*.py'  (attendu : 0 ligne)
+    0 ligne(s)
+  $ git grep -c 'https://s\.click\.aliexpress\.com' -- docs/bom.md  (attendu : 5)
+    docs/bom.md:5
+  $ git grep -c 'https://s\.click\.aliexpress\.com' -- 'tools/*.py'  (le mutant 31, code FABRIQUE)
+    tools/verif_affiliation_dn65.py:1
+  $ git grep -c 'wholesale-' -- docs/bom.md  (attendu : 0)
+    rc=1 (1 = aucune ligne)
+  $ lignes RETIREES du diff (hors en-tetes) — docs/affiliation.md, CHANGELOG.md (NFR3 : attendu 0)
+    0
+  $ lignes RETIREES — docs/roadmap.md, docs/dn4-15-arbitrage.md (attendu : 2, chacune RE-ECRITE a l'identique + annotation / citation re-ancree)
+    -| desknode | docs/bom.md | 1 | vl53l0x | 1 | \| Capteur de distance \| **TOF050C-VL6180X** (⛔ **PAS** un VL53
+    -| `dn6-5` | **Whether this repository carries affiliate links, which programmes actually exist for the suppli
+  $ python3 tools/verif_affiliation_dn65.py --liste-mutants | wc -l : 44
+  $ wc -l ledger : 8802  (8 722 a T0)
+  $ tracker YAML (yaml.safe_load) + cle dn6-6 : parse OK · dn6-6-la-liste-d-achat-parle-anglais-et-porte-ses-liens-affilies = review · epic-dn6 = backlog · epic-dn8 = in-progress
+  $ ledger : section dn6-6 EN QUEUE et attribution au manifeste
+    derniere section : 8729:## Deferred from: dn6-6 — la liste d'achat parle anglais et porte ses liens affiliés (2026-09-15)
+    lignes du manifeste attribuees a dn6-6 : 10
+    dispositions [dn6-6 2026-09-15] au ledger : 12 (10 en queue + 2 fermetures)
+
+── 7. LA FIDELITE DE LA TRADUCTION, PAR LE COMPTE (`fidelite_bom.py`) ───────
+    [OK ] titres ## (compte)                           FR 7                            EN 7
+    [OK ] titres ### (compte, EN = FR + 1)             FR 6                            EN 7
+         (EN = FR + 1 : l'annotation datee `### Annotation of 2026-09-15 (dn6-6)` est NEUVE)
+    [OK ] tables (colonnes, lignes)                    FR [(2, 2), (7, 2), (2, 1), (7, EN [(2, 2), (7, 2), (2, 1), (7, 3), (3, 3), (3, 5), (6, 2), (3,
+    [OK ] dates (multiset)                             FR [('2026-08-16', 1), ('2026-0 EN [('2026-08-16', 1), ('2026-08-19', 3), ('2026-08-20', 2), ('
+         (toute date FR est en EN au moins autant de fois ; EN ajoute les dates des annotations)
+    [OK ] adresses nues hors recherches (liste ordonnee) FR 11                           EN 11
+    [OK ] adresses de la table des tentatives          FR 10                           EN 10
+    [OK ] liens photo (liste ordonnee)                 FR 6                            EN 6
+    [OK ] nombres FR tous presents en EN (multiset)    FR 273                          EN 317
+    [OK ] adresses `wholesale-` dans la page           FR 5                            EN 0
+    [OK ] liens suivis (codes, ordre de la page)       FR 5                            EN 5 : _c3yKWEah _c4Dp3sBL _c4OQ98X7 _c3w7WL8h _c3vm4Fkp
+    [OK ] cellules `[..](lien suivi) — affiliate link` FR 5                            EN 5
+  BILAN fidelite : OK
+  ⚠️ Ce que ce compte ⛔ prouve pas : que chaque phrase dise la meme chose. Il prouve que rien
+     de ce qui se COMPTE n'a disparu (titres, tables, dates, adresses, photos, nombres).
+
+── 8. LES SCRIPTS AJOUTES A CEUX DE T0 ET T3 ───────────────────────────────
+  ── comparer.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — compare, gate par gate et AU COMPTE, les passes T0 et T7 (repris de mesures/dn8-9/T0 § 5 b,
+  | # restreint : une gate ABSENTE d'une passe ou un rc degrade a compte egal font sortir en 1).
+  | import os, re, sys
+  | S = os.path.dirname(os.path.abspath(__file__))
+  | RX = re.compile(r"^(verif_\S+\.py)(?: --cockpit)?\s+rc=(\S+)\s+([\d.]+) s\s+(.*)$")
+  | ADAPTEES = {"verif_affiliation_dn65.py", "verif_bom_dn61.py", "verif_cablage_dn62.py"}
+  | def lire(et):
+  |     res = {}
+  |     for fic in ("gates.tsv", "gates-dn440.tsv"):
+  |         for l in open(os.path.join(S, et, fic), encoding="utf-8"):
+  |             m = RX.match(l.rstrip("\n"))
+  |             if not m: continue
+  |             nom, rc, _, bilan = m.groups()
+  |             mb = re.findall(r"BILAN\s*:\s*(\d+)\s*OK\s*[,/·]\s*(\d+)\s*KO", bilan)
+  |             if mb:
+  |                 ok, ko = (int(x) for x in mb[-1]); forme = "BILAN"
+  |             else:
+  |                 txt = open(os.path.join(S, et, "gates", nom[:-3] + ".txt"), encoding="utf-8").read()
+  |                 n_ok, n_ko = len(re.findall(r"\[OK", txt)), len(re.findall(r"\[KO", txt))
+  |                 if n_ok or n_ko: ok, ko, forme = n_ok, n_ko, "[OK]/[KO]"
+  |                 else: ok, ko, forme = txt.count("✅"), txt.count("❌"), "✅/❌"
+  |             res[nom] = (rc, ok, ko, forme)
+  |     return res
+  | a, b = lire("T0"), lire(sys.argv[1] if len(sys.argv) > 1 else "T7b")
+  | mauvais = []
+  | print("%-34s %-16s %-16s %s" % ("gate", "T0 rc OK/KO", "T7 rc OK/KO", "verdict"))
+  | for nom in sorted(set(a) | set(b)):
+  |     if nom not in a or nom not in b:
+  |         print("%-34s ⛔ ABSENTE de %s" % (nom, "T0" if nom not in a else "T7")); mauvais.append(nom); continue
+  |     ra, oa, ka, fa = a[nom]; rb, ob, kb, fb = b[nom]
+  |     v = "=" if (ra, oa, ka) == (rb, ob, kb) else "≠"
+  |     if kb > ka or (rb != ra) or (v == "≠" and nom not in ADAPTEES) or (nom in ADAPTEES and kb > 0):
+  |         v = "⛔ " + v; mauvais.append(nom)
+  |     print("%-34s rc=%-3s %4s/%-4s rc=%-3s %4s/%-4s %s%s" % (nom, ra, oa, ka, rb, ob, kb, v,
+  |           "  (gate adaptee)" if nom in ADAPTEES else ""))
+  | print()
+  | print("gates comparees : %d · identiques au compte : %d · differentes : %d · ⛔ refusees : %d"
+  |       % (len(set(a) & set(b)), sum(1 for n in set(a) & set(b) if a[n][:3] == b[n][:3]),
+  |          sum(1 for n in set(a) & set(b) if a[n][:3] != b[n][:3]), len(mauvais)))
+  | sys.exit(1 if mauvais else 0)
+
+  ── fidelite_bom.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — AC-L1/AC-L2 : la page anglaise confrontee a la page francaise du SHA de depart, PAR LE COMPTE.
+  | # Titres, tables (lignes), dates, adresses tentees, liens photo, nombres (virgule ⇒ point), liens suivis.
+  | import re, subprocess, collections
+  | DN = "/home/nasbarok/projects/desknode"
+  | fr = subprocess.run(["git", "-C", DN, "show", "a8c691211da23dae49c7b8f04829625c19a80a93:docs/bom.md"],
+  |                     capture_output=True, text=True).stdout
+  | en = open(DN + "/docs/bom.md", encoding="utf-8").read()
+  | def tables(t):
+  |     L = t.split("\n"); out = []; i = 0
+  |     while i < len(L) - 1:
+  |         if L[i].strip().startswith("|") and re.fullmatch(r"\|[\s:|-]+\|", L[i+1].strip()):
+  |             j = i + 2
+  |             while j < len(L) and L[j].strip().startswith("|"): j += 1
+  |             out.append((len(L[i].strip().strip("|").split("|")), j - i - 2)); i = j
+  |         else: i += 1
+  |     return out
+  | def nombres(t):
+  |     t = re.sub(r"\]\([^)\s]*\)", "]", t); t = re.sub(r"https?://[^\s`)>\"'\]]+", "", t)
+  |     t = re.sub(r"(\d),(\d)", r"\1.\2", t)
+  |     return collections.Counter(re.findall(r"\d+(?:\.\d+)?", t))
+  | def urls(t): return re.findall(r"https?://[^\s`)>\"'\]]+", t)
+  | ok = True
+  | def dire(lib, a, b, egal=None):
+  |     global ok
+  |     e = (a == b) if egal is None else egal
+  |     ok &= e
+  |     print("  [%s] %-44s FR %-28s EN %s" % ("OK " if e else "KO ", lib, str(a)[:28], str(b)[:60]))
+  | dire("titres ## (compte)", len(re.findall(r"(?m)^## ", fr)), len(re.findall(r"(?m)^## ", en)))
+  | dire("titres ### (compte, EN = FR + 1)", len(re.findall(r"(?m)^### ", fr)), len(re.findall(r"(?m)^### ", en)),
+  |      egal=len(re.findall(r"(?m)^### ", fr)) + 1 == len(re.findall(r"(?m)^### ", en)))
+  | print("       (EN = FR + 1 : l'annotation datee `### Annotation of 2026-09-15 (dn6-6)` est NEUVE)")
+  | dire("tables (colonnes, lignes)", tables(fr), tables(en))
+  | dire("dates (multiset)", sorted(collections.Counter(re.findall(r"20\d\d-\d\d-\d\d", fr)).items()),
+  |      sorted(collections.Counter(re.findall(r"20\d\d-\d\d-\d\d", en)).items()),
+  |      egal=all(collections.Counter(re.findall(r"20\d\d-\d\d-\d\d", en))[d] >= n
+  |               for d, n in collections.Counter(re.findall(r"20\d\d-\d\d-\d\d", fr)).items()))
+  | print("       (toute date FR est en EN au moins autant de fois ; EN ajoute les dates des annotations)")
+  | tent = lambda t: [u for u in urls(t) if "wholesale-" not in u and "s.click." not in u]
+  | dire("adresses nues hors recherches (liste ordonnee)", len(tent(fr)), len(tent(en)), egal=tent(fr) == tent(en))
+  | dire("adresses de la table des tentatives", 10, len(re.findall(r"(?m)^\| `https?://[^`]+` \| 2026-09-06 \|", en)),
+  |      egal=re.findall(r"(?m)^\| `(https?://[^`]+)` \| 2026-09-06 \|", fr) == re.findall(r"(?m)^\| `(https?://[^`]+)` \| 2026-09-06 \|", en))
+  | ph = lambda t: re.findall(r"\]\((cablage/[^)]+\.jpg)\)", t)
+  | dire("liens photo (liste ordonnee)", len(ph(fr)), len(ph(en)), egal=ph(fr) == ph(en))
+  | nf, ne = nombres(fr), nombres(en)
+  | manq = {k: v - ne[k] for k, v in nf.items() if ne[k] < v}
+  | dire("nombres FR tous presents en EN (multiset)", sum(nf.values()), sum(ne.values()), egal=not manq)
+  | if manq: print("       manquants :", manq)
+  | dire("adresses `wholesale-` dans la page", 5, sum("wholesale-" in u for u in urls(en)), egal=sum("wholesale-" in u for u in urls(en)) == 0)
+  | codes = re.findall(r"s\.click\.aliexpress\.com/e/(_\w+)", en)
+  | dire("liens suivis (codes, ordre de la page)", 5, "%d : %s" % (len(codes), " ".join(codes)),
+  |      egal=codes == ["_c3yKWEah", "_c4Dp3sBL", "_c4OQ98X7", "_c3w7WL8h", "_c3vm4Fkp"])
+  | cel = re.findall(r"\[AliExpress search\]\(https://s\.click\.aliexpress\.com/e/_\w+\) — affiliate link", en)
+  | dire("cellules `[..](lien suivi) — affiliate link`", 5, len(cel), egal=len(cel) == 5)
+  | print("BILAN fidelite : %s" % ("OK" if ok else "KO"))
+
+  ── controles.sh ──
+  | #!/usr/bin/env bash
+  | # dn6-6 — les controles de la section Verification du dossier qui ne sont PAS des gates (T7).
+  | # L'arbre desknode est en index (commit a venir) : les diffs lisent `--cached` contre le SHA de depart.
+  | set -u
+  | DN=/home/nasbarok/projects/desknode
+  | CK=/home/nasbarok/projects/compagnon_project
+  | B=a8c691211da23dae49c7b8f04829625c19a80a93
+  | cd "$DN" || exit 9
+  | echo "\$ git diff --cached --stat $B -- firmware agent hardware installeur .github README.md tools/run_gates.sh tools/verif_campagne_dn56.py"
+  | echo "  [$(git diff --cached --stat $B -- firmware agent hardware installeur .github README.md tools/run_gates.sh tools/verif_campagne_dn56.py)]  (⇒ AC-G3 : vide entre crochets)"
+  | echo "\$ git diff --cached --stat $B   (le perimetre entier de la marche)"
+  | git diff --cached --stat $B | sed 's/^/  /'
+  | echo "\$ ls .github/FUNDING.yml : $(ls .github/FUNDING.yml 2>&1)"
+  | echo "\$ ls docs/bom*.md : $(ls docs/bom*.md)"
+  | echo "\$ git grep -n 'https://s\.click\.aliexpress\.com' -- ':!docs/bom.md' ':!tools/*.py'  (attendu : 0 ligne)"
+  | n=$(git grep -n 'https://s\.click\.aliexpress\.com' -- ':!docs/bom.md' ':!tools/*.py' | wc -l); echo "  $n ligne(s)"
+  | echo "\$ git grep -c 'https://s\.click\.aliexpress\.com' -- docs/bom.md  (attendu : 5)"
+  | echo "  $(git grep -c 'https://s\.click\.aliexpress\.com' -- docs/bom.md)"
+  | echo "\$ git grep -c 'https://s\.click\.aliexpress\.com' -- 'tools/*.py'  (le mutant 31, code FABRIQUE)"
+  | echo "  $(git grep -c 'https://s\.click\.aliexpress\.com' -- 'tools/*.py')"
+  | echo "\$ git grep -c 'wholesale-' -- docs/bom.md  (attendu : 0)"
+  | echo "  $(git grep -c 'wholesale-' -- docs/bom.md; echo "rc=$? (1 = aucune ligne)")"
+  | echo "\$ lignes RETIREES du diff (hors en-tetes) — docs/affiliation.md, CHANGELOG.md (NFR3 : attendu 0)"
+  | echo "  $(git diff --cached $B -- docs/affiliation.md CHANGELOG.md | grep -c '^-[^-]')"
+  | echo "\$ lignes RETIREES — docs/roadmap.md, docs/dn4-15-arbitrage.md (attendu : 2, chacune RE-ECRITE a l'identique + annotation / citation re-ancree)"
+  | git diff --cached $B -- docs/roadmap.md docs/dn4-15-arbitrage.md | grep '^-[^-]' | python3 -c "import sys; [print('  '+l.rstrip()[:110]) for l in sys.stdin]"
+  | echo "\$ python3 tools/verif_affiliation_dn65.py --liste-mutants | wc -l : $(python3 tools/verif_affiliation_dn65.py --liste-mutants | wc -l)"
+  | echo "\$ wc -l ledger : $(wc -l < $CK/_bmad-output/implementation-artifacts/deferred-work.md)  (8 722 a T0)"
+  | echo "\$ tracker YAML (yaml.safe_load) + cle dn6-6 : $(python3 -c "
+  | import yaml; d=yaml.safe_load(open('$CK/_bmad-output/implementation-artifacts/sprint-status-desknode.yaml'))['development_status']
+  | print('parse OK ·', 'dn6-6-la-liste-d-achat-parle-anglais-et-porte-ses-liens-affilies =', d.get('dn6-6-la-liste-d-achat-parle-anglais-et-porte-ses-liens-affilies'), '· epic-dn6 =', d.get('epic-dn6'), '· epic-dn8 =', d.get('epic-dn8'))")"
+  | echo "\$ ledger : section dn6-6 EN QUEUE et attribution au manifeste"
+  | echo "  derniere section : $(grep -n '^## Deferred from' $CK/_bmad-output/implementation-artifacts/deferred-work.md | tail -1)"
+  | echo "  lignes du manifeste attribuees a dn6-6 : $(grep -c "dn6-6 — la liste d'achat" $CK/_bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md)"
+  | echo "  dispositions [dn6-6 2026-09-15] au ledger : $(grep -c '⇒ \[dn6-6 2026-09-15\]' $CK/_bmad-output/implementation-artifacts/deferred-work.md) (10 en queue + 2 fermetures)"
+
+  ── composer_T7.py ──
+  | #!/usr/bin/env python3
+  | # dn6-6 — compose mesures/dn6-6/T7-bornes-arrivee.txt depuis les sorties BRUTES de la passe T7b, confrontees a T0.
+  | # ⛔ Aucune valeur tapee a la main : tout est relu dans T0/ et T7b/ (resume, tsv, sorties, pilote, controles).
+  | import os, re, subprocess, sys
+  | S = os.path.dirname(os.path.abspath(__file__))
+  | ET = sys.argv[1] if len(sys.argv) > 1 else "T7b"
+  | T = os.path.join(S, ET)
+  | lire = lambda d, n: open(os.path.join(S, d, n), encoding="utf-8").read().rstrip("\n")
+  | ind = lambda txt, n=2: "\n".join((" " * n + l) if l else "" for l in txt.split("\n"))
+  | out = []; A = out.append
+  | A("=" * 78)
+  | A("dn6-6 / T7 — LES BORNES D'ARRIVEE, RE-TIREES APRES LA DERNIERE ECRITURE DES DEUX DEPOTS")
+  | A("=" * 78)
+  | A("  ⚠️ CE FICHIER NE PEUT PAS SE MESURER LUI-MEME. Pendant la passe, il existait sous la forme")
+  | A("     d'un TALON d'une ligne (« PASSE EN COURS ») — pour que le lien du §8 de")
+  | A("     `docs/affiliation.md` resolve —, et il est remplace par ce releve APRES la passe. Toute")
+  | A("     gate qui relit les `.txt` suivis (`verif_affiliation_dn65.py` : nombre d'adresses et de")
+  | A("     fichiers) voit donc, sur l'arbre committe, UN fichier plus long que pendant la passe.")
+  | A("     ⛔ Il ⛔ porte aucune adresse marquee, aucun montant de jalon, aucun motif de dn415 :")
+  | A("     les gates qu'il peut toucher sont re-tirees apres son ecriture, et leur compte est au")
+  | A("     message du commit qui le publie (⛔ ici : un releve qui se cite rouvre la boucle).")
+  | A("  ⚠️ PREMIERE PASSE T7 JOUEE PUIS ANNULEE, ECRIT PLUTOT QUE TU : une passe complete a tourne de")
+  | A("     14:44 a 15:04 ; la relecture du diff a trouve ENSUITE une annotation de")
+  | A("     `docs/affiliation.md` §3 inseree AU MILIEU d'une phrase d'origine (aucun mot perdu, mais la")
+  | A("     phrase coupee en deux). Elle a ete deplacee apres son paragraphe, et la passe a ete")
+  | A("     REJOUEE EN ENTIER (T7b, ci-dessous) : ⛔ une passe ne chevauche pas une ecriture. Les")
+  | A("     comptes de la premiere passe etaient les memes ; seul T7b fait foi.")
+  | A("")
+  | A("── 1. L'ETAT DES DEPOTS ET LES EMPREINTES (passe T7b) ─────────────────────")
+  | A("  ⚠️ L'arbre desknode est MIS EN INDEX (`git add` des fichiers de la marche, ⛔ commit) : c'est")
+  | A("     l'arbre exact du commit, au talon de T7 pres. Le cockpit porte ses ecritures de cloture")
+  | A("     (ledger, manifeste regenere en place, tracker, contexte d'epic, dossier de la marche).")
+  | A(ind(lire(ET, "resume.txt")))
+  | A("")
+  | A("── 2. LE COMPTE DE CHAQUE GATE, CONFRONTE A T0 (`comparer.py`) ─────────────")
+  | A(ind(lire(ET, "comparaison.txt")))
+  | A("  ⇒ la seule gate dont le compte change est `verif_affiliation_dn65.py` (23 ⇒ 24 OK : le")
+  | A("    controle neuf `(c24)`) ; `verif_bom_dn61.py` et `verif_cablage_dn62.py` rendent le MEME")
+  | A("    compte sur la page anglaise ; `verif_dossier_dn415.py` reste a 23 OK / 10 KO.")
+  | A("  sorties brutes des tirs, telles quelles :")
+  | A(ind(lire(ET, "gates.tsv")))
+  | A(ind(lire(ET, "gates-dn440.tsv")))
+  | A("")
+  | A("── 3. `verif_dossier_dn415.py` AUX TROIS CONDITIONS — LE DETAIL, LIGNE A LIGNE ─")
+  | A(ind(lire(ET, "dn415.tsv")))
+  | for c in ("present", "vide", "inexistant"):
+  |     a, b = lire("T0", "dn415-%s.ko" % c), lire(ET, "dn415-%s.ko" % c)
+  |     A("  <%s> : %d [KO ] a T0, %d a T7 · detail (lignes `[KO ]` ET continuations, numeros de"
+  |       % (c, a.count("[KO ]"), b.count("[KO ]")))
+  |     A("        ligne CONSERVES) : %s" % ("IDENTIQUE octet pour octet" if a == b else "⛔ DIFFERENT"))
+  | A("  le detail <present> a T7, recopie :")
+  | A(ind(lire(ET, "dn415-present.ko"), 4))
+  | A("")
+  | A("── 4. LE CONTRAT DE `verif_campagne_dn56.py`, PAR LE PILOTE PAR LOTS ───────")
+  | A("  ⚠️ Ce n'est PAS la gate : meme pilote qu'a T0 (source integrale en T0 § 6).")
+  | A(ind(lire(ET, "dn56-plan.txt")))
+  | A(ind(lire(ET, "dn56-lots.txt")))
+  | A(ind(lire(ET, "dn56-bilan.txt")))
+  | A("  ⇒ 718 mutants a T0, 724 a T7 : +6, les mutants neufs 39 a 44 de `verif_affiliation_dn65.py`.")
+  | A("")
+  | A("── 5. (c29) DE `verif_cablage_dn62.py`, AVEC ET SANS LA PAGE D'ACHAT ───────")
+  | A(ind(lire(ET, "c29.txt")))
+  | A("  ⇒ %s a T0 : la page anglaise glose toujours `DeskNode` et `DeskNode + Ambiance`."
+  |   % ("IDENTIQUE" if lire("T0", "c29.txt") == lire(ET, "c29.txt") else "⛔ DIFFERENT"))
+  | A("")
+  | A("── 6. LES CONTROLES DU DOSSIER QUI NE SONT PAS DES GATES ───────────────────")
+  | A(ind(lire(ET, "controles.txt")))
+  | A("")
+  | A("── 7. LA FIDELITE DE LA TRADUCTION, PAR LE COMPTE (`fidelite_bom.py`) ───────")
+  | A(ind(lire(ET, "fidelite.txt")))
+  | A("  ⚠️ Ce que ce compte ⛔ prouve pas : que chaque phrase dise la meme chose. Il prouve que rien")
+  | A("     de ce qui se COMPTE n'a disparu (titres, tables, dates, adresses, photos, nombres).")
+  | A("")
+  | A("── 8. LES SCRIPTS AJOUTES A CEUX DE T0 ET T3 ───────────────────────────────")
+  | for f in ("comparer.py", "fidelite_bom.py", "controles.sh", "composer_T7.py"):
+  |     A("  ── %s ──" % f)
+  |     A("\n".join("  | " + l for l in open(os.path.join(S, f), encoding="utf-8").read().rstrip("\n").split("\n")))
+  |     A("")
+  | print("\n".join(out))
+
