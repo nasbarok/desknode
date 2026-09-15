@@ -1,0 +1,952 @@
+==============================================================================
+dn8-8 / T1 — CE QUI DEVIENT PUBLIC A LA BASCULE : L'INVENTAIRE, ⛔ UNE INTENTION
+  (AC8.8.1) Rejoue le 2026-09-15 APRES LA DERNIERE ECRITURE DE L'ARBRE hors
+  `T2` (prose, `CLA.md`, mutant 32, re-datation des sites, `T3` compris) et
+  AVANT le commit `C1`, par `releve.py` (source integrale au § 8). Lecture
+  seule : git en lecture, `gh api` en GET. Il REMPLACE les releves des trois
+  passes precedentes de la Phase A (2026-09-14), que la revue a juges fautifs
+  — voir ci-dessous. Tir du jour : rc=0.
+==============================================================================
+
+── 0. COMMENT LIRE CE RELEVE ──────────────────────────────────────────────────
+  ⛔ VALEURS SENSIBLES MASQUEES DANS CE FICHIER : SSID, adresse de l'employeur,
+     nom d'hote, utilisateur Windows, prenom, adresse gmail. Le script ne les
+     contient PAS et ⛔ DIT PAS OU ELLES SONT : il les DERIVE a l'execution par
+     des motifs appliques a TOUT l'arbre de HEAD et a toutes les adresses de
+     l'historique, masque toute la sortie, masque ensuite TOUTE forme
+     d'adresse e-mail restante, et sort en 3 si une valeur derivee survit.
+  ⛔ AUCUN EMPLACEMENT D'UNE VALEUR PERSONNELLE — ni chemin, ni ligne, ni
+     commit : CATEGORIE, COMPTE et PORTEE seulement. 🔴 Revue du 2026-09-14 :
+     la premiere version de ce releve listait les fichiers du sommet qui
+     portaient le SSID, le nom d'hote et l'utilisateur, le commit et la cle de
+     l'adresse de l'employeur, et le fichier source de chaque derivation — elle
+     disait OU LIRE ce qu'elle masquait. Elle sautait aussi les blobs UTF-16
+     (deux sorties d'erreur PowerShell portaient l'utilisateur hors compte),
+     un motif derive VIDE y aurait compte TOUT chemin Windows, et un fichier
+     suivi supprime ou un chemin cite par git la faisait planter. Les quatre
+     sont corriges au site (§ 8).
+  🔴 Revue boucle 2 (2026-09-14) : la seconde version DECLARAIT non balayes le
+     corps et les commentaires des 2 PR et le corps de la release, lus en GET.
+     Ils le sont desormais (§ 6), avec les memes motifs derives, par NATURE de
+     surface et en COMPTE de textes — ⛔ quelle PR, ⛔ quel commentaire, qui
+     seraient des pointeurs ; le message du tag l'etait deja (§ 3). Restent
+     DECLARES non balayes : les JOURNAUX des runs d'Actions, qui deviennent
+     publics avec le depot. Et l'EXIF compte SEPAREMENT « marque ET modele » et
+     « marque OU modele » (§ 3) : la seconde version n'avait que le « ou », et
+     `docs/cablage/PHOTOS.md` le disait « marque et modele ».
+  🔴 Revue boucle 3 (2026-09-14) : la troisieme version (1) IMPRIMAIT son texte
+     avant de calculer les valeurs survivantes — sur rc=3 la valeur sortait
+     quand meme ; elles sont calculees AVANT, et rc=3 n'imprime que les
+     CATEGORIES ; (2) comptait deux fois au sommet un fichier MODIFIE (son blob
+     de HEAD et sa version de travail) — une fois desormais, la version de
+     travail ; (3) ⛔ balayait ni les TITRES ni les NOMS DE BRANCHE des PR, ni le
+     NOM de la release — ils le sont (§ 6) ; (4) passait sous silence les blobs
+     BINAIRES autres que JPEG — ils sont comptes par extension et DECLARES non
+     balayes (§ 3) ; (5) appelait « date de prise de vue » l'etiquette EXIF
+     `0x0132`, qui est la date de MODIFICATION du fichier, et comptait des
+     « JPEG » qui sont des VERSIONS (blobs) : le § 3 compte desormais versions
+     et chemins, les deux dates separement, et `Software`, `Artist`,
+     `Copyright`, `CameraOwnerName`, `BodySerialNumber`, `UserComment`,
+     `MakerNote` et le paquet XMP ; (6) nommait « contenu » l'adresse trouvee
+     dans l'objet tag : c'est l'EN-TETE DU TAGUEUR, balaye a part du message
+     (§ 3). Et (7) l'adresse « employeur » est derivee des seules identites de
+     FORME e-mail (une identite sans `@` ⛔ est pas une adresse — elle sortait
+     comme « employeur » dans le monde des temoins de `T3`) ; (8)
+     `--balayer-objet` sert la garde B1 et `b12` de `T3` : le balayage de
+     l'OBJET committe, valeurs derivees sur la `baseline_revision`.
+  🔴 Revue de cette re-derivation (2026-09-15) : l'EXIF comptait UserComment a
+     la seule PRESENCE de l'entree — les 7 entrees sont VIDES ; il compte
+     desormais « entree presente » et « charge NON VIDE » a part, et les
+     VIGNETTES de l'IFD1. `MakerNote` reste compte ⛔ DECODE : les « 0 » de
+     `BodySerialNumber` et consorts valent pour les etiquettes STANDARD lues,
+     ⛔ pour ce qu'un bloc constructeur porterait (§ 3).
+  ⚠️ « scenario avec `main` pousse » = les refs distantes + le HEAD local
+     `23fae3f`. Le sommet reellement pousse sera `C2` : il ajoute les fichiers
+     de l'arbre de travail listes au § 2 (ce releve compris) et la ligne 103 de
+     `cla.yml`. Leur CONTENU est balaye au § 3 (colonne « fichiers au sommet »),
+     leurs blobs ⛔ ne sont pas comptes au tableau du § 2 : ils n'existent qu'au
+     commit.
+  ⚠️ Motifs LARGES, et c'est declare : « IP LAN privee » et « adresse MAC »
+     comptent toute forme (versions a quatre nombres, horodatages) ; la
+     categorie « depot prive / KidSat / Kido » compte `compagnon[_-]project`,
+     `kidsat` et le mot `kido`, casse ignoree. Ce sont des MAJORANTS.
+  ⚠️ Ce que ce releve NE dit PAS : ce qu'un clone recoit en octets
+     (`CONTRIBUTING.md` § *What cloning this costs* le mesure par un vrai
+     `git clone`) ; ce que GitHub affiche de plus que les objets ; et les
+     surfaces que ses motifs ⛔ balaient pas, nommees dans son en-tete.
+  ⚠️ Le balayage des valeurs DERIVEES sur TOUT `mesures/dn8-8/` — `T0`, ce
+     releve, `T3`, et `T2` ecrit apres lui — est releve dans `T2`
+     (`releve.py --balayer`). Celui de l'OBJET `C1` une fois committe est la
+     garde B1 de la Phase B (`T3`).
+
+==============================================================================================
+dn8-8 / T1 — CE QUI DEVIENT PUBLIC A LA BASCULE, RELEVE LE 2026-09-15T03:09:06+02:00
+  HEAD desknode : 23fae3fb015517c39eea311e9e999dd91569df2f
+  CE QUI EST LU : le CONTENU de chaque blob atteignable (texte UTF-8, UTF-16 DECODE ; JPEG lus pour
+    leurs EXIF ; autre binaire ⛔ lu) · le contenu des fichiers modifies ou neufs de l'arbre de
+    travail · le MESSAGE de chaque commit atteignable · les adresses d'AUTEUR et de COMMITTER · le
+    message et l'adresse du tag annote · les reglages, runs, PR et release lus en GET · le CORPS
+    et les COMMENTAIRES des PR (commentaires de discussion, de revue, et corps des revues) et le
+    CORPS de la release tel que GitHub le sert, lus en GET et balayes par les memes motifs (§ 6).
+    Et, lus en GET et balayes de meme : les TITRES et les NOMS DE BRANCHE des PR, le NOM des releases.
+  ⛔ CE QUI N'EST PAS BALAYE PAR LES MOTIFS, DECLARE : les JOURNAUX des runs d'Actions (ils
+    deviennent publics avec le depot ; ⛔ telecharges ni lus ici), les avatars et le graphe des
+    contributeurs, et les blobs BINAIRES autres que JPEG (PNG, PDF, `.bin`, archives…), comptes par
+    extension au § 3 et ⛔ lus : un motif texte ⛔ y a pas de sens, et leurs metadonnees ⛔ sont lues.
+  ⛔ valeurs sensibles MASQUEES a l'ecriture ; ⛔ aucun emplacement d'une valeur personnelle (chemin,
+    ligne, commit) : CATEGORIE, COMPTE et PORTEE seulement.
+  valeurs derivees (COMPTE seulement) : ssid=2 · employeur=1 · gmail=1 · utilisateur=1 · prenom=1 · hote=1
+==============================================================================================
+
+── 1. LES REFS DISTANTES (`git ls-remote origin`) ──
+  7246f5248d1625a2a351bbb374c03f0585a008c3  HEAD                                          
+  3db180cbd6789cde32bb093dd565d1ab3c4f298f  refs/heads/dn4-5-le-module-vit-tout-seul      ancetre de main local : OUI
+  7246f5248d1625a2a351bbb374c03f0585a008c3  refs/heads/main                               ancetre de main local : OUI
+  d11977f8d80eee890f37bf79843cfe782b612338  refs/pull/1/head                              ancetre de main local : NON
+  6a80de8ccab4fb3715ebfdeae830ecbe801a5069  refs/pull/2/head                              ancetre de main local : NON
+  f382819016ea4a2431350a2127e29258dbb027e1  refs/tags/v0.1.0-beta                         
+  fb6d64601f5b17ce54927a7e2aae599bd517a4e0  refs/tags/v0.1.0-beta^{}                      
+
+── 2. DEUX SCENARIOS : sans pousser `main` / avec `main` pousse (HEAD local) ──
+  | | sans pousser `main` | avec `main` pousse |
+  |---|---|---|
+  | commits atteignables | 509 | 512 |
+  | arbre du sommet | tag : 876 fichiers, 41495255 o | HEAD : 887 fichiers, 43341997 o |
+  | blobs uniques de l'historique | 2298 · 249502712 o | 2313 · 251538735 o |
+  ⇒ pousser `main` ajoute 3 commit(s) et 15 blob(s) (2036023 o) :
+      b4219ac405ca     83153 o  CHANGELOG.md
+      a025791c2f4a      7915 o  README.md
+      febe0a04815c    551967 o  docs/demo/2026-08-30-1853-desknode-toucher.gif
+      197f5df6cdaa    542301 o  docs/demo/2026-08-30-1910-desknode-reseau-en-direct.gif
+      3b037a2da0a0    520906 o  docs/demo/2026-08-30-1911-desknode-courbe-reseau.gif
+      f986625a3080     70835 o  docs/roadmap.md
+      18785b855a62     16149 o  mesures/dn8-7/P1-publication.txt
+      e6d5fad679e0     33483 o  mesures/dn8-9/T0-borne-entree.txt
+      7f8bbe8c40c6     27644 o  mesures/dn8-9/T1-recette-des-gif.txt
+      ff76d006dc01      8540 o  mesures/dn8-9/T2-lien-oembed.txt
+      9e2be9fd873f     32855 o  mesures/dn8-9/T3-gate-et-temoins.txt
+      a541a932086f     26011 o  mesures/dn8-9/T4-passe-apres-ecriture.txt
+      708de01c3526     38779 o  mesures/dn8-9/T5-correctifs-de-revue.txt
+      4a271969a726     27203 o  mesures/dn8-9/releve-cloture.md
+      0aaba3eedeb4     48282 o  tools/verif_vitrine_dn84.py
+  blobs de l'historique ABSENTS de l'arbre de HEAD : 1432 (208256881 o)
+    dont JPEG : 11 (22672770 o)
+  arbre de travail au tir (fichiers modifies ou neufs, ce releve exclu) : 17 present(s), 0 supprime(s)
+          87460 o  CHANGELOG.md
+           5559 o  CLA.md
+          65164 o  CONTRIBUTING.md
+           8754 o  LICENSING.md
+           4043 o  SECURITY.md
+          22333 o  docs/affiliation.md
+          17574 o  docs/bom.md
+          24899 o  docs/cablage/PHOTOS.md
+          31150 o  docs/dn5-1-ecart-promesses.md
+           4825 o  docs/releases/v0.1.0-beta.md
+          78348 o  docs/roadmap.md
+          16045 o  installeur/charge/PROVENANCE.md
+         203614 o  installeur/index.html
+          39907 o  mesures/dn8-8/T0-borne-entree.txt
+          59068 o  mesures/dn8-8/T2-apres-ecriture.txt
+         757940 o  mesures/dn8-8/T3-gardes-et-temoins.txt
+          93103 o  tools/verif_licences_dn52.py
+  ⚠️ le sommet reellement pousse sera `C2` : il ajoute ces fichiers et la ligne 103 de `cla.yml`,
+     puis `C3` le releve de la bascule — ⛔ mesurables seulement apres leur commit.
+
+── 3. LE BALAYAGE : 2313 blobs atteignables (scenario avec `main` pousse) + arbre de travail + messages + tag ──
+  blobs texte decodes en UTF-16 : 3
+  blobs BINAIRES autres que JPEG, ⛔ balayes (declare) : 9 — .bin 5 · .gif 3 · .png 1
+  | constat | blobs (+ fichiers de l'arbre de travail) | fichiers au sommet (HEAD, et la version de travail d'un fichier modifie, comptee une fois) | dans l'arbre du tag (donc dans l'archive de la release) | deja sur le remote ? |
+  |---|---|---|---|---|
+  | SSID Wi-Fi reel du domicile (2 graphies) | 38 | 1 | OUI | oui (38 blobs par les refs distantes) |
+  | nom d'hote du poste (DESKTOP-***) | 110 | 6 | OUI | oui (110 blobs par les refs distantes) |
+  | utilisateur Windows (chemin) | 45 | 37 | OUI | oui (45 blobs par les refs distantes) |
+  | prenom dans un contenu | 1 | 1 | OUI | oui (1 blobs par les refs distantes) |
+  | adresse gmail dans un contenu | 1 | 1 | OUI | oui (1 blobs par les refs distantes) |
+  | adresse employeur dans un contenu | 0 | 0 | non | non |
+  | depot prive de planification / KidSat / Kido nommes | 388 | 188 | OUI | oui (380 blobs par les refs distantes) |
+  | IP LAN privee (192.168.x.x / 10.x.x.x / 172.16-31.x.x) | 149 | 17 | OUI | oui (149 blobs par les refs distantes) |
+  | adresse MAC | 125 | 14 | OUI | oui (125 blobs par les refs distantes) |
+  | jeton / cle / secret (gh*_, github_pat_, AKIA, cle privee, xox*-, sk-) | 0 | 0 | non | non |
+  | affectation de mot de passe (password/passwd/pwd/mot de passe = …) | 0 | 0 | non | non |
+  SSID — nombre de versions (blobs) qui le portent : 38 ; nombre de chemins distincts : 1
+  EXIF des JPEG atteignables — en VERSIONS de JPEG (blobs), sur 22 chemin(s) distinct(s) :
+    33 versions · marque ET modele 29 · marque OU modele 29
+    date de MODIFICATION du fichier (0x0132, ⛔ la prise de vue) 29 · date de PRISE DE VUE (DateTimeOriginal) 31
+    etiquettes STANDARD lues : Software 31 · Artist 0 · Copyright 0 · CameraOwnerName 0 · BodySerialNumber 0
+    UserComment : entree presente 7, charge NON VIDE 0 · MakerNote (bloc constructeur, ⛔ DECODE) 7
+    vignette dans l'IFD1 29 · paquet XMP 0 · IFD GPS 0 · EXIF illisibles 0
+
+  messages, auteurs et tag :
+    commits dont l'auteur ou le committer est l'adresse employeur : 1 · deja sur le remote : 1 · ancetres de la source du binaire publie (55006c1) : 1
+    remorques : Co-Authored-By dans 403 commit(s), Claude-Session dans 89, 3 URL distincte(s)
+    messages de commit qui portent « nom d'hote du poste (DESKTOP-***) » : 1
+    messages de commit qui portent « depot prive de planification / KidSat / Kido nommes » : 3
+    messages de commit qui portent « adresse MAC » : 1
+    message du tag : 21 octets · categories trouvees dans le MESSAGE : 0
+    EN-TETE DU TAGUEUR (l'identite qui a pose le tag, ⛔ un contenu) : adresse de forme e-mail OUI (masquee a l'ecriture) · categories d'adresse : adresse gmail
+
+── 4. LE MAGASIN DE SIGNATURES CLA ──
+  HEAD         {"signedContributors": []}  ⇒ 0 signature(s)
+  origin/main  {"signedContributors": []}  ⇒ 0 signature(s)
+  v0.1.0-beta  {"signedContributors": []}  ⇒ 0 signature(s)
+  source relue en GET : contributor-assistant/github-action@v2.6.1, src/pullrequest/signatureComment.ts l.20-28 (HTTP 200)
+  champs du commentaire lu : 7 — name, id, comment_id, body, created_at, repoId, pullRequestNo
+  ⚠️ champ RETIRE avant l'ecriture : `body` (l.36 : `delete filteredListOfPRComments[i].body`)
+  champs enregistres par signature : 6 — name, id, comment_id, created_at, repoId, pullRequestNo
+  ecriture du magasin : `branch:` de .github/workflows/cla.yml = 'main'
+
+── 5. LES REGLAGES DU DEPOT, LUS EN GET (`gh api -i -X GET`) ──
+  repos/nasbarok/desknode : HTTP 200 · visibility=private · private=True · has_issues=True · has_wiki=False · has_pages=False · has_discussions=False · allow_forking=True · forks=0 · stars=0 · network=0 · default_branch=main
+  branches/main/protection                             HTTP 403  message=« Upgrade to GitHub Pro or make this repository public to enable this feature. »
+  rulesets                                             HTTP 403  message=« Upgrade to GitHub Pro or make this repository public to enable this feature. »
+  private-vulnerability-reporting                      HTTP 404  enabled=None
+  actions/permissions/workflow                         HTTP 200  default_workflow_permissions=read
+  actions/permissions/fork-pr-contributor-approval     HTTP 422  approval_policy=None
+  collaborators                                        HTTP 200  1 element(s)
+  actions/secrets                                      HTTP 200  total_count=0
+  actions/variables                                    HTTP 200  total_count=0
+  hooks                                                HTTP 200  0 element(s)
+  keys                                                 HTTP 200  0 element(s)
+  environments                                         HTTP 200  total_count=0
+  pages                                                HTTP 404  message=« Not Found »
+  community/profile                                    HTTP 200  health=57 · code_of_conduct=null · code_of_conduct_file=null · contributing=present · issue_template=null · license=present · pull_request_template=null · readme=present
+  actions/artifacts                                    HTTP 200  total_count=0
+
+── 6. CE QUI DEVIENT LISIBLE EN PLUS DES OCTETS ──
+  runs d'Actions : HTTP 200 · total_count=21
+      .github/workflows/cla.yml push                   failure    ×1
+      CLA      issue_comment          failure    ×1
+      CLA      issue_comment          skipped    ×2
+      CLA      issue_comment          success    ×1
+      CLA      pull_request_target    failure    ×2
+      CLA      pull_request_target    success    ×2
+      Gates    pull_request           success    ×1
+      Gates    push                   failure    ×1
+      Gates    push                   success    ×10
+  pull requests : HTTP 200 · 2
+      #2 state=closed merged=False commentaires=4 · commentaires de revue=0 · revues=0
+      #1 state=closed merged=False commentaires=2 · commentaires de revue=0 · revues=0
+  releases : HTTP 200 · 1
+      v0.1.0-beta prerelease=True draft=False assets=6 : bootloader.bin, desknode-v0.1.0-beta.zip, desknode.bin, living_pcb_v0.bin, manifest.json, partition-table.bin
+  🔬 LES TEXTES LUS EN GET, BALAYES par les motifs du § 3 (COMPTE de textes par categorie ; ⛔ quelle PR,
+     ⛔ quel commentaire) :
+  | surface | textes lus | lectures refusees | categories trouvees (textes) |
+  |---|---|---|---|
+  | titres des PR | 2 | 0 | 0 |
+  | noms de branche des PR | 2 | 0 | 0 |
+  | corps des PR | 2 | 0 | 0 |
+  | commentaires de discussion des PR | 6 | 0 | 0 |
+  | commentaires de revue des PR | 0 | 0 | 0 |
+  | corps des revues des PR | 0 | 0 | 0 |
+  | noms des releases | 1 | 0 | 0 |
+  | corps des releases | 1 | 0 | 0 |
+  ⛔ les JOURNAUX des runs d'Actions ne sont PAS balayes (declare en tete).
+  issues (hors PR) : HTTP 200 · 0
+
+── 7. LE VERDICT QUI S'APPLIQUE A CE RELEVE ──
+  Q1, owner, 2026-09-14, verbatim : « 1 oui » ⇒ (A) l'historique part TEL QUEL ; le sous-choix
+  (retirer le SSID du sommet) ⛔ n'est pas pris — ⛔ aucun effacement (NFR10).
+
+── 8. LE SCRIPT, TEL QUE JOUE : `python3 releve.py > T1.sortie.txt` (depuis la racine du depot) ──
+  | #!/usr/bin/env python3
+  | # dn8-8 — T1 : LE RELEVE DE CE QUI DEVIENT PUBLIC (AC8.8.1), rejoue le jour meme.
+  | #
+  | # ⛔ CE SCRIPT NE CONTIENT AUCUNE VALEUR SENSIBLE EN CLAIR, ⛔ ET AUCUN POINTEUR VERS L'ENDROIT OU
+  | #    L'UNE D'ELLES SE TROUVE (ni chemin, ni ligne, ni commit) : chacune est DERIVEE a l'execution par
+  | #    un motif applique a TOUT l'arbre de HEAD (ou a toutes les adresses de l'historique), puis MASQUEE :
+  | #      · SSID               <= les valeurs entre accents graves des lignes qui portent le mot `SSID`
+  | #      · adresse employeur  <= l'adresse d'auteur/committer qui n'est ni gmail ni noreply
+  | #      · adresse gmail      <= toute adresse `…@gmail.com` des auteurs/committers
+  | #      · nom d'hote         <= le motif `DESKTOP-<suffixe>`
+  | #      · utilisateur Windows <= le composant `Users\<x>` le plus frequent a HEAD
+  | #      · prenom             <= le composant `/mnt/<lecteur>/<X>/` a majuscule initiale, hors `Users`/`Windows`
+  | #    Une valeur derivee VIDE rend un motif qui ne correspond a RIEN (⛔ un motif qui compterait tout).
+  | #    Puis TOUTE forme d'adresse e-mail restante est masquee, et le script SORT EN 3 si une seule
+  | #    valeur derivee survit dans la sortie (casse ignoree).
+  | #    ⚠️ Revue du 2026-09-14 : la premiere version publiait l'EMPLACEMENT de chaque valeur masquee
+  | #    (fichiers au sommet, commit et cle de l'adresse employeur, source de la derivation) — ce qui
+  | #    disait ou lire ce qu'elle masquait. Le releve ne dit plus que CATEGORIE, COMPTE et PORTEE.
+  | #    ⚠️ Revue boucle 2 (2026-09-14) : les surfaces LUES EN GET (corps et commentaires des PR, corps
+  | #    de la release) etaient DECLAREES non balayees — elles le sont desormais, avec les memes motifs
+  | #    derives, et ⛔ sans nommer QUELLE PR ni QUEL commentaire (un numero serait un pointeur) ; seuls
+  | #    les journaux des runs d'Actions restent DECLARES non balayes. Et l'EXIF compte SEPAREMENT
+  | #    « marque ET modele » et « marque OU modele » (la premiere version n'avait que le « ou »).
+  | #    ⚠️ Revue boucle 3 (2026-09-14) : (1) les valeurs SURVIVANTES sont calculees AVANT d'imprimer — sur
+  | #    rc=3, seules les CATEGORIES sortent (la premiere version imprimait le texte, valeur comprise, puis
+  | #    rendait 3) ; (2) un fichier modifie de l'arbre de travail compte UNE fois au sommet (il comptait deux :
+  | #    son blob de HEAD et sa version de travail) ; (3) les TITRES et les NOMS DE BRANCHE des PR, et le NOM
+  | #    des releases, sont balayes ; (4) les blobs binaires autres que JPEG (PNG, PDF, `.bin`…) sont
+  | #    DECLARES non balayes, par extension ; (5) l'EXIF dit ce qu'il lit — `0x0132` est la date de
+  | #    MODIFICATION du fichier, ⛔ de prise de vue — et compte aussi `DateTimeOriginal`, `Software`,
+  | #    `Artist`, `Copyright`, `CameraOwnerName`, `BodySerialNumber`, `UserComment`, `MakerNote` et un paquet
+  | #    XMP, en VERSIONS de JPEG (blobs) et en chemins ; (6) l'adresse trouvee au tag est nommee EN-TETE DU
+  | #    TAGUEUR, ⛔ « contenu » ; (7) l'adresse « employeur » est derivee des seules adresses de FORME e-mail
+  | #    (une identite sans `@` ⛔ est pas une adresse) ; (8) `--balayer-objet` (B1, B12).
+  | # ⛔ Lecture seule : git en lecture, `gh api` en GET (⛔ aucun -X autre que GET), sortie sur stdout.
+  | # `--balayer <fichier>…` : ne releve rien ; cherche les valeurs DERIVEES et les formes d'adresse
+  | #    dans les fichiers donnes (le balayage de `mesures/dn8-8/`) et sort en 1 s'il en trouve.
+  | # `--balayer-objet <base> <rev> [<base des valeurs>]` : ne releve rien ; cherche les valeurs (derivees sur
+  | #    <base des valeurs>, defaut <base>) dans `git archive <rev>`,
+  | #    limite aux fichiers que <rev> ajoute ou modifie depuis <base>, et sort en 1 si <rev> en porte PLUS
+  | #    que <base> dans un meme fichier. ⛔ Aucune valeur ni aucun chemin imprime : categories et comptes.
+  | import collections
+  | import io
+  | import json
+  | import os
+  | import re
+  | import struct
+  | import subprocess
+  | import sys
+  | import tarfile
+  |
+  | DN = os.getcwd()
+  | DEPOT = "nasbarok/desknode"
+  | EXCLUS = {"mesures/dn8-8/T1-releve-de-ce-qui-devient-public.txt"}  # ce releve lui-meme
+  | RIEN = "(?!x)x"
+  | RE_MAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+  |
+  |
+  | def sh(*args, ok=(0,)):
+  |     r = subprocess.run(list(args), cwd=DN, capture_output=True, text=True, errors="replace")
+  |     if r.returncode not in ok:
+  |         raise SystemExit("⛔ %s rc=%s : %s" % (" ".join(args), r.returncode, r.stderr[:300]))
+  |     return r.stdout
+  |
+  |
+  | def gh_get(chemin):
+  |     """GET seul ; rend (code HTTP, corps JSON ou texte)."""
+  |     r = subprocess.run(["gh", "api", "-i", "-X", "GET", chemin], capture_output=True, text=True, errors="replace")
+  |     brut = r.stdout.replace("\r\n", "\n")
+  |     tete, _, corps = brut.partition("\n\n")
+  |     m = re.match(r"HTTP/[\d.]+\s+(\d{3})", tete)
+  |     code = int(m.group(1)) if m else None
+  |     try:
+  |         return code, json.loads(corps)
+  |     except ValueError:
+  |         return code, corps.strip()
+  |
+  |
+  | OUT = []
+  |
+  |
+  | def p(*a):
+  |     OUT.append(" ".join(str(x) for x in a))
+  |
+  |
+  | # ── 0. LES VALEURS A MASQUER, DERIVEES PAR MOTIF SUR TOUT L'ARBRE ────────────────────────────────
+  | def deriver(rev="HEAD"):
+  |     """Les valeurs a masquer, derivees sur l'ARBRE de `rev` (et les adresses de tout l'historique).
+  |     ⚠️ Revue boucle 3 : `--balayer-objet` derive sur la BASE, ⛔ sur l'objet balaye — mesure dans le monde
+  |     des temoins : derivees sur un C1 qui porte `mesures/dn8-8/`, les « valeurs » SSID gagnaient le mot
+  |     `SSID` lui-meme (entre accents graves dans ce releve), et chaque mention du mot devenait une survivante."""
+  |     v = {}
+  |     lignes = sh("git", "grep", "-h", "-I", "-E", r"\bSSID\b", rev, ok=(0, 1))
+  |     v["ssid"] = sorted({x for l in lignes.splitlines() for x in re.findall(r"`([^`]+)`", l)})
+  |     emails = set(sh("git", "log", "--all", "--format=%ae%n%ce").split())
+  |     emails = {e for e in emails if RE_MAIL.fullmatch(e)}          # ⚠️ boucle 3 : de FORME e-mail seulement
+  |     v["employeur"] = sorted(e for e in emails if not e.endswith("@gmail.com") and "noreply" not in e)
+  |     v["gmail"] = sorted(e for e in emails if e.endswith("@gmail.com"))
+  |     users = collections.Counter(re.findall(r"Users[\\/]+([A-Za-z0-9._-]+)",
+  |                                            sh("git", "grep", "-h", "-I", "-o", "-E", r"Users[\\/]+[A-Za-z0-9._-]+", rev, ok=(0, 1))))
+  |     v["utilisateur"] = [users.most_common(1)[0][0]] if users else []
+  |     mnt = sh("git", "grep", "-h", "-I", "-o", "-E", r"/mnt/[a-z]/[A-Z][a-z]+/", rev, ok=(0, 1))
+  |     v["prenom"] = sorted({x for x in re.findall(r"/mnt/[a-z]/([A-Z][a-z]+)/", mnt)} - {"Users", "Windows"})
+  |     v["hote"] = sorted(set(re.findall(r"DESKTOP-[A-Z0-9]+", sh("git", "grep", "-h", "-I", "-o", "-E", "DESKTOP-[A-Z0-9]+", rev, ok=(0, 1)))))
+  |     return v
+  |
+  |
+  | VALEURS = deriver()
+  | MASQUES = {"ssid": "<SSID masque>", "employeur": "<adresse employeur masquee>",
+  |            "gmail": "<adresse gmail masquee>", "utilisateur": "<utilisateur Windows masque>",
+  |            "prenom": "<prenom masque>", "hote": "DESKTOP-***"}
+  |
+  |
+  | def alt(vals, gabarit="%s", flags=re.I):
+  |     """Un motif sur les valeurs derivees ; VIDE ⇒ un motif qui ne correspond a rien."""
+  |     return re.compile(gabarit % "|".join(re.escape(x) for x in vals) if vals else RIEN, flags)
+  |
+  |
+  | def masquer(t):
+  |     for cat, vals in VALEURS.items():
+  |         for x in sorted(vals, key=len, reverse=True):
+  |             t = re.sub(re.escape(x), MASQUES[cat], t, flags=re.I)
+  |     return RE_MAIL.sub("<adresse e-mail masquee>", t)
+  |
+  |
+  | def decoder(data):
+  |     """Texte d'un blob : UTF-16 (BOM, ou un octet sur deux nul) DECODE ; autre binaire ⇒ None."""
+  |     if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+  |         return data.decode("utf-16", "replace")
+  |     tete = data[:4000]
+  |     if len(tete) >= 8 and tete[1::2].count(0) > 0.4 * len(tete[1::2]) and tete[0::2].count(0) < 0.1 * len(tete[0::2]):
+  |         return data.decode("utf-16-le", "replace")
+  |     if b"\x00" in data[:8000]:
+  |         return None
+  |     return data.decode("utf-8", "replace")
+  |
+  |
+  | # ── 1. LES REFS DISTANTES ────────────────────────────────────────────────────────────────────────
+  | def refs_distantes():
+  |     refs = []
+  |     for l in sh("git", "ls-remote", "origin").splitlines():
+  |         sha, ref = l.split("\t")
+  |         refs.append((sha, ref))
+  |     return refs
+  |
+  |
+  | def est_ancetre(a, b):
+  |     return subprocess.run(["git", "merge-base", "--is-ancestor", a, b], cwd=DN).returncode == 0
+  |
+  |
+  | def objets(tips):
+  |     """blobs uniques atteignables depuis `tips` : {sha: (taille, chemin vu)}"""
+  |     lignes = sh("git", "rev-list", "--objects", *tips).splitlines()
+  |     chemins = {}
+  |     for l in lignes:
+  |         sha, _, chemin = l.partition(" ")
+  |         chemins.setdefault(sha, chemin)
+  |     entree = "\n".join(chemins) + "\n"
+  |     r = subprocess.run(["git", "cat-file", "--batch-check=%(objectname) %(objecttype) %(objectsize)"],
+  |                        cwd=DN, input=entree, capture_output=True, text=True)
+  |     blobs = {}
+  |     for l in r.stdout.splitlines():
+  |         sha, typ, taille = l.split()
+  |         if typ == "blob":
+  |             blobs[sha] = (int(taille), chemins[sha])
+  |     return blobs
+  |
+  |
+  | def arbre(ref):
+  |     n, o = 0, 0
+  |     for l in sh("git", "ls-tree", "-r", "-l", ref).splitlines():
+  |         champs = l.split(None, 4)
+  |         if champs[1] == "blob":
+  |             n += 1
+  |             o += int(champs[3])
+  |     return n, o
+  |
+  |
+  | def lire_blobs(shas):
+  |     proc = subprocess.Popen(["git", "cat-file", "--batch"], cwd=DN, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+  |     for s in shas:
+  |         proc.stdin.write((s + "\n").encode())
+  |         proc.stdin.flush()
+  |         tete = proc.stdout.readline().split()
+  |         taille = int(tete[2])
+  |         data = proc.stdout.read(taille)
+  |         proc.stdout.read(1)
+  |         yield s, data
+  |     proc.stdin.close()
+  |     proc.wait()
+  |
+  |
+  | # ── EXIF, sans dependance : ce qui est LU, et ce que chaque etiquette VEUT DIRE ─────────────────────
+  | #    IFD0 : 0x010F Make · 0x0110 Model · 0x0132 DateTime = date de MODIFICATION du fichier (⛔ la prise de
+  | #    vue) · 0x0131 Software · 0x013B Artist · 0x8298 Copyright · 0x8825 pointeur GPS (presence d'un IFD GPS).
+  | #    Sous-IFD Exif (0x8769) : 0x9003 DateTimeOriginal = date de PRISE DE VUE · 0xA430 CameraOwnerName ·
+  | #    0xA431 BodySerialNumber · 0x9286 UserComment · 0x927C MakerNote (bloc proprietaire du constructeur,
+  | #    compte, ⛔ decode). Segment APP1 `http://ns.adobe.com/xap/1.0/` : un paquet XMP (compte, ⛔ decode).
+  | #    IFD1 (l'IFD suivant d'IFD0) : une VIGNETTE si elle porte 0x0201/0x0202 (JPEG, longueur > 0) ou 0x0111.
+  | #    Une etiquette texte compte si sa valeur est NON VIDE ; MakerNote, si l'entree existe (⛔ decodee : ce
+  | #    qu'elle porte — un numero de serie constructeur, par exemple — ⛔ est PAS lu) ; UserComment compte a
+  | #    part « entree presente » et « charge NON VIDE » (octets apres les 8 du code de jeu de caracteres, hors
+  | #    NUL et espaces). ⚠️ Correctif de revue (boucle 3) : UserComment etait compte a la seule presence, et
+  | #    les 7 entrees relevees sont VIDES.
+  | IFD0 = {0x010F: "make", 0x0110: "model", 0x0132: "date_modification", 0x0131: "software", 0x013B: "artist",
+  |         0x8298: "copyright"}
+  | IFD_EXIF = {0x9003: "date_prise_de_vue", 0xA430: "proprietaire", 0xA431: "numero_de_serie"}
+  | PRESENCE_EXIF = {0x9286: "user_comment", 0x927C: "maker_note"}
+  | TAILLES_TYPE = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8}
+  | XMP = b"http://ns.adobe.com/xap/1.0/\x00"
+  |
+  |
+  | def exif(data):
+  |     if data[:2] != b"\xff\xd8":
+  |         return None
+  |     out = {}
+  |     i = 2
+  |     while i + 4 <= len(data):
+  |         if data[i] != 0xFF:
+  |             break
+  |         marq = data[i + 1]
+  |         if marq in (0xD9, 0xDA):
+  |             break
+  |         lg = struct.unpack(">H", data[i + 2:i + 4])[0]
+  |         seg = data[i + 4:i + 2 + lg]
+  |         if marq == 0xE1 and seg[:6] == b"Exif\x00\x00" and "tiff" not in out:
+  |             out["tiff"] = True
+  |             out.update(tiff(seg[6:]))
+  |         if marq == 0xE1 and seg[:len(XMP)] == XMP:
+  |             out["xmp"] = True
+  |         i += 2 + lg
+  |     return out
+  |
+  |
+  | def tiff(t):
+  |     try:
+  |         e = "<" if t[:2] == b"II" else ">"
+  |
+  |         def entrees(off):
+  |             n = struct.unpack(e + "H", t[off:off + 2])[0]
+  |             for k in range(n):
+  |                 ent = t[off + 2 + 12 * k: off + 14 + 12 * k]
+  |                 tag, typ, cnt = struct.unpack(e + "HHI", ent[:8])
+  |                 yield tag, typ, cnt, ent[8:12]
+  |
+  |         def suivant(off):
+  |             n = struct.unpack(e + "H", t[off:off + 2])[0]
+  |             return struct.unpack(e + "I", t[off + 2 + 12 * n: off + 6 + 12 * n])[0]
+  |
+  |         def octets(typ, cnt, val):
+  |             lg = TAILLES_TYPE.get(typ, 1) * cnt
+  |             if lg <= 4:
+  |                 return val[:lg]
+  |             o = struct.unpack(e + "I", val)[0]
+  |             return t[o:o + lg]
+  |
+  |         def texte(typ, cnt, val):
+  |             if typ != 2:
+  |                 return None
+  |             o = struct.unpack(e + "I", val)[0] if cnt > 4 else None
+  |             raw = t[o:o + cnt] if o is not None else val[:cnt]
+  |             return raw.rstrip(b"\x00").decode("latin-1").strip()
+  |
+  |         out = {}
+  |         exif_off = None
+  |         off0 = struct.unpack(e + "I", t[4:8])[0]
+  |         for tag, typ, cnt, val in entrees(off0):
+  |             if tag in IFD0 and texte(typ, cnt, val):
+  |                 out[IFD0[tag]] = True
+  |             if tag == 0x8825:
+  |                 out["gps"] = True
+  |             if tag == 0x8769:
+  |                 exif_off = struct.unpack(e + "I", val)[0]
+  |         if exif_off:
+  |             for tag, typ, cnt, val in entrees(exif_off):
+  |                 if tag in IFD_EXIF and texte(typ, cnt, val):
+  |                     out[IFD_EXIF[tag]] = True
+  |                 if tag in PRESENCE_EXIF and cnt > 0:
+  |                     out[PRESENCE_EXIF[tag]] = True
+  |                 if tag == 0x9286 and octets(typ, cnt, val)[8:].strip(b"\x00 "):
+  |                     out["user_comment_non_vide"] = True
+  |         off1 = suivant(off0)
+  |         if off1:
+  |             vues = {tag: (typ, cnt, val) for tag, typ, cnt, val in entrees(off1)}
+  |             lg = vues.get(0x0202)
+  |             if (0x0201 in vues and lg and struct.unpack(e + ("H" if lg[0] == 3 else "I"), lg[2][:2 if lg[0] == 3 else 4])[0] > 0) \
+  |                     or 0x0111 in vues:
+  |                 out["vignette_ifd1"] = True
+  |         return out
+  |     except (struct.error, IndexError):
+  |         return {"illisible": True}
+  |
+  |
+  | def motifs_du_releve():
+  |     m = collections.OrderedDict()
+  |     m["SSID Wi-Fi reel du domicile (%d graphies)" % len(VALEURS["ssid"])] = alt(VALEURS["ssid"])
+  |     m["nom d'hote du poste (DESKTOP-***)"] = alt(VALEURS["hote"], flags=0)
+  |     m["utilisateur Windows (chemin)"] = alt(VALEURS["utilisateur"], r"Users[\\/]+(?:%s)\b")
+  |     m["prenom dans un contenu"] = alt(VALEURS["prenom"])
+  |     m["adresse gmail dans un contenu"] = alt(VALEURS["gmail"])
+  |     m["adresse employeur dans un contenu"] = alt(VALEURS["employeur"])
+  |     m["depot prive de planification / KidSat / Kido nommes"] = re.compile(r"compagnon[_-]project|kidsat|\bkido\b", re.I)
+  |     m["IP LAN privee (192.168.x.x / 10.x.x.x / 172.16-31.x.x)"] = re.compile(
+  |         r"(?<![\d.])(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})(?![\d.])")
+  |     m["adresse MAC"] = re.compile(r"(?<![0-9A-Fa-f:])(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}(?![0-9A-Fa-f:])")
+  |     m["jeton / cle / secret (gh*_, github_pat_, AKIA, cle privee, xox*-, sk-)"] = re.compile(
+  |         r"\bgh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|\bAKIA[0-9A-Z]{16}\b"
+  |         r"|-----BEGIN [A-Z ]*PRIVATE KEY-----|\bxox[baprs]-[A-Za-z0-9-]{10,}|\bsk-[A-Za-z0-9]{32,}")
+  |     m["affectation de mot de passe (password/passwd/pwd/mot de passe = …)"] = re.compile(
+  |         r"(?:password|passwd|\bpwd|mot de passe)\s*[:=]\s*[\"']?[^\s\"'`]{4,}", re.I)
+  |     return m
+  |
+  |
+  | def main():
+  |     p("=" * 94)
+  |     p("dn8-8 / T1 — CE QUI DEVIENT PUBLIC A LA BASCULE, RELEVE LE", sh("date", "-Iseconds").strip())
+  |     p("  HEAD desknode :", sh("git", "rev-parse", "HEAD").strip())
+  |     p("  CE QUI EST LU : le CONTENU de chaque blob atteignable (texte UTF-8, UTF-16 DECODE ; JPEG lus pour")
+  |     p("    leurs EXIF ; autre binaire ⛔ lu) · le contenu des fichiers modifies ou neufs de l'arbre de")
+  |     p("    travail · le MESSAGE de chaque commit atteignable · les adresses d'AUTEUR et de COMMITTER · le")
+  |     p("    message et l'adresse du tag annote · les reglages, runs, PR et release lus en GET · le CORPS")
+  |     p("    et les COMMENTAIRES des PR (commentaires de discussion, de revue, et corps des revues) et le")
+  |     p("    CORPS de la release tel que GitHub le sert, lus en GET et balayes par les memes motifs (§ 6).")
+  |     p("    Et, lus en GET et balayes de meme : les TITRES et les NOMS DE BRANCHE des PR, le NOM des releases.")
+  |     p("  ⛔ CE QUI N'EST PAS BALAYE PAR LES MOTIFS, DECLARE : les JOURNAUX des runs d'Actions (ils")
+  |     p("    deviennent publics avec le depot ; ⛔ telecharges ni lus ici), les avatars et le graphe des")
+  |     p("    contributeurs, et les blobs BINAIRES autres que JPEG (PNG, PDF, `.bin`, archives…), comptes par")
+  |     p("    extension au § 3 et ⛔ lus : un motif texte ⛔ y a pas de sens, et leurs metadonnees ⛔ sont lues.")
+  |     p("  ⛔ valeurs sensibles MASQUEES a l'ecriture ; ⛔ aucun emplacement d'une valeur personnelle (chemin,")
+  |     p("    ligne, commit) : CATEGORIE, COMPTE et PORTEE seulement.")
+  |     p("  valeurs derivees (COMPTE seulement) :", " · ".join("%s=%d" % (k, len(v)) for k, v in VALEURS.items()))
+  |     p("=" * 94)
+  |
+  |     # 1. refs
+  |     p("\n── 1. LES REFS DISTANTES (`git ls-remote origin`) ──")
+  |     refs = refs_distantes()
+  |     main_local = sh("git", "rev-parse", "HEAD").strip()
+  |     for sha, ref in refs:
+  |         anc = ""
+  |         if ref.startswith("refs/") and not ref.endswith("^{}") and sh("git", "cat-file", "-t", sha).strip() == "commit":
+  |             anc = "ancetre de main local : %s" % ("OUI" if est_ancetre(sha, main_local) else "NON")
+  |         p("  %s  %-45s %s" % (sha, ref, anc))
+  |     tips_distants = sorted({sha for sha, ref in refs if not ref.endswith("^{}") and ref != "HEAD"})
+  |
+  |     # 2. deux scenarios
+  |     p("\n── 2. DEUX SCENARIOS : sans pousser `main` / avec `main` pousse (HEAD local) ──")
+  |     a_tips = tips_distants
+  |     b_tips = sorted(set(tips_distants) | {main_local})
+  |     ca = int(sh("git", "rev-list", "--count", *a_tips).strip())
+  |     cb = int(sh("git", "rev-list", "--count", *b_tips).strip())
+  |     ba, bb = objets(a_tips), objets(b_tips)
+  |     ta, tb = arbre("v0.1.0-beta"), arbre("HEAD")
+  |     p("  | | sans pousser `main` | avec `main` pousse |")
+  |     p("  |---|---|---|")
+  |     p("  | commits atteignables | %d | %d |" % (ca, cb))
+  |     p("  | arbre du sommet | tag : %d fichiers, %d o | HEAD : %d fichiers, %d o |" % (ta + tb))
+  |     p("  | blobs uniques de l'historique | %d · %d o | %d · %d o |"
+  |       % (len(ba), sum(x[0] for x in ba.values()), len(bb), sum(x[0] for x in bb.values())))
+  |     neufs = {s: bb[s] for s in bb if s not in ba}
+  |     p("  ⇒ pousser `main` ajoute %d commit(s) et %d blob(s) (%d o) :" % (cb - ca, len(neufs), sum(x[0] for x in neufs.values())))
+  |     for s, (t, c) in sorted(neufs.items(), key=lambda kv: kv[1][1]):
+  |         p("      %s %9d o  %s" % (s[:12], t, c))
+  |     arbre_head = {l.split(None, 3)[2] for l in sh("git", "ls-tree", "-r", "HEAD").splitlines()}
+  |     hist_seul = {s: bb[s] for s in bb if s not in arbre_head}
+  |     p("  blobs de l'historique ABSENTS de l'arbre de HEAD : %d (%d o)" % (len(hist_seul), sum(x[0] for x in hist_seul.values())))
+  |     jpeg_hist = [(t, c) for s, (t, c) in hist_seul.items() if c.lower().endswith((".jpg", ".jpeg"))]
+  |     p("    dont JPEG : %d (%d o)" % (len(jpeg_hist), sum(t for t, _ in jpeg_hist)))
+  |     # ⚠️ Revue : `-z` (un chemin cite par git n'est plus un chemin), et un fichier suivi SUPPRIME est saute.
+  |     modifs = [f for f in sh("git", "ls-files", "-m", "-o", "--exclude-standard", "-z").split("\0") if f and f not in EXCLUS]
+  |     presents = [f for f in modifs if os.path.isfile(os.path.join(DN, f))]
+  |     p("  arbre de travail au tir (fichiers modifies ou neufs, ce releve exclu) : %d present(s), %d supprime(s)"
+  |       % (len(presents), len(set(modifs) - set(presents))))
+  |     for f in sorted(set(presents)):
+  |         p("      %9d o  %s" % (os.path.getsize(os.path.join(DN, f)), f))
+  |     p("  ⚠️ le sommet reellement pousse sera `C2` : il ajoute ces fichiers et la ligne 103 de `cla.yml`,")
+  |     p("     puis `C3` le releve de la bascule — ⛔ mesurables seulement apres leur commit.")
+  |
+  |     # 3. balayage
+  |     p("\n── 3. LE BALAYAGE : %d blobs atteignables (scenario avec `main` pousse) + arbre de travail + messages + tag ──" % len(bb))
+  |     motifs = motifs_du_releve()
+  |     compte = {k: set() for k in motifs}
+  |     au_sommet = {k: set() for k in motifs}
+  |     distants = {k: set() for k in motifs}
+  |     tag_arbre = {l.split(None, 3)[2] for l in sh("git", "ls-tree", "-r", "v0.1.0-beta").splitlines()}
+  |     au_tag = {k: set() for k in motifs}
+  |     exemples_jeton = collections.Counter()
+  |     cles_exif = ("date_modification", "date_prise_de_vue", "software", "artist", "copyright", "proprietaire",
+  |                  "numero_de_serie", "user_comment", "user_comment_non_vide", "maker_note", "vignette_ifd1", "xmp",
+  |                  "gps", "illisible")
+  |     jpeg = collections.Counter()
+  |     chemins_jpeg = set()
+  |     binaires = collections.Counter()
+  |     # ⚠️ Revue boucle 3 : un fichier MODIFIE de l'arbre de travail compte UNE fois au sommet — sa version de
+  |     #    travail ; son blob de HEAD ⛔ est plus au sommet qui sera pousse.
+  |     modifies = set(presents)
+  |     utf16 = 0
+  |     for s, data in lire_blobs(sorted(bb)):
+  |         chemin = bb[s][1]
+  |         if chemin.lower().endswith((".jpg", ".jpeg")):
+  |             e = exif(data)
+  |             if e is not None:
+  |                 jpeg["versions"] += 1
+  |                 chemins_jpeg.add(chemin)
+  |                 jpeg["marque_et_modele"] += bool(e.get("make") and e.get("model"))
+  |                 jpeg["marque_ou_modele"] += bool(e.get("make") or e.get("model"))
+  |                 for k in cles_exif:
+  |                     jpeg[k] += bool(e.get(k))
+  |             continue
+  |         txt = decoder(data)
+  |         if txt is None:
+  |             ext = os.path.splitext(chemin)[1].lower() or "(sans extension)"
+  |             binaires[ext] += 1
+  |             continue
+  |         utf16 += data[:2] in (b"\xff\xfe", b"\xfe\xff") or (b"\x00" in data[:8000])
+  |         for k, rx in motifs.items():
+  |             m = rx.search(txt)
+  |             if m:
+  |                 compte[k].add(s)
+  |                 if s in arbre_head and chemin not in modifies:
+  |                     au_sommet[k].add(chemin)
+  |                 if s in ba:
+  |                     distants[k].add(s)
+  |                 if s in tag_arbre:
+  |                     au_tag[k].add(s)
+  |                 if k.startswith("jeton"):
+  |                     exemples_jeton[m.group(0)[:4] + "…"] += 1
+  |     for f in presents:
+  |         txt = decoder(open(os.path.join(DN, f), "rb").read())
+  |         if txt is None:
+  |             continue
+  |         for k, rx in motifs.items():
+  |             if rx.search(txt):
+  |                 compte[k].add("wt:" + f)
+  |                 au_sommet[k].add(f)
+  |     p("  blobs texte decodes en UTF-16 : %d" % utf16)
+  |     p("  blobs BINAIRES autres que JPEG, ⛔ balayes (declare) : %d — %s"
+  |       % (sum(binaires.values()), " · ".join("%s %d" % kv for kv in sorted(binaires.items()))))
+  |     p("  | constat | blobs (+ fichiers de l'arbre de travail) | fichiers au sommet (HEAD, et la version de travail d'un fichier modifie, comptee une fois) | dans l'arbre du tag (donc dans l'archive de la release) | deja sur le remote ? |")
+  |     p("  |---|---|---|---|---|")
+  |     for k in motifs:
+  |         p("  | %s | %d | %d | %s | %s |" % (k, len(compte[k]), len(au_sommet[k]), "OUI" if au_tag[k] else "non",
+  |                                           ("oui (%d blobs par les refs distantes)" % len(distants[k])) if distants[k] else "non"))
+  |     if exemples_jeton:
+  |         p("  prefixes des jetons trouves (4 car.) :", dict(exemples_jeton))
+  |     ssid_k = list(motifs)[0]
+  |     p("  SSID — nombre de versions (blobs) qui le portent : %d ; nombre de chemins distincts : %d"
+  |       % (len([s for s in compte[ssid_k] if not s.startswith("wt:")]),
+  |          len({bb[s][1] for s in compte[ssid_k] if not s.startswith("wt:")})))
+  |     p("  EXIF des JPEG atteignables — en VERSIONS de JPEG (blobs), sur %d chemin(s) distinct(s) :" % len(chemins_jpeg))
+  |     p("    %d versions · marque ET modele %d · marque OU modele %d" % (jpeg["versions"], jpeg["marque_et_modele"], jpeg["marque_ou_modele"]))
+  |     p("    date de MODIFICATION du fichier (0x0132, ⛔ la prise de vue) %d · date de PRISE DE VUE (DateTimeOriginal) %d"
+  |       % (jpeg["date_modification"], jpeg["date_prise_de_vue"]))
+  |     p("    etiquettes STANDARD lues : Software %d · Artist %d · Copyright %d · CameraOwnerName %d · BodySerialNumber %d"
+  |       % tuple(jpeg[k] for k in ("software", "artist", "copyright", "proprietaire", "numero_de_serie")))
+  |     p("    UserComment : entree presente %d, charge NON VIDE %d · MakerNote (bloc constructeur, ⛔ DECODE) %d"
+  |       % (jpeg["user_comment"], jpeg["user_comment_non_vide"], jpeg["maker_note"]))
+  |     p("    vignette dans l'IFD1 %d · paquet XMP %d · IFD GPS %d · EXIF illisibles %d"
+  |       % (jpeg["vignette_ifd1"], jpeg["xmp"], jpeg["gps"], jpeg["illisible"]))
+  |
+  |     # messages et auteurs
+  |     p("\n  messages, auteurs et tag :")
+  |     log = sh("git", "log", "--format=%H%x1f%ae%x1f%ce%x1f%s%x1f%B%x1e", *b_tips)
+  |     commits = [c.split("\x1f") for c in log.split("\x1e") if c.strip()]
+  |     emp = [c for c in commits if c[1].strip() in VALEURS["employeur"] or c[2].strip() in VALEURS["employeur"]]
+  |     p("    commits dont l'auteur ou le committer est l'adresse employeur : %d · deja sur le remote : %d · "
+  |       "ancetres de la source du binaire publie (55006c1) : %d"
+  |       % (len(emp), sum(1 for c in emp if any(est_ancetre(c[0].strip(), t) for t in a_tips)),
+  |          sum(1 for c in emp if est_ancetre(c[0].strip(), "55006c19182b3ff1ccc017044057347841ede475"))))
+  |     co = sum(1 for c in commits if re.search(r"^Co-Authored-By:", c[4], re.M | re.I))
+  |     cs = [re.findall(r"^Claude-Session:\s*(\S+)", c[4], re.M) for c in commits]
+  |     urls = {u for l in cs for u in l}
+  |     p("    remorques : Co-Authored-By dans %d commit(s), Claude-Session dans %d, %d URL distincte(s)"
+  |       % (co, sum(1 for l in cs if l), len(urls)))
+  |     for k, rx in motifs.items():
+  |         n = sum(1 for c in commits if rx.search(c[4]))
+  |         if n:
+  |             p("    messages de commit qui portent « %s » : %d" % (k, n))
+  |     # ⚠️ Revue boucle 3 : l'objet tag = un EN-TETE (object, type, tag, tagger) puis le MESSAGE. Une adresse
+  |     #    de l'en-tete est celle du TAGUEUR, ⛔ un « contenu » : les deux sont balayes SEPAREMENT et nommes.
+  |     tagobj = sh("git", "cat-file", "-p", "v0.1.0-beta")
+  |     tete_tag, _, tagmsg = tagobj.partition("\n\n")
+  |     p("    message du tag : %d octets · categories trouvees dans le MESSAGE : %s"
+  |       % (len(tagmsg), ", ".join(k for k, rx in motifs.items() if rx.search(tagmsg)) or "0"))
+  |     p("    EN-TETE DU TAGUEUR (l'identite qui a pose le tag, ⛔ un contenu) : adresse de forme e-mail %s · "
+  |       "categories d'adresse : %s"
+  |       % ("OUI (masquee a l'ecriture)" if RE_MAIL.search(tete_tag) else "non",
+  |          ", ".join(k.replace(" dans un contenu", "") for k, rx in motifs.items() if k.startswith("adresse") and rx.search(tete_tag)) or "0"))
+  |
+  |     # 4. magasin CLA
+  |     p("\n── 4. LE MAGASIN DE SIGNATURES CLA ──")
+  |     for ref in ("HEAD", "origin/main", "v0.1.0-beta"):
+  |         r = subprocess.run(["git", "show", "%s:.github/cla-signatures.json" % ref], cwd=DN, capture_output=True, text=True)
+  |         try:
+  |             d = json.loads(r.stdout)
+  |             p("  %-12s %s  ⇒ %d signature(s)" % (ref, json.dumps(d), len(d.get("signedContributors", []))))
+  |         except ValueError:
+  |             p("  %-12s ⛔ illisible (rc=%d)" % (ref, r.returncode))
+  |     code, d = gh_get("repos/contributor-assistant/github-action/contents/src/pullrequest/signatureComment.ts?ref=v2.6.1")
+  |     champs = []
+  |     if code == 200 and isinstance(d, dict):
+  |         import base64
+  |         src = base64.b64decode(d["content"]).decode("utf-8")
+  |         bloc = re.search(r"signedContributors\.push\(\s*\{(.*?)\}\s*\)", src, re.S) or re.search(r"push\(\s*\{(.*?)\}\s*\)", src, re.S)
+  |         if bloc:
+  |             lus = re.findall(r"^\s*(\w+)\s*:", bloc.group(1), re.M)
+  |             debut = src[:bloc.start()].count("\n") + 1
+  |             fin = src[:bloc.end()].count("\n") + 1
+  |             p("  source relue en GET : contributor-assistant/github-action@v2.6.1, src/pullrequest/signatureComment.ts l.%d-%d (HTTP %s)" % (debut, fin, code))
+  |             p("  champs du commentaire lu : %d — %s" % (len(lus), ", ".join(lus)))
+  |             retires = []
+  |             for m in re.finditer(r"delete\s+[\w\[\]]+\.(\w+)", src):
+  |                 retires.append(m.group(1))
+  |                 p("  ⚠️ champ RETIRE avant l'ecriture : `%s` (l.%d : `%s`)" % (m.group(1), src[:m.start()].count("\n") + 1, m.group(0)))
+  |             champs = [c for c in lus if c not in retires]
+  |     else:
+  |         p("  ⛔ source de l'action non relue : HTTP %s" % code)
+  |     p("  champs enregistres par signature : %d — %s" % (len(champs), ", ".join(champs)))
+  |     p("  ecriture du magasin : `branch:` de .github/workflows/cla.yml =",
+  |       re.search(r"^\s*branch:\s*(\S+)", open(os.path.join(DN, ".github/workflows/cla.yml"), encoding="utf-8").read(), re.M).group(1))
+  |
+  |     # 5. reglages lus en GET
+  |     p("\n── 5. LES REGLAGES DU DEPOT, LUS EN GET (`gh api -i -X GET`) ──")
+  |     code, d = gh_get("repos/" + DEPOT)
+  |     if isinstance(d, dict):
+  |         p("  repos/%s : HTTP %s · visibility=%s · private=%s · has_issues=%s · has_wiki=%s · has_pages=%s · "
+  |           "has_discussions=%s · allow_forking=%s · forks=%s · stars=%s · network=%s · default_branch=%s"
+  |           % (DEPOT, code, d.get("visibility"), d.get("private"), d.get("has_issues"), d.get("has_wiki"),
+  |              d.get("has_pages"), d.get("has_discussions"), d.get("allow_forking"), d.get("forks_count"),
+  |              d.get("stargazers_count"), d.get("network_count"), d.get("default_branch")))
+  |     for chemin, cle in (("branches/main/protection", None), ("rulesets", None),
+  |                         ("private-vulnerability-reporting", "enabled"),
+  |                         ("actions/permissions/workflow", "default_workflow_permissions"),
+  |                         ("actions/permissions/fork-pr-contributor-approval", "approval_policy"),
+  |                         ("collaborators", "#"), ("actions/secrets", "total_count"),
+  |                         ("actions/variables", "total_count"), ("hooks", "#"), ("keys", "#"),
+  |                         ("environments", "total_count"), ("pages", None), ("community/profile", "files"),
+  |                         ("actions/artifacts", "total_count")):
+  |         code, d = gh_get("repos/%s/%s" % (DEPOT, chemin))
+  |         if cle == "#" and isinstance(d, list):
+  |             val = "%d element(s)" % len(d)
+  |         elif cle == "files" and isinstance(d, dict):
+  |             val = "health=%s · " % d.get("health_percentage") + " · ".join(
+  |                 "%s=%s" % (k, "present" if v else "null") for k, v in sorted((d.get("files") or {}).items()))
+  |         elif cle and isinstance(d, dict):
+  |             val = "%s=%s" % (cle, d.get(cle))
+  |         elif isinstance(d, dict) and "message" in d:
+  |             val = "message=« %s »" % d["message"][:110]
+  |         else:
+  |             val = ""
+  |         p("  %-52s HTTP %s  %s" % (chemin, code, val))
+  |
+  |     # 6. runs, PR, release
+  |     p("\n── 6. CE QUI DEVIENT LISIBLE EN PLUS DES OCTETS ──")
+  |     code, d = gh_get("repos/%s/actions/runs?per_page=100" % DEPOT)
+  |     if isinstance(d, dict):
+  |         par = collections.Counter((r.get("name"), r.get("event"), r.get("conclusion")) for r in d.get("workflow_runs", []))
+  |         p("  runs d'Actions : HTTP %s · total_count=%s" % (code, d.get("total_count")))
+  |         for (n, e, c), k in sorted(par.items(), key=lambda kv: str(kv[0])):
+  |             p("      %-8s %-22s %-10s ×%d" % (n, e, c, k))
+  |     # ⚠️ Revue boucle 2 : les TEXTES lus en GET sont BALAYES par les motifs du § 3 — par NATURE de
+  |     #    surface, en COMPTE de textes ; ⛔ jamais « la PR n », « le commentaire k » (un pointeur).
+  |     surfaces = collections.OrderedDict((n, {"lus": 0, "illisibles": 0, "cats": collections.Counter()})
+  |                                        for n in ("titres des PR", "noms de branche des PR", "corps des PR",
+  |                                                  "commentaires de discussion des PR",
+  |                                                  "commentaires de revue des PR", "corps des revues des PR",
+  |                                                  "noms des releases", "corps des releases"))
+  |
+  |     def balayer_texte(nature, texte):
+  |         s = surfaces[nature]
+  |         if not isinstance(texte, str):
+  |             return
+  |         s["lus"] += 1
+  |         for k, rx in motifs.items():
+  |             if rx.search(texte):
+  |                 s["cats"][k] += 1
+  |
+  |     def lire_liste(nature, chemin):
+  |         c, lst = gh_get(chemin)
+  |         if c == 200 and isinstance(lst, list):
+  |             for x in lst:
+  |                 balayer_texte(nature, x.get("body") or "")
+  |             return len(lst)
+  |         surfaces[nature]["illisibles"] += 1
+  |         return "HTTP %s" % c
+  |
+  |     code, d = gh_get("repos/%s/pulls?state=all&per_page=100" % DEPOT)
+  |     if isinstance(d, list):
+  |         p("  pull requests : HTTP %s · %d" % (code, len(d)))
+  |         for pr in d:
+  |             balayer_texte("titres des PR", pr.get("title") or "")
+  |             balayer_texte("noms de branche des PR", ((pr.get("head") or {}).get("ref") or "") + " " + ((pr.get("base") or {}).get("ref") or ""))
+  |             balayer_texte("corps des PR", pr.get("body") or "")
+  |             n_disc = lire_liste("commentaires de discussion des PR", "repos/%s/issues/%d/comments?per_page=100" % (DEPOT, pr["number"]))
+  |             n_rev = lire_liste("commentaires de revue des PR", "repos/%s/pulls/%d/comments?per_page=100" % (DEPOT, pr["number"]))
+  |             n_revues = lire_liste("corps des revues des PR", "repos/%s/pulls/%d/reviews?per_page=100" % (DEPOT, pr["number"]))
+  |             p("      #%d state=%s merged=%s commentaires=%s · commentaires de revue=%s · revues=%s"
+  |               % (pr["number"], pr["state"], bool(pr.get("merged_at")), n_disc, n_rev, n_revues))
+  |     code, d = gh_get("repos/%s/releases" % DEPOT)
+  |     if isinstance(d, list):
+  |         p("  releases : HTTP %s · %d" % (code, len(d)))
+  |         for rel in d:
+  |             balayer_texte("noms des releases", (rel.get("name") or "") + " " + (rel.get("tag_name") or ""))
+  |             balayer_texte("corps des releases", rel.get("body") or "")
+  |             p("      %s prerelease=%s draft=%s assets=%d : %s" % (rel["tag_name"], rel["prerelease"], rel["draft"],
+  |                                                             len(rel["assets"]), ", ".join(a["name"] for a in rel["assets"])))
+  |     p("  🔬 LES TEXTES LUS EN GET, BALAYES par les motifs du § 3 (COMPTE de textes par categorie ; ⛔ quelle PR,")
+  |     p("     ⛔ quel commentaire) :")
+  |     p("  | surface | textes lus | lectures refusees | categories trouvees (textes) |")
+  |     p("  |---|---|---|---|")
+  |     for nature, s in surfaces.items():
+  |         p("  | %s | %d | %d | %s |" % (nature, s["lus"], s["illisibles"],
+  |                                      " · ".join("%s : %d" % (k, n) for k, n in s["cats"].items()) or "0"))
+  |     p("  ⛔ les JOURNAUX des runs d'Actions ne sont PAS balayes (declare en tete).")
+  |     code, d = gh_get("repos/%s/issues?state=all&per_page=100" % DEPOT)
+  |     if isinstance(d, list):
+  |         p("  issues (hors PR) : HTTP %s · %d" % (code, len([i for i in d if "pull_request" not in i])))
+  |
+  |     # 7. verdict
+  |     p("\n── 7. LE VERDICT QUI S'APPLIQUE A CE RELEVE ──")
+  |     p("  Q1, owner, 2026-09-14, verbatim : « 1 oui » ⇒ (A) l'historique part TEL QUEL ; le sous-choix")
+  |     p("  (retirer le SSID du sommet) ⛔ n'est pas pris — ⛔ aucun effacement (NFR10).")
+  |
+  |     # ⚠️ Revue boucle 3 : les survivantes sont calculees AVANT d'imprimer — sur rc=3, ⛔ le texte.
+  |     texte = masquer("\n".join(OUT))
+  |     survivants = sorted({cat for cat, vals in VALEURS.items() for x in vals if x.lower() in texte.lower()})
+  |     if survivants:
+  |         print("⛔ VALEUR(S) NON MASQUEE(S) — categories : %s ; ⛔ releve NON imprime" % ", ".join(survivants))
+  |         return 3
+  |     print(texte)
+  |     return 0
+  |
+  |
+  | def balayer(fichiers):
+  |     rc = 0
+  |     print("valeurs derivees (COMPTE seulement) : " + " · ".join("%s=%d" % (k, len(v)) for k, v in VALEURS.items()))
+  |     for f in fichiers:
+  |         brut = open(f, "rb").read()
+  |         t = decoder(brut) or brut.decode("utf-8", "replace")
+  |         trouves = sorted({cat for cat, vals in VALEURS.items() for x in vals if x.lower() in t.lower()})
+  |         mails = RE_MAIL.findall(t)
+  |         print("  %-52s valeurs derivees trouvees : %s · formes d'adresse e-mail : %d"
+  |               % (os.path.basename(f), ", ".join(trouves) or "0", len(mails)))
+  |         rc |= bool(trouves) or bool(mails)
+  |     print("BALAYAGE : %s" % ("⛔ VALEUR(S) TROUVEE(S)" if rc else "0 valeur derivee, 0 forme d'adresse"))
+  |     return 1 if rc else 0
+  |
+  |
+  | def balayer_objet(base, rev, base_valeurs=None):
+  |     """B1 (objet C1 depuis la base) et B12 (objet C3 depuis C2) — ⛔ un releve SUPPOSE couvrir l'arbre committe.
+  |     Les valeurs sont derivees sur l'arbre de <base des valeurs> (defaut : <base>) — B12 passe la
+  |     `baseline_revision`, parce que C2 porte deja `mesures/dn8-8/` (voir `deriver`).
+  |     Les fichiers que <rev> ajoute ou modifie depuis <base>, lus dans `git archive <rev>` ; une valeur derivee
+  |     (ou une forme d'adresse e-mail) SURVIT si <rev> en porte PLUS d'occurrences que <base> dans le meme
+  |     fichier. ⛔ Aucune valeur ⛔ ni aucun chemin imprime : categories et COMPTES de fichiers seulement."""
+  |     base_valeurs = base_valeurs or base
+  |     valeurs = deriver(base_valeurs)
+  |     print("valeurs derivees sur %s (COMPTE seulement) : " % base_valeurs[:12]
+  |           + " · ".join("%s=%d" % (k, len(v)) for k, v in valeurs.items()))
+  |     chemins = [c for c in sh("git", "diff", "--name-only", "--no-renames", "--diff-filter=d", "-z", base, rev).split("\0") if c]
+  |     archive = subprocess.run(["git", "archive", "--format=tar", rev, "--", *chemins], cwd=DN, capture_output=True) \
+  |         if chemins else None
+  |     if archive is not None and archive.returncode != 0:
+  |         print("⛔ git archive %s rc=%d" % (rev[:12], archive.returncode))
+  |         sys.exit(2)
+  |     survivants, mails, lus, binaires = collections.Counter(), 0, 0, 0
+  |     membres = tarfile.open(fileobj=io.BytesIO(archive.stdout)).getmembers() if archive is not None else []
+  |     tar = tarfile.open(fileobj=io.BytesIO(archive.stdout)) if archive is not None else None
+  |     for m in membres:
+  |         if not m.isfile():
+  |             continue
+  |         t_rev = decoder(tar.extractfile(m).read())
+  |         if t_rev is None:
+  |             binaires += 1
+  |             continue
+  |         lus += 1
+  |         r = subprocess.run(["git", "show", "%s:%s" % (base, m.name)], cwd=DN, capture_output=True)
+  |         t_base = (decoder(r.stdout) or "") if r.returncode == 0 else ""
+  |         bas_rev, bas_base = t_rev.lower(), t_base.lower()
+  |         for cat, vals in valeurs.items():
+  |             if any(bas_rev.count(x.lower()) > bas_base.count(x.lower()) for x in vals):
+  |                 survivants[cat] += 1
+  |         mails += len(RE_MAIL.findall(t_rev)) > len(RE_MAIL.findall(t_base))
+  |     print("objet %s depuis %s : %d fichier(s) ajoute(s) ou modifie(s) · %d texte(s) lu(s) · %d binaire(s) ⛔ balaye(s)"
+  |           % (rev[:12], base[:12], len(chemins), lus, binaires))
+  |     print("fichiers ou une valeur derivee SURVIT (par categorie, COMPTE) : %s"
+  |           % (" · ".join("%s=%d" % kv for kv in sorted(survivants.items())) or "0"))
+  |     print("fichiers qui portent PLUS de formes d'adresse e-mail que la base : %d" % mails)
+  |     rc = 1 if survivants or mails else 0
+  |     print("BALAYAGE OBJET : %s" % ("⛔ VALEUR(S) SURVIVANTE(S) — localiser avec `releve.py --balayer <fichiers>`, ⛔ ici"
+  |                                     if rc else "0 valeur derivee survivante, 0 forme d'adresse de plus"))
+  |     return rc
+  |
+  |
+  | if __name__ == "__main__":
+  |     if sys.argv[1:2] == ["--balayer"]:
+  |         sys.exit(balayer(sys.argv[2:]))
+  |     if sys.argv[1:2] == ["--balayer-objet"]:
+  |         if len(sys.argv) not in (4, 5):
+  |             print("usage : releve.py --balayer-objet <base> <rev> [<base des valeurs>]")
+  |             sys.exit(2)
+  |         sys.exit(balayer_objet(*sys.argv[2:]))
+  |     sys.exit(main())

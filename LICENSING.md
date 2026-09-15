@@ -77,6 +77,11 @@ touched by the change. Once the repository is public and tagged (`dn8` — see
 would need the agreement of everyone who had contributed in between. **That is exactly
 what the CLA in [`CONTRIBUTING.md`](CONTRIBUTING.md) exists to keep possible.**
 
+*Annotated on 2026-09-15 (`dn8-8`): that condition is now met. This repository is tagged since
+`v0.1.0-beta` and public since 2026-09-15, so from that date an edit like the one described
+above is a relicensing, ⛔ not a correction. On that date no outside contribution had been
+merged, and the signature record of the CLA held no signature.*
+
 ## Why `installeur/` is GPL-3.0-or-later, and ⛔ not CC-BY-SA-4.0
 
 Added on 2026-09-08, with the **first** file of the installer and ⛔ not after it. The

@@ -33,6 +33,15 @@ Turning the setting on is part of the switch to public (`dn8` — see
 [`docs/roadmap.md`](docs/roadmap.md)), and until then nobody outside the repository can read
 this page anyway.
 
+*Annotated on 2026-09-15 (`dn8-8`): the repository became public that day, so the reason given
+above no longer holds. Turning the reporting setting on is a separate gesture, played **after**
+this text was published, and this note does ⛔ not say that it is on: that is written here only
+once the setting has been read back. A visitor who is not signed in to GitHub does not reach a
+form at all: the link above leads to the sign-in page, so sign in first. If, once signed in, the
+link still does not open a form, the setting is not on yet — come back to this page later, and do
+not fall back to a public issue: the first section of this page still applies. The form has not
+been tried from a second account.*
+
 ## What to include
 
 - **Which part is affected**: the firmware, the Windows agent, the local install page and the

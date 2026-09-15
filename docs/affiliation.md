@@ -186,6 +186,10 @@ Deux choses, et elles ⛔ ne se confondent pas :
 ⛔ **ce n'est pas une exemption** : le jour où le dépôt est public et où un lien est marqué, la
 question se pose entière, et la mention explicite est le comportement sûr.
 
+⚠️ **Annoté le 2026-09-15 (`dn8-8`)** : le dépôt est **public** depuis ce jour, et la phrase sur le
+dépôt de code privé sans audience publique a cessé d'être vraie. L'autre moitié de la condition —
+un lien marqué — ⛔ n'est pas remplie : l'état du §2 n'a pas changé.
+
 ---
 
 ## 6. Ce que l'owner doit faire lui-même
@@ -227,6 +231,10 @@ qu'elle attrape.
    numérique publique (blog, chaîne, réseau social, site) pour **« essential »** à l'affiliation. Ce
    dépôt est **privé** aujourd'hui. Si l'indice se confirme, la bascule publique est un **prérequis**
    de l'inscription ; s'il est démenti, l'écart s'écrira ici.
+   ⚠️ **Annoté le 2026-09-15 (`dn8-8`)** : le dépôt est **public** sur GitHub depuis ce jour — les
+   deux « privé aujourd'hui » de ce point ont cessé d'être vrais. Le critère de Waveshare reste
+   **mou** et l'indice d'AliExpress reste un indice : seule une candidature, geste de l'owner
+   (§6), tranchera.
 2. **Un geste de l'owner** : ouvrir le compte, accepter les conditions générales, relever les quatre
    conditions inconnues (§6).
 3. **Une annotation des deux phrases d'état** : celle du §2 de cette page, et celle de la section

@@ -1335,8 +1335,15 @@ def muter_cla(wf):
            "          ref: ${{ github.head_ref }}\n"
            '      - name: "Signature du CLA"')
     wf = M(31, wf, "    if: >-\n", "    # if: >-\n")
-    wf = M(32, wf, "https://github.com/nasbarok/desknode/blob/main/CLA.md",
-           "https://github.com/acme/autre-depot/blob/main/CLA.md")
+    # 🔴 dn8-8 (2026-09-14) — L'ANCRE S'ARRETE A `/blob/`, ⛔ ELLE NE NOMME PLUS LA REFERENCE.
+    #    Le commit qui SUIT celui-ci fait pointer `cla.yml` sur une revision FIGEE de `CLA.md`
+    #    (`blob/<sha de 40>/`, AC8.8.4). Mesure sur copie le 2026-09-14 (`mesures/dn8-8/T0` § 4) :
+    #    avec l'ancien motif (`…/blob/` + `main/CLA.md`), le mutant y sortait INAPPLICABLE, SANS
+    #    ligne BILAN — et `verif_campagne_dn56.py` exige cette ligne de chaque mutant. Le prefixe
+    #    `…/blob/` est commun a TOUTE reference (branche, tag, sha) : le mutant replante la meme
+    #    faute — un document d'un AUTRE depot — quelle que soit l'ancre posee.
+    wf = M(32, wf, "https://github.com/nasbarok/desknode/blob/",
+           "https://github.com/acme/autre-depot/blob/")
     return wf
 
 

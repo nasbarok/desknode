@@ -11,6 +11,9 @@ what the first release is heading for (`dn8` — see [`docs/roadmap.md`](docs/ro
 not a state already reached. This section is the one place that status is written: the
 front page, the issue forms and the security policy link here rather than repeat it.*
 
+⚠️ *Annotated on 2026-09-15 (`dn8-8`): the repository became public that day, so "public" now
+names a state reached rather than a direction. The status above does not change.*
+
 DeskNode is a **personal project**, published because it is clean and because someone
 else might want to build one. It is maintained **best effort**:
 
@@ -60,6 +63,8 @@ git -C dn-full rev-list --count HEAD ; git -C dn-shallow rev-list --count HEAD
 **(1) This repository is still private.** `gh repo view` returned `visibility: PRIVATE`,
 **0** forks, on 2026-09-05 — so those commands need an authenticated account with access
 until the switch to public happens (`dn8` — see [`docs/roadmap.md`](docs/roadmap.md)).
+*(Annotated on 2026-09-15, `dn8-8`: the switch happened that day — the repository is public, so
+those commands no longer need an account that was granted access.)*
 **(2)** Without `| tail -1`, `grep` prints about a hundred progress lines and it is easy to
 read a mid-transfer figure as the total. **(3)** `git clone` refuses a destination that
 already exists, so `dn-full` and `dn-shallow` must not be there yet.
@@ -560,6 +565,23 @@ Contributions are welcome. Two practical points:
    repository has no fork and a single collaborator, so no such pull request can exist
    yet: proving it against a real external contributor is carried by `dn8` — see
    [`docs/roadmap.md`](docs/roadmap.md).
+   *(Annotated on 2026-09-15, `dn8-8`: the repository is public since that day and can be
+   forked, so a pull request from outside can now exist. None has been opened yet, and none is
+   opened on purpose to produce a proof: the recording of a signature is still unobserved, and
+   it waits for the first pull request of a real outside contributor.)*
+
+   ⚠️ **`main` is deliberately not protected** *(`dn8-8`, 2026-09-15)*. When you sign, the bot
+   records your signature by pushing a commit to `main` itself, with the workflow's own token. A
+   branch protection rule that required pull requests on `main` would block that commit, and on
+   this repository it could not exempt the bot: GitHub's page *Managing a branch protection rule*
+   says that *"Actors may only be added to bypass lists when the repository belongs to an
+   organization"*, and this repository belongs to a personal account. Rulesets, GitHub's other
+   way of protecting a branch, are not covered by that sentence — but the page that lists who can
+   bypass a ruleset names no actor that stands for the token of a workflow such as the bot's, and
+   making a ruleset let the bot through was ⛔ not tried. On 2026-09-14 the owner decided to
+   protect `main` in **no** way: neither with a rule that requires pull requests, nor with a
+   lighter rule that would only block force pushes and the deletion of the branch — whether the
+   bot's commit would get through that lighter rule was ⛔ not verified.
 
    ⚠️ **The check will be red on your pull request until you sign, and that is the
    point** — a CLA gate that stayed green would gate nothing. Post the sentence the

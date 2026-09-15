@@ -8,6 +8,37 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- 🆕 **The repository is public, and what that makes possible** (`dn8-8`, 2026-09-15).
+  Measured on 2026-09-14, before anything was pushed: the repository was private, with 0 forks and 0
+  stars, `main` on GitHub was 59 commits behind, and what the release promises a stranger — the
+  GPL source of the published binary, a private route for security reports, an archive to
+  download — could be checked by nobody. What changed, in order. (1) What would become public was
+  **inventoried first**, and the inventory is versioned under `mesures/dn8-8/` with its sensitive
+  values masked: the whole history goes public **as it is**, by an owner decision of 2026-09-14,
+  and ⛔ nothing was rewritten. (2) `CLA.md` is at **version 2**: it names the project owner, keeps
+  the license without assignment and the right to relicense, says that no governing law and no
+  jurisdiction are chosen, lists the six fields the signature record keeps and says that record
+  is public. Version 1 was never signed. The bot now links that text **at a fixed commit**
+  instead of the tip of `main`. (3) `main` was pushed and the repository was made public.
+  (4) What is still missing for someone arriving from outside is written in `docs/roadmap.md`, as a
+  curated copy of the planning list, with the rule that keeps it. The `dn8-8` row of that page
+  reads `done` and describes the repository as public: like the `dn8-7` row, it is written as the
+  state **once the switch is played**, a rule of reading rather than a snapshot, because the
+  commit that carries it is pushed before the repository is made public.
+  🔴 **`main` is deliberately not protected**: the bot records each signature with a commit on
+  `main`, and on a repository owned by a personal account a branch protection rule cannot exempt
+  it — the reason, and what was ⛔ not tried, are in `CONTRIBUTING.md`.
+  ⚠️ **What this entry does ⛔ not assert**: the gestures played **after** this text was published —
+  protecting the tag `v0.1.0-beta`, turning on private vulnerability reporting, what was actually
+  read without an account, and the continuous integration run of the pushed `main`. Each
+  one is written here by a dated annotation only once it has been measured, and not before.
+  ⚠️ **What this does ⛔ not provide, written**: proof that the bot records the signature of a
+  real outside contributor — that waits for the first such pull request, and nobody opens one on
+  purpose —; activating the agent from a downloaded copy, which stays a known issue until the
+  standalone agent of V0.2; whether a stranger understands DeskNode in fifteen seconds, which only
+  a stranger can say; and a release body that says the repository became public: the notes of
+  `v0.1.0-beta` are annotated on `main` only, and the release does not move. The `dn8-8` row of
+  `docs/roadmap.md` names the same four.
 - 🆕 **The demo can be seen: a link to the video, and three animations on the front page** (`dn8-9`, 2026-09-14).
   Measured that day: the front page cited two images, no animation and no video link, and the
   repository tracked no GIF and no video file — a stranger never saw DeskNode move. What changed.
@@ -40,6 +71,10 @@ Work towards the first public release, `v0.1.0-beta`.
 > is **still private**. ⇒ it is the first release, and ⛔ not yet a public one. Nothing below was
 > back-filled: work items closed before the release keep the entries they had, and none gained one.
 
+> ⚠️ **Annotated on 2026-09-15 (`dn8-8`) — the annotation above is ⛔ not rewritten.** "Still
+> private" stopped being true after this release was published: the repository became
+> public. The release itself did not move — neither its tag, nor its assets, nor its body.
+
 ### Added
 
 - 🆕 **The first release exists, and what it distributes has a source** (`dn8-7`, 2026-09-14).
@@ -66,6 +101,10 @@ Work towards the first public release, `v0.1.0-beta`.
   (`dn4-45`); and a **standalone executable** for the agent, planned for V0.2. ⚠️ **And one thing is
   not replayed**: flashing this exact binary **from the install page** — the page was proven end to
   end on the previous payload, and the 2026-09-13 session flashed this one with `idf.py`.
+
+  > ⚠️ **Annotated on 2026-09-15 (`dn8-8`) — this entry is ⛔ not rewritten.** Its first gap has
+  > closed since: the repository became public, so the source this release names — the tag, and
+  > revision `55006c1` — now sits in a public repository. The other two gaps are unchanged.
 - 🆕 **The repository can now receive what comes back: issue forms, a security policy, a code of
   conduct, and a status line that promises nothing** (`dn8-5`, 2026-09-13). Measured that morning:
   `.github/` held only the CLA signature store and two workflows, and GitHub's community profile
@@ -109,6 +148,12 @@ Work towards the first public release, `v0.1.0-beta`.
   whether `required` takes effect (it only does on public repositories), and whether the private
   reporting form reaches a stranger — that setting only exists once the repository is public, and
   turning it on belongs to the switch.
+
+  > ⚠️ **Annotated on 2026-09-15 (`dn8-8`) — ⛔ not rewritten.** The switch happened that day: the
+  > repository is public, so the first two can now be observed. The third needs the reporting
+  > setting, which is turned on **after** this text is published; this annotation does ⛔ not say it
+  > is on, and none of the three is recorded here as observed. Filling a form in from a second
+  > account was ⛔ not done.
 - 🆕 **The LHM probe's polarity is now replayed inside a real PowerShell, and the LHM port
   travels end to end** (`dn8-3`, 2026-09-12). 🔬 **The blocker was refuted by measurement, ⛔ not
   argued away.** Five ledger entries carried the same cause, word for word — *"there is ⛔ no
@@ -614,7 +659,8 @@ Work towards the first public release, `v0.1.0-beta`.
   `README.md` are re-targeted with a dated note — `23 OK, 10 KO`, exactly as before.
   ⛔ **What is not measured, and cannot be here**: whether a stranger understands DeskNode in
   fifteen seconds. That verdict needs a stranger, and there is none while the repository is
-  private.
+  private. *(Annotated on 2026-09-15, `dn8-8`: the repository is public since that day, so a
+  stranger can now exist; that verdict is still ⛔ not measured.)*
   **The build's starting conditions now have their failure written down**, measured on
   2026-09-13 outside any working tree and published in `CONTRIBUTING.md` under *When a
   starting condition is not met*: an ESP-IDF outside `~5.5.0` is refused with exit code **2**
@@ -914,6 +960,10 @@ Work towards the first public release, `v0.1.0-beta`.
   collaborator, so no *external* pull request can exist yet. Proving it against
   a real outside contributor is carried by `dn8` — see
   [`docs/roadmap.md`](docs/roadmap.md).
+
+  > ⚠️ **Annotated on 2026-09-15 (`dn8-8`) — ⛔ not rewritten.** The repository became public that
+  > day and can be forked, so a pull request from outside can now exist. None has been opened
+  > yet: the recording of a real signature is still unobserved.
 - **One of the repository's own gates is red in the published tree**:
   `tools/verif_dossier_dn415.py`, 17 checks passing and 10 failing. All ten concern
   files of the private planning repository, which are not part of this clone. It is

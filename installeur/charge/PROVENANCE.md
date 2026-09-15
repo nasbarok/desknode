@@ -181,6 +181,13 @@ n'est ni un oubli ni une négligence : c'est un état, et il est mesurable.
 > privé**. La source est donc atteignable par **son seul propriétaire**, ⛔ par un inconnu, et
 > c'est ce qui reste du second manque ci-dessous.
 
+> ⚠️ **ANNOTÉ LE 2026-09-15 (`dn8-8`) — ⛔ RIEN N'EST EFFACÉ.** *« Ce dépôt est encore privé »* a
+> cessé d'être vrai ce jour : le dépôt est **public**. La source que cette page nomme — le tag
+> `v0.1.0-beta` et la révision `55006c1` — est donc dans un dépôt **public**, et le second manque
+> ci-dessous, dont la cause écrite était la visibilité du dépôt, est **fermé**. ⚠️ Ce qu'un inconnu
+> en lit réellement sans compte se relève **après** la bascule, ⛔ dans cette annotation. Le
+> premier manque, la mécanisation, n'a pas bougé.
+
 🎯 **Porteur de la mécanisation : `dn4-45`** (*« la CI construit le firmware »*), aujourd'hui
 `not started` — c'est lui, et personne d'autre, qui remplacera « construit à la main sur un
 poste » par une trace vérifiable.
@@ -193,6 +200,9 @@ première release). ⛔ Un écart sans porteur écrit est un oubli déguisé, et
 > release —, la vitrine est en place, et le tag et la release existent. Ce qui reste du manque est
 > **la bascule du dépôt en public**, sans laquelle ni le tag ni la release ne sont atteignables
 > par un inconnu. Le premier manque, lui, n'a pas bougé d'un octet.
+
+> ⚠️ **ANNOTÉ LE 2026-09-15 (`dn8-8`).** La bascule du dépôt en public a été jouée ce jour : il ne
+> reste **rien** du second manque, et `epic-dn8` n'a plus rien à porter pour lui.
 
 ## Pourquoi ces binaires sont AU DÉPÔT, et pourquoi le dossier s'appelle `charge/`
 

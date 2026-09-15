@@ -246,6 +246,7 @@ change :
    conditions d'admission d'AliExpress sont derrière une authentification, et celles de Waveshare,
    **publiques et lues le 2026-09-07**, disent inviter *« primarily »* des personnes ayant une
    présence sur **GitHub** — or ce dépôt y est **privé** ;
+   ⚠️ *annoté le 2026-09-15 (`dn8-8`) : ce dépôt y est **public** depuis ce jour ;*
 2. **l'owner doit ouvrir le compte lui-même** et accepter les conditions générales — ⛔ ce n'est pas
    un geste qu'un agent peut faire à sa place ;
 3. **les deux phrases d'état doivent être réécrites** — celle-ci et celle de la page ci-dessus. Elles

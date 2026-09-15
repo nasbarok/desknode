@@ -129,6 +129,24 @@ Ce déplacement est un **effet de cette marche**, ⛔ pas une intention de l'own
 La question devient réelle **à la bascule publique**, ⛔ pas avant — et c'est un **DÉCLENCHEUR DE
 RÉÉVALUATION**, ⛔ pas une échéance : si la bascule n'a pas lieu, elle ne se repose pas.
 
+⚠️ **ANNOTÉ LE 2026-09-15 (`dn8-8`) — LE DÉCLENCHEUR A JOUÉ, ET LA RÉPONSE EST ÉCRITE.** Le dépôt
+est **public** depuis ce jour. Juste avant la bascule, l'owner a répondu à la question « l'historique
+part-il tel quel ? » : *« oui »* (2026-09-14). Ces photos deviennent donc publiques **telles
+quelles**, dans l'arbre comme dans l'historique — ⛔ sans recadrage, ⛔ sans retrait. L'usage VITRINE,
+lui, n'existe toujours pas, et le porteur proposé ci-dessous reste une proposition.
+🔬 **Ce qu'elles emportent en plus de l'image, mesuré avant la bascule** (relevé
+`mesures/dn8-8/T1-releve-de-ce-qui-devient-public.txt`, 2026-09-15) : l'historique poussé atteint
+**33 versions de JPEG**, sur 22 chemins. `T1` compte **séparément** les versions qui portent **à la
+fois** la marque et le modèle de l'appareil dans leurs EXIF — **29** — et celles qui portent **au
+moins l'un des deux** — **29** aussi. **29** portent la date de **modification** du fichier
+(étiquette `0x0132`, ⛔ la date de prise de vue) et **31** une date de **prise de vue**
+(`DateTimeOriginal`) ; **31** nomment le logiciel qui les a écrites, et **29** portent une vignette
+(l'image réduite de l'IFD1). **7** portent une entrée de commentaire utilisateur, **vide** dans les
+7 cas. Parmi les **étiquettes standard lues**, **0** portent un auteur, un copyright, un propriétaire
+ou un numéro de série de l'appareil ; mais **7** portent un bloc propriétaire du constructeur
+(`MakerNote`), **⛔ décodé par personne** : ce qu'il contient — un numéro de série, par exemple —
+n'est ni lu ni compté ici. **0** portent un paquet XMP, et **0** une position GPS.
+
 🎯 **Porteur proposé : l'epic vitrine** — elle doit **déjà** re-tourner le média une fois le boîtier
 posé (réserve mesurée : *« le câblage est à nu dans le cadre »*). Recadrer, choisir, et re-tourner
 sont **le même geste, au même moment** : les séparer, c'est cadrer deux fois. ⛔ Ce n'est pas

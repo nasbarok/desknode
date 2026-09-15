@@ -1,0 +1,819 @@
+==============================================================================
+dn8-8 / T2 — LA MEME PASSE QUE T0, APRES LA DERNIERE ECRITURE DE LA PHASE A
+  Passe jouee du 2026-09-15 03:10:56 au 2026-09-15 03:47:39 (+02:00), par la copie
+  DURCIE de `passe.sh` (§ 6), la copie DURCIE `comparer-t2.py` et le `verser.py`
+  de `mesures/dn8-8/T0-borne-entree.txt` § 5, sorties au scratchpad, versees ici
+  APRES la passe. ⛔ Aucun commit, ⛔ aucune poussee, ⛔ aucune requete GitHub
+  autre que GET dans toute la Phase A. Ce fichier REMPLACE les `T2` des trois
+  passes precedentes de la Phase A (2026-09-14), ecrits avant chaque revue.
+==============================================================================
+
+── 1. CE QUE LA PHASE A A ECRIT (arbre de travail, ⛔ committe par personne) ──
+  🔁 TROISIEME RE-DERIVATION, APRES LA REVUE BOUCLE 3. La revue 4 couches
+  (boucle 3, `bad_spec`) a renvoye le dossier ; l'arbre a ete remis a la base
+  et la re-derivation a REAPPLIQUE `dn8-8-avant-re-derivation-3.patch`
+  (cockpit : l'arbre revu a la boucle 3 ; `git apply --check` vert sur
+  `23fae3f`) le 2026-09-14 vers 23:30, puis ⛔ corrige QUE les points amendes
+  (Spec Change Log, boucle 3) :
+  · la prose ⛔ accroche plus une date de DECISION ou de MESURE a la date de
+    bascule : `CHANGELOG.md` et la ligne `dn8-8` de la roadmap disent « Measured
+    on 2026-09-14 » et « by an owner decision of 2026-09-14 » (⛔ « that day ») ;
+    la liste curee, « by an owner decision of 2026-09-14 » ; `CLA.md`, « on
+    2026-09-14 the signature record … was read » ; et les annotations qui
+    comparaient la bascule au jour de la release (« the same day ») ⛔ le font
+    plus (`CHANGELOG.md` ×2, notes de `v0.1.0-beta` sur `main`, `index.html`
+    EN/FR, qui porte desormais « annotated on <date> » / « annoté le <date> ») ;
+  · `CLA.md` v2 : l'enumeration dit « adds FIVE things » — la phrase sur la
+    signature qui reste dans l'historique y est comptee ;
+  · l'entree `dn8-8` de `CHANGELOG.md` et la ligne `dn8-8` de la roadmap portent
+    LA MEME liste de ce qu'elles ⛔ fournissent (quatre elements), et chacune
+    renvoie a l'autre ;
+  · `docs/cablage/PHOTOS.md` : « 33 VERSIONS de JPEG, sur 22 chemins » ;
+    `0x0132` est la date de MODIFICATION du fichier, ⛔ de prise de vue ; les
+    comptes EXIF sont ceux du `T1` rejoue (§ 3 de `T1`) ;
+  · `mesures/dn8-8/T0-borne-entree.txt` : ses TROIS chemins absolus de
+    scratchpad (identifiant de session compris) remplaces par `<scratchpad>` —
+    substitution DECLAREE dans `T0` (§ 2 e), ⛔ un rejeu ;
+  · la DATE DES SITES : les 34 sites de la table de `bascule.py` portaient
+    `2026-09-14` (patch) ; l'arbre a ete RE-DATE au `2026-09-15` par
+    `bascule.py redater` (longueur egale, tailles relues, date relue sur
+    l'arbre) a 00:04:57, apres la derniere ecriture de prose (00:00 passe) ;
+  · hors arbre suivi : `bascule.py` (table des sites, `redater`, garde l.103
+    elargie, parent(`C2`) = `C1` en B3/B4, balayage de l'objet en B1 et `b12`,
+    bornes et codes de B8, exception ⇒ 4, sha256 au VERDICT), ses temoins
+    (`T3` re-ecrit), `releve.py` (`T1` rejoue), la copie durcie de `passe.sh`
+    (`fin` exige `gates.tsv` et `nongates.txt` plus recents que l'entete, § 2 f).
+  🔁 PUIS LES CORRECTIFS DE LA REVUE DE CETTE RE-DERIVATION (2026-09-15), apres
+  lesquels `T3`, `T1` et CETTE passe sont REJOUES (les precedents `T3`/`T1`/`T2`
+  du 2026-09-15 00:45 → 01:31 sont remplaces) :
+  · `docs/roadmap.md` : la ligne `dn8-3` lisait encore `in review` (close le
+    2026-09-12) — etat barre et annote `dn8-8`, date, la valeur d'origine
+    nommee ; son site AJOUTE a la table (35 sites) ;
+  · `docs/cablage/PHOTOS.md` : les 7 entrees UserComment sont VIDES (⛔ « 7
+    commentaires ») ; 29 vignettes (IFD1) ; les « 0 » valent pour les
+    etiquettes STANDARD lues, les 7 blocs `MakerNote` ⛔ decodes ;
+  · hors arbre suivi : `bascule.py` (COMPLETUDE de la table et exclusions
+    nommees, balayage de `BASE..--c2` en B3, curl borne et rc ≠ 0 ⇒ 4 en B7),
+    ses temoins (D-HORS, R-HORS, MIN-VAL, B7-TRONC, R-NOM au jeton pres),
+    `releve.py` (UserComment non vide, vignettes), `T3` § 4 (0') (reconstruire
+    les sources depuis les releves), et `comparer-t2.py` (la FORME du compte
+    comparee, § 2 h).
+  Derniere ecriture de l'arbre avant cette passe : 2026-09-15T03:10:46+02:00 (`T1`, rejoue de 03:09:06 a 03:10:46 APRES `T3`, compose a 03:08:42 ; ecritures de prose des correctifs de revue : `docs/roadmap.md` (ligne `dn8-3`) et `docs/cablage/PHOTOS.md` avant le tir des temoins de 02:48:40).
+  `git diff --numstat` (fichiers suivis) :
+        51 +    1 -  CHANGELOG.md
+        37 +    0 -  CLA.md
+        22 +    0 -  CONTRIBUTING.md
+         5 +    0 -  LICENSING.md
+         9 +    0 -  SECURITY.md
+         8 +    0 -  docs/affiliation.md
+         1 +    0 -  docs/bom.md
+        18 +    0 -  docs/cablage/PHOTOS.md
+         3 +    3 -  docs/dn5-1-ecart-promesses.md
+         2 +    0 -  docs/releases/v0.1.0-beta.md
+        49 +    5 -  docs/roadmap.md
+        10 +    0 -  installeur/charge/PROVENANCE.md
+         2 +    2 -  installeur/index.html
+         9 +    2 -  tools/verif_licences_dn52.py
+  + non suivis : `mesures/dn8-8/T0-borne-entree.txt` (⛔ rejoue : l'arbre de
+    `baseline_revision` n'a pas change, dossier *KEEP* ; reapplique tel quel),
+    `mesures/dn8-8/T1-releve-de-ce-qui-devient-public.txt` et
+    `mesures/dn8-8/T3-gardes-et-temoins.txt` (tous deux ecrits AVANT cette
+    passe), et CE fichier, ecrit apres elle.
+  ⇒ ⛔ `firmware/`, `agent/`, `installeur/dn_installeur.py`,
+    `tools/dn_agent_tour.ps1`, `.github/` : `git diff --stat` VIDE.
+  ⇒ `installeur/index.html` : 3229 lignes (3229 a la base) — texte ajoute DANS
+    les deux lignes EN/FR.
+  ⇒ `CLA.md` : 37 lignes ajoutees, 0 retiree(s) — le texte de la version 1 est intact.
+  ⇒ lignes MODIFIEES (10, hors `tools/`) : chacune garde son texte d'origine AU
+    CARACTERE PRES — confrontees par `difflib` (ligne ancienne ⇄ ligne neuve) :
+    insertions seules ; les `~~` de la cellule d'etat de la ligne `dn8` barrent
+    sans retirer.
+
+── 2. LES TEMOINS DE LA PHASE A, JOUES AVANT LA PASSE ─────────────────────────
+  (a) `python3 tools/verif_licences_dn52.py` sur l'arbre ecrit : rc=0, `BILAN : 34 OK, 0 KO` (tir isole de la passe, § 3) ·
+      `--mutant 32` : rc=1, `BILAN : 33 OK, 1 KO`, `[KO ] path-to-document designe CE depot … → https://github.com/acme/autre-depot/blob/main/CLA.md` (joue apres la passe, arbre inchange).
+  (b) sur une COPIE A ANCRE SHA : le temoin `N-B2` de `T3` joue `bascule.py b2`
+      sur un clone jetable dont l'arbre de la Phase A est committe en `C1`
+      synthetique — `C2` y porte `blob/<C1 en 40 hex>/CLA.md` a la l.103, et
+      dn52 y rend `BILAN : 34 OK, 0 KO` puis, `--mutant 32`, rc=1 et
+      `BILAN : 33 OK, 1 KO` ; `verif_campagne_dn56.py` y est lance detache puis
+      RELU au compte (`N-B2b`). ⇒ `C2` ⛔ fait pas rougir la campagne.
+  (c) `CLA.md`, chaque motif de la commande de verification du dossier present :
+      lignes qui portent chaque motif : cla-signatures.json 2 · pullRequestNo 1 · comment_id 1 · repoId 1 · created_at 1 · governing law 2 · project owner 5
+      (compte de lignes ≥ 7 exige : 13) ; `nasbarok` en minuscules : 0 ligne(s) ; `Nasbarok` : 1.
+  (d) les SIX champs de `CLA.md` sont MESURES, ⛔ recopies : `T1` § 4 relit
+      `src/pullrequest/signatureComment.ts@v2.6.1` en GET (7 champs lus, `body`
+      RETIRE avant l'ecriture ⇒ 6).
+  (e) `T3` : `rtk proxy bash temoins.sh <depot>` — `BILAN TEMOINS : 202 PASS, 0 FAIL sur 202`, rc=0, tir de 02:48:40 a 03:08:42 ; les 137 temoins de la version precedente sont gardes sauf BR13a et BR13a+, SCINDES (BR13b(+), BR13c(+)), et 67 lignes sont ajoutees (137 − 2 + 67 = 202). ⚠️ Trois tirs ont precede celui-ci, sorties gardees au scratchpad : 00:05:14 → 00:22:30, `183 PASS, 7 FAIL sur 190` (le balayage derivait ses valeurs sur l'objet lui-meme, `T3` § 3 l) ; 00:26:19 → 00:45:19, `190 PASS, 0 FAIL sur 190` (le `T3` de la passe precedente, remplace apres la revue) ; 02:28:24 → 02:48:10, `200 PASS, 2 FAIL sur 202` (deux motifs de temoins codaient en dur le compte des sites, `T3` § 0 e).
+  (f) la copie durcie de `passe.sh` REFUSE de clore une passe a cheval, ou sur
+      les `.fini`, le `gates.tsv` ou le `nongates.txt` d'une passe precedente
+      — `rtk proxy bash temoins-passe.sh`
+      (dossiers jetables, supprimes), sortie brute :
+      |   ✅ (a) fin sans entete rc=3 « ⛔ fin REFUSEE : entete.marqueur absent — la passe n'a pas d'entete »
+      |   ✅ (b) fin avec dn56.fini seul rc=3 « ⛔ fin REFUSEE : rungates.fini absent — une etape detachee n'est pas terminee »
+      |   ✅ (c) fin sur les .fini d'une passe precedente rc=3 « ⛔ fin REFUSEE : dn56.fini ANTERIEUR a l'entete — il appartient a une passe precedente »
+      |   ✅ (d) entete rc=0 : dn56.fini et rungates.fini PURGES, marqueur pose
+      |   ✅ (e) dn56) et rungates) suppriment leur .fini en premiere ligne (lu dans la source, ⛔ joue)
+      |   ✅ (f) fin sur un gates.tsv anterieur a l'entete rc=3 « ⛔ fin REFUSEE : gates.tsv ANTERIEUR a l'entete — sortie d'une passe precedente »
+      |   ✅ (g) fin sans nongates.txt rc=3 « ⛔ fin REFUSEE : nongates.txt absent — l'etape au premier plan n'a pas tourne »
+      | TEMOINS passe-t2.sh : 7 tenus sur 7
+      | rc=0
+  (g) `git grep -n -i -E "still private|is private|repository is private|encore privé|encore prive|depot prive|dépôt privé|no fork|0 fork|until the switch|becomes public|once the repository is public|while this repository"`
+      hors `mesures/`, 48 occurrences, verdict par occurrence :
+      | occurrence | verdict |
+      |---|---|
+      | `.github/workflows/cla.yml:61`, `:71` | REGLE GENERALE (« sur un depot PRIVE, les minutes sont decomptees ») ⛔ applicable des la bascule ; ⛔ ANNOTABLE dans cette marche (seule la l.103 bouge) ⇒ a verser au ledger (B13) |
+      | `.github/workflows/gates.yml:79` (« Le depot a **0 fork** aujourd'hui ») | PERIMEE a la bascule et ⛔ ANNOTABLE (`gates.yml` intouchable) ⇒ a verser au ledger (B13) |
+      | `.github/workflows/gates.yml:214` | vraie : c'est le COCKPIT qui est prive |
+      | `CHANGELOG.md:12` | entree `dn8-8` : « was private », passe DATE |
+      | `CHANGELOG.md:71` (annotation `dn8-7`) | annotee `dn8-8` juste en dessous |
+      | `CHANGELOG.md:99` (entree `dn8-7`) | annotee `dn8-8` en fin d'entree |
+      | `CHANGELOG.md:149` (entree `dn8-5`) | annotee `dn8-8` en fin d'entree, ⛔ presumant le signalement active |
+      | `CHANGELOG.md:494` | MESURE DATEE (« measured on 2026-09-08 ») ⇒ ⛔ annotee |
+      | `CHANGELOG.md:959` (known issue du bot CLA) | annotee `dn8-8` en dessous |
+      | `CODE_OF_CONDUCT.md:69` | vraie : limites d'un depot de compte personnel, public ou non |
+      | `CONTRIBUTING.md:9` | annotee `dn8-8` en fin de paragraphe |
+      | `CONTRIBUTING.md:63`, `:65` | annotees `dn8-8` a la fin du point (1) |
+      | `CONTRIBUTING.md:565` | annotee `dn8-8` APRES la phrase entiere (ancre du mutant 14 intacte) |
+      | `CONTRIBUTING.md:930` | vraie : le cockpit |
+      | `LICENSING.md:72`, `:75` | MESURE DATEE ; la phrase conditionnelle est annotee `dn8-8` en dessous |
+      | `SECURITY.md:31` | DATEE (« Dated 2026-09-13 ») et annotee `dn8-8` en dessous, ⛔ presumant le signalement active |
+      | `docs/dn5-1-ecart-promesses.md:40`, `:98` | annotees `dn8-8` dans la case |
+      | `docs/journal-de-bord.md:307`, `:316` | vraies : le cockpit |
+      | `docs/releases/v0.1.0-beta.md:3` | annotee `dn8-8` sur `main` ; le fichier DANS le tag et le corps de la release ⛔ bougent pas (declare) |
+      | `docs/roadmap.md:102` (`dn6-5`), `:124` (`dn8-5`), `:125` (`dn8-7`), `:128` (`dn8`) | annotees `dn8-8` dans la cellule |
+      | `docs/roadmap.md:105` (`dn7-2`) | MESURE DATEE (« measured on 2026-09-08 ») ⇒ ⛔ annotee |
+      | `docs/roadmap.md:127` (`dn8-8`), `:187` (liste curee) | prose neuve, au passe |
+      | `installeur/charge/PROVENANCE.md:184` | l'annotation `dn8-8` elle-meme (elle cite la phrase) |
+      | `installeur/index.html:940`, `:952` | DATEES par `dn8-7` et annotees `dn8-8` dans la ligne meme |
+      | `tools/` (14 lignes : `run_gates.sh` ×6, `filtre_constats_dn56.py` ×2, `verif_harnais_dn81.py` ×2, `verif_dossier_d5_dn45.py`, `verif_dossier_dn415.py`, `verif_ledger_dn416.py`, `verif_licences_dn52.py`) | vraies : le cockpit, ou une regle sur les depots prives |
+      ⚠️ HORS du motif : `docs/affiliation.md` (deux « privé aujourd'hui », §2 et
+         §5), `docs/bom.md:248` (« ce dépôt y est **privé** ») et
+         `docs/cablage/PHOTOS.md` (le declencheur) — annotes `dn8-8` ;
+         `tools/verif_reception_dn85.py` imprime « le depot est prive » ⇒ `tools/`
+         hors dn52 gele ⇒ a verser au ledger (B13).
+  (h) la copie durcie `comparer-t2.py` voit une gate qui PERD sa ligne BILAN a
+      compte de repli egal, que le `comparer.py` de T0 sortait « = » —
+      `bash temoin-forme.sh` sur une passe fabriquee depuis celle-ci : la copie durcie sort en rc=1 sur « FORME DU COMPTE CHANGEE (BILAN ⇒ [OK]/[KO]) », le `comparer.py` de T0 en rc=0 et « = »
+      (sortie brute au § 6).
+
+── 3. LE RELEVE BRUT (`python3 verser.py T2`) ────────────────────────────────
+  === dn8-8 / passe T2 — debut 2026-09-15T03:10:56+02:00 ===
+  HEAD desknode : 23fae3fb015517c39eea311e9e999dd91569df2f
+  HEAD cockpit  : 84fde70708f206be0e40afbf800cfb661d3cd404
+  git status --porcelain desknode :
+     M CHANGELOG.md
+     M CLA.md
+     M CONTRIBUTING.md
+     M LICENSING.md
+     M SECURITY.md
+     M docs/affiliation.md
+     M docs/bom.md
+     M docs/cablage/PHOTOS.md
+     M docs/dn5-1-ecart-promesses.md
+     M docs/releases/v0.1.0-beta.md
+     M docs/roadmap.md
+     M installeur/charge/PROVENANCE.md
+     M installeur/index.html
+     M tools/verif_licences_dn52.py
+    ?? mesures/dn8-8/
+  git status --porcelain cockpit (implementation-artifacts) :
+    ?? _bmad-output/implementation-artifacts/bmad-build-auto-result-dn8-8-la-bascule-et-ce-qu-elle-rend-possible.md
+    ?? _bmad-output/implementation-artifacts/dn8-8-arbre-boucle-3.patch
+    ?? _bmad-output/implementation-artifacts/dn8-8-avant-re-derivation-2.patch
+    ?? _bmad-output/implementation-artifacts/dn8-8-avant-re-derivation-3.patch
+    ?? _bmad-output/implementation-artifacts/dn8-8-avant-re-derivation.patch
+    ?? _bmad-output/implementation-artifacts/dn8-8-la-bascule-et-ce-qu-elle-rend-possible.md
+  EMPREINTE desknode AVANT (contenu, git ls-files | sha256sum) : 6fea8d4fec9a70eb
+  EMPREINTE desknode AVANT (index, git ls-files -s | sha256sum) : 1c934de695c32bdd
+  EMPREINTE cockpit  AVANT (suivis + non suivis + modifies) : 3178766e3f0a1b4e
+  EMPREINTE desknode AVANT (non suivis) : e4972d2aaf7b3f10
+  sha256 .github/ :
+    a32e2944977d8009c98f98a8ffd6c73f474313569af3f9b133944ae7ab73e581  .github/workflows/cla.yml
+    00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  .github/workflows/gates.yml
+    a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  .github/cla-signatures.json
+  sha256 installeur/charge/ :
+    6d91ef2ee9ccd742568d292fb0e5bcb4db117c4d1753ee12ae06708552b866c1  installeur/charge/PROVENANCE.md
+    d1bf1fd347b3494bcb3d38c7cee0d4698fd45617505529cf5c5dc1653ae0a478  installeur/charge/bootloader.bin
+    2b845a161079de8bb90ee2b23208a2531d04b157f76fea1c61933a6f8d474e3b  installeur/charge/desknode.bin
+    fae162a0a422c3c134db7ba015d8ddcf0adb20502be4f1617c17dba9fb3500ed  installeur/charge/living_pcb_v0.bin
+    8835022afbf87d828403dea65ffe9d0ef7d364b6c9c1d7d7eb4c0620afbc45cd  installeur/charge/manifest.json
+    0934eb422b7c7f52193373a9ce81818e7344d9f0061e073b60fb8ebe209e46eb  installeur/charge/partition-table.bin
+  sha256 build/ :
+    2b845a161079de8bb90ee2b23208a2531d04b157f76fea1c61933a6f8d474e3b  firmware/desknode/build/desknode.bin
+    d1bf1fd347b3494bcb3d38c7cee0d4698fd45617505529cf5c5dc1653ae0a478  firmware/desknode/build/bootloader/bootloader.bin
+    0934eb422b7c7f52193373a9ce81818e7344d9f0061e073b60fb8ebe209e46eb  firmware/desknode/build/partition_table/partition-table.bin
+  build/ : -rw-r--r-- 1 nasbarok nasbarok 1266928 2026-09-13 19:48:42.326192241 +0200 firmware/desknode/build/desknode.bin
+  git describe --tags --always --dirty : v0.1.0-beta-3-g23fae3f-dirty
+  git tag (brut, entre crochets) : [v0.1.0-beta]
+  git ls-remote origin (toutes refs) :
+    7246f5248d1625a2a351bbb374c03f0585a008c3	HEAD
+    3db180cbd6789cde32bb093dd565d1ab3c4f298f	refs/heads/dn4-5-le-module-vit-tout-seul
+    7246f5248d1625a2a351bbb374c03f0585a008c3	refs/heads/main
+    d11977f8d80eee890f37bf79843cfe782b612338	refs/pull/1/head
+    6a80de8ccab4fb3715ebfdeae830ecbe801a5069	refs/pull/2/head
+    f382819016ea4a2431350a2127e29258dbb027e1	refs/tags/v0.1.0-beta
+    fb6d64601f5b17ce54927a7e2aae599bd517a4e0	refs/tags/v0.1.0-beta^{}
+  git ls-remote --tags origin (brut, entre crochets) : [f382819016ea4a2431350a2127e29258dbb027e1	refs/tags/v0.1.0-beta
+  fb6d64601f5b17ce54927a7e2aae599bd517a4e0	refs/tags/v0.1.0-beta^{}]
+  git rev-list --left-right --count origin/main...main : 0	59
+  gh api repos/nasbarok/desknode/releases  : (RESUME, brut 15201 car. au scratchpad) 1 objet(s)
+      tag_name=v0.1.0-beta · name=DeskNode v0.1.0-beta · draft=False · prerelease=True · published_at=2026-09-14T06:38:04Z · 6 asset(s) : bootloader.bin(20848 o, d1bf1fd347b3494b), desknode-v0.1.0-beta.zip(23228908 o, 0989e0ed2448d6ae), desknode.bin(1266928 o, 2b845a161079de8b), living_pcb_v0.bin(614416 o, fae162a0a422c3c1), manifest.json(509 o, 8835022afbf87d82), partition-table.bin(3072 o, 0934eb422b7c7f52)
+  gh api repos/nasbarok/desknode/tags  : (RESUME, brut 430 car. au scratchpad) 1 objet(s)
+      name=v0.1.0-beta · commit=fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  git rev-parse v0.1.0-beta^{} : fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  git ls-files | grep -icE '\.(mp4|webm|mov|mkv|gif)$' : 3
+  git ls-files | grep -icE '\.(mp4|webm|mov|mkv)$' (videos seules) : 0
+  taille de la vitrine : 7915 o  README.md
+  gh repo view nasbarok/desknode --json visibility,hasIssuesEnabled,forkCount,stargazerCount : {"forkCount":0,"hasIssuesEnabled":true,"stargazerCount":0,"visibility":"PRIVATE"}
+
+  === LE COMPTE DE CHAQUE GATE (tir isole, timeout 900 s, ordre du glob) ===
+  verif_affiliation_dn65.py          rc=0       2.29 s  BILAN : 23 OK, 0 KO 
+  verif_banc_langue_dn73.py          rc=0       3.25 s  BILAN : 81 OK, 0 KO 
+  verif_bme680_retard_dn45.py        rc=0       0.07 s  BILAN : 15 OK, 0 KO 
+  verif_boitier_dn64.py --cockpit    rc=0       2.01 s  BILAN : 29 OK, 0 KO 
+  verif_bom_dn61.py                  rc=0       0.05 s  BILAN : 24 OK, 0 KO 
+  verif_cablage_dn62.py              rc=0       0.09 s  BILAN : 37 OK, 0 KO 
+  verif_campagne_dn440.py --cockpit  rc=0     139.41 s  BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien BILAN : 62 OK, 0 KO 
+  verif_campagne_dn56.py             rc=0     780.05 s  BILAN : 8 OK, 0 KO 
+  verif_courbe_dn413.py              rc=0      10.66 s  ⛔ aucune ligne BILAN
+  verif_cumul_ambient_dn45.py        rc=0       1.37 s  BILAN : 23 OK, 0 KO 
+  verif_d4_nvs_dn45.py               rc=0       0.35 s  BILAN : 6 OK, 0 KO 
+  verif_decoupe_horloge_dn418.py     rc=0       6.36 s  ⛔ aucune ligne BILAN
+  verif_demarrage_dn443.py           rc=0       0.63 s  BILAN : 58 OK, 0 KO 
+  verif_dossier_d5_dn45.py --cockpit rc=0       6.76 s  BILAN : 12 OK, 0 KO 
+  verif_dossier_dn415.py --cockpit   rc=1       8.54 s  BILAN : 23 OK, 10 KO 
+  verif_entree_dn82.py               rc=0       0.16 s  BILAN : 45 OK, 0 KO 
+  verif_flash_dn72.py                rc=0       0.42 s  BILAN : 30 OK, 0 KO 
+  verif_harnais_dn413.py             rc=0      10.21 s  ⛔ aucune ligne BILAN
+  verif_harnais_dn81.py --cockpit    rc=0       5.57 s  BILAN : 28 OK, 0 KO 
+  verif_hist_dn413.py                rc=0       4.38 s  ⛔ aucune ligne BILAN
+  verif_installeur_dn71.py           rc=0       0.43 s  BILAN : 28 OK, 0 KO 
+  verif_instruments_dn423.py         rc=0       0.72 s  BILAN : 163 OK, 0 KO 
+  verif_journal_soak_dn45.py         rc=0       0.09 s  BILAN : 26 OK, 0 KO 
+  verif_langue_dalle_dn73.py         rc=0       0.14 s  BILAN : 61 OK, 0 KO 
+  verif_langues_dn442.py             rc=0       0.68 s  BILAN : 31 OK, 0 KO 
+  verif_ledger_dn416.py --cockpit    rc=0       0.83 s  BILAN : 36 OK, 0 KO 
+  verif_lhm_ps_dn83.py               rc=0      18.77 s  BILAN : 26 OK, 0 KO 
+  verif_licences_dn52.py             rc=0       1.19 s  BILAN : 34 OK, 0 KO 
+  verif_lissage_dn45.py              rc=0       0.17 s  BILAN : 21 OK, 0 KO 
+  verif_miroir_horloge_dn418.py      rc=0       0.09 s  ⛔ aucune ligne BILAN
+  verif_page_dn722.py                rc=0       0.13 s  BILAN : 56 OK, 0 KO 
+  verif_paliers_dn441.py             rc=0       0.19 s  BILAN : 42 OK, 0 KO 
+  verif_photos_dn63.py               rc=0       0.45 s  BILAN : 28 OK, 0 KO 
+  verif_placement_dn74.py            rc=0       0.19 s  BILAN : 42 OK, 0 KO 
+  verif_polices_dn440.py             rc=0       0.04 s  BILAN : 11 OK, 0 KO 
+  verif_preconditions_dn76.py        rc=0       0.23 s  BILAN : 55 OK, 0 KO 
+  verif_prerequis_dn75.py            rc=0       0.23 s  BILAN : 51 OK, 0 KO 
+  verif_rebouclage_dn45.py           rc=0       3.05 s  BILAN : 30 OK, 0 KO 
+  verif_reception_dn85.py            rc=0       0.54 s  BILAN : 16 OK, 0 KO 
+  verif_reprise_horloge_dn418.py     rc=0       0.09 s  ⛔ aucune ligne BILAN
+  verif_selection_dn49.py            rc=0       0.09 s  ⛔ aucune ligne BILAN
+  verif_serie_dn412.py               rc=0       1.57 s  BILAN : 50 OK / 0 KO 
+  verif_source_lhm_dn48.py           rc=0       4.18 s  ⛔ aucune ligne BILAN
+  verif_sr03.py                      rc=2       0.05 s  ⛔ aucune ligne BILAN
+  verif_temoin_filtre_dn447.py       rc=0       1.84 s  BILAN : 5 OK, 0 KO 
+  verif_veille_dn33.py               rc=0       7.83 s  BILAN : 267 OK · 0 KO 
+  verif_verrou_lvgl_dn413.py         rc=0      16.37 s  ⛔ aucune ligne BILAN
+  verif_vitrine_dn84.py              rc=0       0.09 s  BILAN : 16 OK, 0 KO 
+  verif_xip_dn422.py                 rc=0       0.06 s  BILAN : 10 OK / 0 KO 
+
+  === LES OUTILS QUI NE SONT PAS DES GATES ===
+  --- node tools/banc_langue_dalle_dn73.mjs : rc=0  0.76 s
+        BANC : 39 OK, 0 KO
+  --- node tools/banc_couverture_dn82.mjs : rc=0  0.91 s
+        COUVERTURE dn8-2 — LE SCRIPT DE LA PAGE, MESURE PENDANT QU'IL S'EXECUTE
+        COUVERTURE : 96/100 fonctions, 131/190 blocs — les deux seuils sont tenus.
+  --- python3 tools/inventaire_motif_dn53.py : rc=0  0.33 s
+        18:  [OK ] classe 1 : le defaut de `--csv` est LOCALISE par AST     ancre semantique, ⛔ pas verbatim
+        19:  [OK ] classe 1 : l'arbre du jour est SOLDE                     0 fait
+        20:  [OK ] classe 1 : faute REPLANTEE ⇒ elle REMONTE                ≥1 fait
+        23:  1. dependance FONCTIONNELLE  (le seul defaut)      0 fichiers      0 sites
+        24:  2. exemple d'usage          (declare au site)     32 fichiers     88 sites
+        25:  3. trace de generation      (polices — INTACTES)    5 fichiers      5 sites
+        26:  4. registre de preuves      (mesures/ — INTACT)  252 fichiers   2470 sites
+        27:  5. le motif est le SUJET    (EXCLUSION DECLAREE)    4 fichiers     21 sites
+        28:       TOTAL                                       293 fichiers   2584 sites
+        55:     STABLE, c'est la classe 1 : plus aucun outil ne depend d'une
+  --- python3 tools/campagne_ctrl_dn440.py --cockpit /home/nasbarok/projects/compagnon_project : rc=0  66.26 s
+        BILAN TRI : 15 cas au tableau — dont 11 SITE(S) VIVANT(S) et 4 FICHE(S) de remede — 6 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 5 BRANCHE(S), 0 echec(s)
+  --- python3 tools/verif_ledger_dn416.py --cockpit /home/nasbarok/projects/compagnon_project --manifeste : rc=0  0.68 s
+  --- python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres WORKTREE : rc=0  0.08 s
+           couverture : 13 lien(s) local(aux) dans la base, 13 rebasage(s)
+        IDENTIQUE — le corps du journal est T(README@baf4265a292a), octet pour octet.
+  --- python3 -m py_compile tools/dn_console.py tools/gen_font_dn.py tools/dn_gates.py : rc=0  0.06 s
+  --- bash -n tools/rendre-port.sh : rc=0  0.01 s
+
+  === bash tools/run_gates.sh --silencieux --cockpit (APRES les tirs isoles) ===
+  run_gates.sh --silencieux --cockpit /home/nasbarok/projects/compagnon_project : rc=1  1035.17 s
+        [VERTE      ] tools/verif_page_dn722.py              rc=0      0s
+        [VERTE      ] tools/verif_paliers_dn441.py           rc=0      0s
+        [VERTE      ] tools/verif_photos_dn63.py             rc=0      0s
+        [VERTE      ] tools/verif_placement_dn74.py          rc=0      0s
+        [VERTE      ] tools/verif_polices_dn440.py           rc=0      0s
+        [VERTE      ] tools/verif_preconditions_dn76.py      rc=0      0s
+        [VERTE      ] tools/verif_prerequis_dn75.py          rc=0      0s
+        [VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      4s
+        [VERTE      ] tools/verif_reception_dn85.py          rc=0      0s
+        [VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
+        [VERTE      ] tools/verif_selection_dn49.py          rc=0      0s
+        [VERTE      ] tools/verif_serie_dn412.py             rc=0      2s
+        [VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      4s
+        [NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+        [VERTE      ] tools/verif_temoin_filtre_dn447.py     rc=0      2s
+        [  temoin  ] tools/verif_veille_dn33.py             firmware/desknode/managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py est present ⇒ la gate est JOUEE
+        [VERTE      ] tools/verif_veille_dn33.py             rc=0      8s
+        [VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     16s
+        [VERTE      ] tools/verif_vitrine_dn84.py            rc=0      0s
+        [VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+        
+        BILAN : 47 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 49 gates (1035s)
+        appariement --cockpit : 0 divergence(s) entre la detection LARGE (quotes simples/doubles, declaration coupee) et la detection ETROITE d'origine
+        ⛔ ROUGES :
+           · tools/verif_dossier_dn415.py (rc=1)
+
+  EMPREINTE desknode APRES (contenu) : 6fea8d4fec9a70eb
+  EMPREINTE desknode APRES (index)   : 1c934de695c32bdd
+  EMPREINTE cockpit  APRES (suivis + non suivis + modifies) : 3178766e3f0a1b4e
+  EMPREINTE desknode APRES (non suivis) : e4972d2aaf7b3f10
+  sha256 .github/ (apres) :
+    a32e2944977d8009c98f98a8ffd6c73f474313569af3f9b133944ae7ab73e581  .github/workflows/cla.yml
+    00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  .github/workflows/gates.yml
+    a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  .github/cla-signatures.json
+  git rev-parse v0.1.0-beta^{} (apres) : fb6d64601f5b17ce54927a7e2aae599bd517a4e0
+  git ls-remote origin (apres) :
+    7246f5248d1625a2a351bbb374c03f0585a008c3	HEAD
+    3db180cbd6789cde32bb093dd565d1ab3c4f298f	refs/heads/dn4-5-le-module-vit-tout-seul
+    7246f5248d1625a2a351bbb374c03f0585a008c3	refs/heads/main
+    d11977f8d80eee890f37bf79843cfe782b612338	refs/pull/1/head
+    6a80de8ccab4fb3715ebfdeae830ecbe801a5069	refs/pull/2/head
+    f382819016ea4a2431350a2127e29258dbb027e1	refs/tags/v0.1.0-beta
+    fb6d64601f5b17ce54927a7e2aae599bd517a4e0	refs/tags/v0.1.0-beta^{}
+  gh repo view (apres) : {"forkCount":0,"hasIssuesEnabled":true,"stargazerCount":0,"visibility":"PRIVATE"}
+  git status --porcelain desknode (apres) :
+     M CHANGELOG.md
+     M CLA.md
+     M CONTRIBUTING.md
+     M LICENSING.md
+     M SECURITY.md
+     M docs/affiliation.md
+     M docs/bom.md
+     M docs/cablage/PHOTOS.md
+     M docs/dn5-1-ecart-promesses.md
+     M docs/releases/v0.1.0-beta.md
+     M docs/roadmap.md
+     M installeur/charge/PROVENANCE.md
+     M installeur/index.html
+     M tools/verif_licences_dn52.py
+    ?? mesures/dn8-8/
+  === fin 2026-09-15T03:47:39+02:00 ===
+
+  ⚠️ gates SANS ligne BILAN : leur compte est lu dans leur propre forme de fin
+     (meme methode que mesures/dn8-7/T0-borne-entree.txt) :
+     verif_courbe_dn413                 ✅ lignes 1 · ❌ lignes 0 · [OK 58 · [KO 0 · derniere : ✅ 58 contrôles passent, 0 échec.
+     verif_decoupe_horloge_dn418        ✅ lignes 7 · ❌ lignes 0 · [OK 0 · [KO 0 · derniere : ✅ TOUT TIENT.
+     verif_harnais_dn413                ✅ lignes 1 · ❌ lignes 0 · [OK 22 · [KO 0 · derniere : ✅ 22 contrôles passent, 0 échec.
+     verif_hist_dn413                   ✅ lignes 1 · ❌ lignes 0 · [OK 56 · [KO 0 · derniere : ✅ 56 contrôles passent, 0 échec.
+     verif_miroir_horloge_dn418         ✅ lignes 18 · ❌ lignes 0 · [OK 0 · [KO 0 · derniere : ✅ LE MIROIR TIENT.
+     verif_reprise_horloge_dn418        ✅ lignes 50 · ❌ lignes 0 · [OK 0 · [KO 0 · derniere : ✅ LES 12 SCENES TIENNENT.
+     verif_selection_dn49               ✅ lignes 1 · ❌ lignes 0 · [OK 70 · [KO 0 · derniere :    MESURENT sur la carte, et les constats sensoriels sont l'OWNER.
+     verif_source_lhm_dn48              ✅ lignes 3 · ❌ lignes 0 · [OK 46 · [KO 0 · derniere :    service coupe pendant que l'agent tourne, sur la tour.
+     verif_sr03                         ✅ lignes 0 · ❌ lignes 0 · [OK 0 · [KO 0 · derniere :       TLS aboutit puis le flux HTTP/2 casse (INTERNAL_ERROR).
+     verif_verrou_lvgl_dn413            ✅ lignes 1 · ❌ lignes 0 · [OK 60 · [KO 0 · derniere : ✅ 60 contrôles passent, 0 échec.
+
+── 4. LA COMPARAISON AU COMPTE : `python3 comparer-t2.py T0 T2` (rc=0) ──────────────
+  gate                               T0 rc OK/KO            T2 rc OK/KO            verdict
+  verif_affiliation_dn65.py          rc=0     23/0            rc=0     23/0            =
+  verif_banc_langue_dn73.py          rc=0     81/0            rc=0     81/0            =
+  verif_bme680_retard_dn45.py        rc=0     15/0            rc=0     15/0            =
+  verif_boitier_dn64.py              rc=0     29/0            rc=0     29/0            =
+  verif_bom_dn61.py                  rc=0     24/0            rc=0     24/0            =
+  verif_cablage_dn62.py              rc=0     37/0            rc=0     37/0            =
+  verif_campagne_dn440.py            rc=0     62/0            rc=0     62/0            =
+  verif_campagne_dn56.py             rc=0      8/0            rc=0      8/0            =
+  verif_courbe_dn413.py              rc=0     58/0            rc=0     58/0            =  (forme [OK]/[KO])
+  verif_cumul_ambient_dn45.py        rc=0     23/0            rc=0     23/0            =
+  verif_d4_nvs_dn45.py               rc=0      6/0            rc=0      6/0            =
+  verif_decoupe_horloge_dn418.py     rc=0      7/0            rc=0      7/0            =  (forme ✅/❌)
+  verif_demarrage_dn443.py           rc=0     58/0            rc=0     58/0            =
+  verif_dossier_d5_dn45.py           rc=0     12/0            rc=0     12/0            =
+  verif_dossier_dn415.py             rc=1     23/10           rc=1     23/10           =
+  verif_entree_dn82.py               rc=0     45/0            rc=0     45/0            =
+  verif_flash_dn72.py                rc=0     30/0            rc=0     30/0            =
+  verif_harnais_dn413.py             rc=0     22/0            rc=0     22/0            =  (forme [OK]/[KO])
+  verif_harnais_dn81.py              rc=0     28/0            rc=0     28/0            =
+  verif_hist_dn413.py                rc=0     56/0            rc=0     56/0            =  (forme [OK]/[KO])
+  verif_installeur_dn71.py           rc=0     28/0            rc=0     28/0            =
+  verif_instruments_dn423.py         rc=0    163/0            rc=0    163/0            =
+  verif_journal_soak_dn45.py         rc=0     26/0            rc=0     26/0            =
+  verif_langue_dalle_dn73.py         rc=0     61/0            rc=0     61/0            =
+  verif_langues_dn442.py             rc=0     31/0            rc=0     31/0            =
+  verif_ledger_dn416.py              rc=0     36/0            rc=0     36/0            =
+  verif_lhm_ps_dn83.py               rc=0     26/0            rc=0     26/0            =
+  verif_licences_dn52.py             rc=0     34/0            rc=0     34/0            =
+  verif_lissage_dn45.py              rc=0     21/0            rc=0     21/0            =
+  verif_miroir_horloge_dn418.py      rc=0     18/0            rc=0     18/0            =  (forme ✅/❌)
+  verif_page_dn722.py                rc=0     56/0            rc=0     56/0            =
+  verif_paliers_dn441.py             rc=0     42/0            rc=0     42/0            =
+  verif_photos_dn63.py               rc=0     28/0            rc=0     28/0            =
+  verif_placement_dn74.py            rc=0     42/0            rc=0     42/0            =
+  verif_polices_dn440.py             rc=0     11/0            rc=0     11/0            =
+  verif_preconditions_dn76.py        rc=0     55/0            rc=0     55/0            =
+  verif_prerequis_dn75.py            rc=0     51/0            rc=0     51/0            =
+  verif_rebouclage_dn45.py           rc=0     30/0            rc=0     30/0            =
+  verif_reception_dn85.py            rc=0     16/0            rc=0     16/0            =
+  verif_reprise_horloge_dn418.py     rc=0     50/0            rc=0     50/0            =  (forme ✅/❌)
+  verif_selection_dn49.py            rc=0     70/0            rc=0     70/0            =  (forme [OK]/[KO])
+  verif_serie_dn412.py               rc=0     50/0            rc=0     50/0            =
+  verif_source_lhm_dn48.py           rc=0     46/0            rc=0     46/0            =  (forme [OK]/[KO])
+  verif_sr03.py                      rc=2      0/0            rc=2      0/0            =  (forme ✅/❌)
+  verif_temoin_filtre_dn447.py       rc=0      5/0            rc=0      5/0            =
+  verif_veille_dn33.py               rc=0    267/0            rc=0    267/0            =
+  verif_verrou_lvgl_dn413.py         rc=0     60/0            rc=0     60/0            =  (forme [OK]/[KO])
+  verif_vitrine_dn84.py              rc=0     16/0            rc=0     16/0            =
+  verif_xip_dn422.py                 rc=0     10/0            rc=0     10/0            =
+
+  gates comparees : 49 (T0 49 · T2 49) · identiques au compte : 49 · differentes : 0 · OK perdu, KO gagne, rc degrade, forme changee ou gate absente : 0
+  verif_dossier_dn415.py a T2 : 23 OK / 10 KO  (exige : 23 OK / 10 KO)
+
+── 5. CE QUE CETTE PASSE ETABLIT, ET CE QU'ELLE N'ETABLIT PAS ────────────────
+  ⇒ `comparer.py T0 T2` : voir § 4 — la regle est « ⛔ 0 OK perdu, ⛔ 0 KO gagne,
+    ⛔ 0 rc degrade, `verif_dossier_dn415.py` a 23 OK / 10 KO », et la sortie de
+    `comparer.py` en est le juge (rc=0 exige).
+  ⇒ `verif_dossier_dn415.py` (gate DEJA rouge : un KO de plus y serait invisible
+    a la couleur) — la LISTE de ses 10 KO confrontee ligne a ligne a celle de T0
+    (`grep -F '[KO'` des deux sorties capturees, `cmp`) : 10 lignes de chaque cote, IDENTIQUES (`cmp`).
+  ⇒ `.github/` : sha256 des trois fichiers IDENTIQUES a T0 (§ 3) — `cla.yml`
+    ne change qu'en Phase B (`C2`).
+  ⇒ EMPREINTES AVANT = APRES, relues au § 3 : desknode (contenu, index, non
+    suivis) et cockpit (suivis + non suivis + modifies, copie durcie) — ⛔ aucune
+    ecriture n'a chevauche la passe.
+  ⇒ les fichiers NON SUIVIS de `mesures/dn8-8/` (hors de l'empreinte de contenu
+    de T0, ⚠️ couverts par l'empreinte « non suivis » de la copie durcie), relus
+    en sha256 avant et apres :
+    avant : 9dc6a830e3a5af89f687583d091c13053be6e4b9ee48ab5d46cbfb8af8179ec7  mesures/dn8-8/T0-borne-entree.txt
+    avant : 1d7448954dca2a1d4ecb3e08e73f0612aade2c8f6033adf5ff90add1cbff8c85  mesures/dn8-8/T1-releve-de-ce-qui-devient-public.txt
+    avant : 6d7f5f08fd240180557408919c63273344724c6dd397cf81f7d818b2700fa810  mesures/dn8-8/T2-apres-ecriture.txt
+    avant : 4130a43843f1a286eaadaaed8968bf3ccd108f880a90fb5875a1a48e0c01b8b1  mesures/dn8-8/T3-gardes-et-temoins.txt
+    apres : 9dc6a830e3a5af89f687583d091c13053be6e4b9ee48ab5d46cbfb8af8179ec7  mesures/dn8-8/T0-borne-entree.txt
+    apres : 1d7448954dca2a1d4ecb3e08e73f0612aade2c8f6033adf5ff90add1cbff8c85  mesures/dn8-8/T1-releve-de-ce-qui-devient-public.txt
+    apres : 6d7f5f08fd240180557408919c63273344724c6dd397cf81f7d818b2700fa810  mesures/dn8-8/T2-apres-ecriture.txt
+    apres : 4130a43843f1a286eaadaaed8968bf3ccd108f880a90fb5875a1a48e0c01b8b1  mesures/dn8-8/T3-gardes-et-temoins.txt
+    ⇒ IDENTIQUES
+  ⇒ non-gates : `inventaire_motif_dn53.py` passe de 248 a 252 fichiers et de 2 175 a 2 470 sites dans la classe 4 « registre de preuves (mesures/) » : ce sont les quatre fichiers de `mesures/dn8-8/` presents pendant la passe (`T0`, `T1`, `T3`, et le `T2` de la passe precedente, remplace par celui-ci), ou le motif trouve le login `nasbarok` des adresses du depot (`nasbarok/desknode`) et le raccourci `~/projects` — ⛔ une dependance fonctionnelle (classe 1 : 0 fichier, inchangee) ; les fichiers de `mesures/dn8-8/` re-ecrits par cette re-derivation en portent 48 de plus qu'a la passe de la boucle 2 (2 422), ⛔ attribues fichier par fichier. Les autres non-gates rendent la meme sortie qu'a T0 (`banc_couverture` : duree seule ; `campagne_ctrl_dn440` : BILAN TRI inchange).
+
+  🔬 LE BALAYAGE DES VALEURS DERIVEES SUR TOUT `mesures/dn8-8/` (regle `T1`) —
+     `python3 releve.py --balayer mesures/dn8-8/*.txt`, joue depuis la racine du
+     depot APRES l'ecriture de ce fichier (CE fichier compris), meme derivation
+     que `T1` ; ⛔ les valeurs ne sont pas ecrites, seules les CATEGORIES et les
+     COMPTES :
+     | valeurs derivees (COMPTE seulement) : ssid=2 · employeur=1 · gmail=1 · utilisateur=1 · prenom=1 · hote=1
+     |   T0-borne-entree.txt                                  valeurs derivees trouvees : 0 · formes d'adresse e-mail : 0
+     |   T1-releve-de-ce-qui-devient-public.txt               valeurs derivees trouvees : 0 · formes d'adresse e-mail : 0
+     |   T2-apres-ecriture.txt                                valeurs derivees trouvees : 0 · formes d'adresse e-mail : 0
+     |   T3-gardes-et-temoins.txt                             valeurs derivees trouvees : 0 · formes d'adresse e-mail : 0
+     | BALAYAGE : 0 valeur derivee, 0 forme d'adresse
+     ⚠️ joue sur ce fichier APRES l'inscription de la ligne du tir de controle
+        (§ 5, fin), et AVANT que ce bloc y soit inscrit : il ne porte que des
+        categories et des comptes.
+
+  ⛔ CE QUE CETTE PASSE NE DIT PAS :
+    · rien de ce que la bascule change : GitHub est lu ici tel qu'il est au tir
+      (`PRIVATE`, refs de T0) — la Phase B relit tout apres ses gestes ;
+    · rien de `C2` sur l'arbre reel : la campagne sur une ancre SHA a ete jouee
+      sur des clones JETABLES (`T3`, temoins `N-B2`/`N-B2b`, et `MIN-B2` sur un
+      `C2'` epingle a un commit de re-datation), et elle se rejoue sur `C2` en B2 ;
+    · rien de l'OBJET `C1` : ce qui sera committe n'existe pas encore — le
+      balayage de l'objet est la garde B1 (`T3`), jouee sur `C1` reel ;
+    · rien de la CI : aucun run n'a porte cet arbre ;
+    · rien de la justesse de la prose au-dela de ce que les gates lisent : les
+      annotations, `CLA.md` et la liste curee passent a la revue ;
+    · les gates qui balaient les fichiers SUIVIS (`git ls-files`) ⛔ voient pas
+      `mesures/dn8-8/`, NON SUIVI ; celles qui lisent le disque ont vu `T0`, `T1`,
+      `T3` et le `T2` de la passe precedente, ⛔ ce fichier, ecrit apres elles.
+      ⇒ TIR DE CONTROLE, ⛔ une passe :
+      les 48 gates courtes sur un clone JETABLE ou l'arbre de la Phase A est
+      COMMITTE (« C1 simule », CE fichier compris ; `verif_campagne_dn56.py`
+      reprise de T0, ⛔ rejouee : elle l'est sur `C2` synthetique dans `T3`),
+      confrontees a T0 par `comparer.py` : rc=0 — « gates comparees : 49 (T0 49 · SIMC1 49) · identiques au compte : 49 · differentes : 0 · OK perdu, KO gagne, rc degrade ou gate absente : 0 » ; « verif_dossier_dn415.py a SIMC1 : 23 OK / 10 KO  (exige : 23 OK / 10 KO) » ; et par la copie durcie `comparer-t2.py T0 SIMC1` : rc=0, « OK perdu, KO gagne, rc degrade, forme changee ou gate absente : 0 » (tir de 03:48:53 a 03:53:07, joue sur ce fichier AVANT que cette ligne et le bloc du balayage y soient inscrits). ⚠️ Deux dossiers GITIGNORES sont absents d'un clone (`firmware/desknode/managed_components/`, `firmware/desknode/build/`) : ils y sont RELIES par un lien symbolique au depot, sinon trois gates y sortaient en PREREQUIS ABSENT (rc=4) — ⛔ un effet de la Phase A. ⚠️ Ce clone porte `origin` = l'adresse GitHub du depot, parce que `verif_licences_dn52.py` y lit `owner/repo` : elle est LUE par les gates, ⛔ ecrite (aucun `push`, aucune requete autre que GET) — ⛔ le monde jetable des temoins de `T3`, dont aucun remote ⛔ nomme GitHub.
+
+── 6. LES SCRIPTS ─────────────────────────────────────────────────────────────
+  `comparer.py` et `verser.py` : ceux de `mesures/dn8-8/T0-borne-entree.txt` § 5, ⛔ modifies
+  (comparer.py IDENTIQUE a T0 § 5 · verser.py IDENTIQUE a T0 § 5 — fichiers joues, relus apres la passe).
+  `comparer-t2.py` : copie DURCIE du `comparer.py` de T0 (correctif de revue), JOUEE au § 4, ecart declare. `diff comparer.py comparer-t2.py` :
+  | 1a2,6
+  | > # dn8-8 / T2 — COPIE DURCIE du `comparer.py` de T0 (correctif de revue, boucle 3, ecart DECLARE dans T2) :
+  | > #   la paire etait jugee sur (rc, OK, KO) SEULS et la note imprimait la forme de T0 — une gate qui PERD sa
+  | > #   ligne BILAN mais dont le compte de repli tombe juste sortait « = ». ⇒ la FORME du compte est comparee
+  | > #   aussi (un changement de forme est un ecart ET une degradation : rc=1), et la note imprime la forme de
+  | > #   la passe comparee. Le reste est celui de T0 § 5, a l'identique.
+  | 57c62
+  | <     if (ra, oa, ka) != (rb, ob, kb):
+  | ---
+  | >     if (ra, oa, ka, fa) != (rb, ob, kb, fb):
+  | 62a68,71
+  | >     if fa != fb:
+  | >         v = "⛔ FORME DU COMPTE CHANGEE (%s ⇒ %s)" % (fa, fb)
+  | >         if nom not in perdus:
+  | >             perdus.append(nom)
+  | 64c73
+  | <           % (nom, ra, oa, ka, "", rb, ob, kb, "", v + ("  (forme %s)" % fa if fa != "BILAN" else "")))
+  | ---
+  | >           % (nom, ra, oa, ka, "", rb, ob, kb, "", v + ("  (forme %s)" % fb if fb != "BILAN" else "")))
+  | 68c77
+  | <       "OK perdu, KO gagne, rc degrade ou gate absente : %d"
+  | ---
+  | >       "OK perdu, KO gagne, rc degrade, forme changee ou gate absente : %d"
+  Temoin de la copie durcie (§ 2 h) — une passe FABRIQUEE `TFORME` = `T2` ou `verif_courbe_dn413` porte une ligne BILAN de meme compte, comparee a `T2` (la gate PERD sa ligne BILAN, compte de repli egal) :
+  | $ python3 comparer-t2.py TFORME T2   (rc=1)
+  | verif_courbe_dn413.py              rc=0     58/0            rc=0     58/0            ⛔ FORME DU COMPTE CHANGEE (BILAN ⇒ [OK]/[KO])  (forme [OK]/[KO])
+  | gates comparees : 49 (TFORME 49 · T2 49) · identiques au compte : 48 · differentes : 1 · OK perdu, KO gagne, rc degrade, forme changee ou gate absente : 1
+  | $ python3 comparer.py TFORME T2   (celui de T0, rc=0)
+  | verif_courbe_dn413.py              rc=0     58/0            rc=0     58/0            =
+  | gates comparees : 49 (TFORME 49 · T2 49) · identiques au compte : 49 · differentes : 0 · OK perdu, KO gagne, rc degrade ou gate absente : 0
+  `temoin-forme.sh`, source integrale :
+  | #!/usr/bin/env bash
+  | # dn8-8 / T2 — temoin de la copie durcie `comparer-t2.py` (correctif de revue, boucle 3) : une gate qui PERD sa
+  | # ligne BILAN mais dont le compte de repli tombe juste. Passe FABRIQUEE `TFORME` (copie de T2, supprimee).
+  | set -u
+  | cd "$(dirname "$0")" || exit 9
+  | rm -rf TFORME; mkdir -p TFORME/gates && cp T2/gates.tsv T2/gates-dn56.tsv TFORME/ && cp T2/gates/*.txt TFORME/gates/
+  | python3 -c "
+  | p='TFORME/gates.tsv'; t=open(p,encoding='utf-8').read().split('\n')
+  | t=[l.replace('⛔ aucune ligne BILAN','BILAN : 58 OK, 0 KO') if l.startswith('verif_courbe_dn413') else l for l in t]
+  | open(p,'w',encoding='utf-8').write('\n'.join(t))"
+  | python3 comparer-t2.py TFORME T2 > temoin-forme.out; echo "$?" > temoin-forme.rc
+  | python3 comparer.py TFORME T2 > temoin-forme-t0.out; echo "$?" > temoin-forme-t0.rc
+  | rm -rf TFORME
+  | echo "copie durcie rc=$(cat temoin-forme.rc) (1 attendu) · comparer de T0 rc=$(cat temoin-forme-t0.rc) (0 : l'angle mort)"
+  `passe-t2.sh` : copie DURCIE du `passe.sh` de T0 (§ 5 a), ecart declare. `diff passe.sh passe-t2.sh` :
+  | 1a2,15
+  | > # dn8-8 / T2 — COPIE DE TRAVAIL DURCIE du `passe.sh` de T0 (revue du 2026-09-14, ecart DECLARE dans T2) :
+  | > #   (1) `fin` REFUSE (rc=3) tant qu'une etape detachee (`dn56`, `rungates`) n'a pas son `.fini` —
+  | > #       sinon une passe pouvait se clore a cheval sans que rien ne le dise ;
+  | > #   (2) l'empreinte du cockpit couvre AUSSI les fichiers NON SUIVIS et MODIFIES de
+  | > #       `_bmad-output/implementation-artifacts` (la version de T0 ne hachait que les fichiers suivis) ;
+  | > #   (3) une empreinte des fichiers NON SUIVIS de desknode (`mesures/dn8-8/`), avant et apres ;
+  | > #   (4) (revue boucle 2) `entete` SUPPRIME les `.fini` du dossier de sortie et pose un MARQUEUR
+  | > #       (`entete.marqueur`) ; chaque etape detachee supprime SON `.fini` AVANT de demarrer ;
+  | > #   (5) (revue boucle 2) `fin` exige que chaque `.fini` soit PLUS RECENT que le marqueur d'`entete` —
+  | > #       sinon une passe rejouee sous la MEME etiquette clorait sur les `.fini` de la precedente.
+  | > #   (6) (revue boucle 3) `fin` exige AUSSI que `gates.tsv` et `nongates.txt` soient PLUS RECENTS que le
+  | > #       marqueur d'`entete` — une etape au premier plan oubliee clorait sinon sur la sortie d'une passe
+  | > #       precedente sous la meme etiquette.
+  | > #   Le reste est celui de T0, a l'identique.
+  | 34c48,51
+  | <   ( cd "$CK" && git ls-files -z -- _bmad-output/implementation-artifacts | xargs -0 sha256sum ) | sha256sum | cut -c1-16
+  | ---
+  | >   ( cd "$CK" && git ls-files -z -c -o --exclude-standard -- _bmad-output/implementation-artifacts | sort -z | xargs -0 sha256sum ) | sha256sum | cut -c1-16
+  | > }
+  | > empnon() {
+  | >   ( cd "$DN" && git ls-files -z -o --exclude-standard | sort -z | xargs -0 -r sha256sum ) | sha256sum | cut -c1-16
+  | 50a68,69
+  | >   rm -f "$OUT/dn56.fini" "$OUT/rungates.fini"
+  | >   : > "$OUT/entete.marqueur"
+  | 59c78,79
+  | <   echo "EMPREINTE cockpit  AVANT : $(empck)"
+  | ---
+  | >   echo "EMPREINTE cockpit  AVANT (suivis + non suivis + modifies) : $(empck)"
+  | >   echo "EMPREINTE desknode AVANT (non suivis) : $(empnon)"
+  | 86a107
+  | >   rm -f "$OUT/dn56.fini"
+  | 115a137
+  | >   rm -f "$OUT/rungates.fini"
+  | 121a144,152
+  | >   if [ ! -f "$OUT/entete.marqueur" ]; then echo "⛔ fin REFUSEE : entete.marqueur absent — la passe n'a pas d'entete" >&2; exit 3; fi
+  | >   for f in dn56.fini rungates.fini; do
+  | >     if [ ! -f "$OUT/$f" ]; then echo "⛔ fin REFUSEE : $f absent — une etape detachee n'est pas terminee" >&2; exit 3; fi
+  | >     if [ ! "$OUT/$f" -nt "$OUT/entete.marqueur" ]; then echo "⛔ fin REFUSEE : $f ANTERIEUR a l'entete — il appartient a une passe precedente" >&2; exit 3; fi
+  | >   done
+  | >   for f in gates.tsv nongates.txt; do
+  | >     if [ ! -f "$OUT/$f" ]; then echo "⛔ fin REFUSEE : $f absent — l'etape au premier plan n'a pas tourne" >&2; exit 3; fi
+  | >     if [ ! "$OUT/$f" -nt "$OUT/entete.marqueur" ]; then echo "⛔ fin REFUSEE : $f ANTERIEUR a l'entete — sortie d'une passe precedente" >&2; exit 3; fi
+  | >   done
+  | 135c166,167
+  | <   echo "EMPREINTE cockpit  APRES : $(empck)"
+  | ---
+  | >   echo "EMPREINTE cockpit  APRES (suivis + non suivis + modifies) : $(empck)"
+  | >   echo "EMPREINTE desknode APRES (non suivis) : $(empnon)"
+  Source integrale, telle que jouee par `rtk proxy bash passe-t2.sh T2 <etape>` :
+  | #!/usr/bin/env bash
+  | # dn8-8 / T2 — COPIE DE TRAVAIL DURCIE du `passe.sh` de T0 (revue du 2026-09-14, ecart DECLARE dans T2) :
+  | #   (1) `fin` REFUSE (rc=3) tant qu'une etape detachee (`dn56`, `rungates`) n'a pas son `.fini` —
+  | #       sinon une passe pouvait se clore a cheval sans que rien ne le dise ;
+  | #   (2) l'empreinte du cockpit couvre AUSSI les fichiers NON SUIVIS et MODIFIES de
+  | #       `_bmad-output/implementation-artifacts` (la version de T0 ne hachait que les fichiers suivis) ;
+  | #   (3) une empreinte des fichiers NON SUIVIS de desknode (`mesures/dn8-8/`), avant et apres ;
+  | #   (4) (revue boucle 2) `entete` SUPPRIME les `.fini` du dossier de sortie et pose un MARQUEUR
+  | #       (`entete.marqueur`) ; chaque etape detachee supprime SON `.fini` AVANT de demarrer ;
+  | #   (5) (revue boucle 2) `fin` exige que chaque `.fini` soit PLUS RECENT que le marqueur d'`entete` —
+  | #       sinon une passe rejouee sous la MEME etiquette clorait sur les `.fini` de la precedente.
+  | #   (6) (revue boucle 3) `fin` exige AUSSI que `gates.tsv` et `nongates.txt` soient PLUS RECENTS que le
+  | #       marqueur d'`entete` — une etape au premier plan oubliee clorait sinon sur la sortie d'une passe
+  | #       precedente sous la meme etiquette.
+  | #   Le reste est celui de T0, a l'identique.
+  | # dn8-8 — passe de mesure (reprise A L'IDENTIQUE de mesures/dn8-9/T0-borne-entree.txt § 5 ;
+  | #   ajouts dn8-8 : `gh repo view` (visibilite, issues, forks, etoiles) dans `entete` et `fin`,
+  | #   `git ls-remote origin` dans `fin`) —
+  | # dn8-9 — passe de mesure (reprise A L'IDENTIQUE de mesures/dn8-7/T0-borne-entree.txt § 5 ;
+  | #   ajouts dn8-9 : compte des videos/GIF suivis, taille de la vitrine, `v0.1.0-beta^{}`) —
+  | # dn8-7 — passe de mesure : COMPTE de chaque gate (tir isole), non-gates, empreintes avant/apres,
+  | # sha256 des trois fichiers .github/ et de la charge, etat git/GitHub BRUT (tags, refs, releases),
+  | # puis `run_gates.sh --silencieux --cockpit` APRES les tirs isoles, ⛔ en parallele.
+  | # Reprend mesures/dn8-6/T0-borne-entree.txt § 4, DECOUPE EN ETAPES :
+  | #   passe.sh <etiquette> entete      releve brut + empreintes AVANT            (premier plan)
+  | #   passe.sh <etiquette> gates       les 48 gates SAUF verif_campagne_dn56     (premier plan, < 600 s)
+  | #   passe.sh <etiquette> dn56        verif_campagne_dn56.py seule (~730 s)     (detachee, voir T0 § 1)
+  | #   passe.sh <etiquette> nongates    les outils qui ne sont pas des gates      (premier plan)
+  | #   passe.sh <etiquette> rungates    run_gates.sh --silencieux --cockpit       (detachee, voir T0 § 1)
+  | #   passe.sh <etiquette> fin         empreintes APRES + etat git               (premier plan)
+  | # Motif du decoupage : un tir au premier plan est plafonne a 600 s par l'outil de l'agent ;
+  | # verif_campagne_dn56 (727-764 s) et run_gates.sh (942-974 s) ne tiennent dans aucun tir.
+  | # Sorties sous $SCR/<etiquette>/ — ⛔ jamais dans l'arbre.
+  | set -u
+  | SCR=<scratchpad>/dn88
+  | ET="$1"; ETAPE="$2"; OUT="$SCR/$ET"; mkdir -p "$OUT/gates"
+  | DN=/home/nasbarok/projects/desknode
+  | CK=/home/nasbarok/projects/compagnon_project
+  | cd "$DN" || exit 9
+  | GH3=(.github/workflows/cla.yml .github/workflows/gates.yml .github/cla-signatures.json)
+  | emp() {
+  |   ( cd "$DN" && git ls-files -z | xargs -0 sha256sum ) | sha256sum | cut -c1-16
+  | }
+  | empidx() {
+  |   ( cd "$DN" && git ls-files -s ) | sha256sum | cut -c1-16
+  | }
+  | empck() {
+  |   ( cd "$CK" && git ls-files -z -c -o --exclude-standard -- _bmad-output/implementation-artifacts | sort -z | xargs -0 sha256sum ) | sha256sum | cut -c1-16
+  | }
+  | empnon() {
+  |   ( cd "$DN" && git ls-files -z -o --exclude-standard | sort -z | xargs -0 -r sha256sum ) | sha256sum | cut -c1-16
+  | }
+  | R="$OUT/resume.txt"
+  | duree() { python3 -c "print(f'{$2-$1:.2f}')"; }
+  | tir_gate() {  # $1 = chemin de la gate, $2 = fichier de compte
+  |   local g="$1" tsv="$2" n args t0 t1 rc b
+  |   n=$(basename "$g" .py)
+  |   args=()
+  |   grep -q -- 'add_argument("--cockpit"' "$g" && args=(--cockpit "$CK")
+  |   t0=$(date +%s.%N)
+  |   timeout 900 python3 "$g" "${args[@]}" > "$OUT/gates/$n.txt" 2>&1; rc=$?
+  |   t1=$(date +%s.%N)
+  |   b=$(grep -E '^BILAN' "$OUT/gates/$n.txt" | tr '\n' ' ' )
+  |   printf '%-34s rc=%-3s %8s s  %s\n' "$n.py${args:+ --cockpit}" "$rc" "$(duree "$t0" "$t1")" "${b:-⛔ aucune ligne BILAN}" >> "$tsv"
+  | }
+  | case "$ETAPE" in
+  | entete)
+  |   rm -f "$OUT/dn56.fini" "$OUT/rungates.fini"
+  |   : > "$OUT/entete.marqueur"
+  |   {
+  |   echo "=== dn8-8 / passe $ET — debut $(date -Iseconds) ==="
+  |   echo "HEAD desknode : $(git -C "$DN" rev-parse HEAD)"
+  |   echo "HEAD cockpit  : $(git -C "$CK" rev-parse HEAD)"
+  |   echo "git status --porcelain desknode :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  |   echo "git status --porcelain cockpit (implementation-artifacts) :"; git -C "$CK" status --porcelain -- _bmad-output/implementation-artifacts | sed 's/^/  /'
+  |   echo "EMPREINTE desknode AVANT (contenu, git ls-files | sha256sum) : $(emp)"
+  |   echo "EMPREINTE desknode AVANT (index, git ls-files -s | sha256sum) : $(empidx)"
+  |   echo "EMPREINTE cockpit  AVANT (suivis + non suivis + modifies) : $(empck)"
+  |   echo "EMPREINTE desknode AVANT (non suivis) : $(empnon)"
+  |   echo "sha256 .github/ :"; sha256sum "${GH3[@]}" | sed 's/^/  /'
+  |   echo "sha256 installeur/charge/ :"; sha256sum installeur/charge/* | sed 's/^/  /'
+  |   echo "sha256 build/ :"; sha256sum firmware/desknode/build/desknode.bin firmware/desknode/build/bootloader/bootloader.bin firmware/desknode/build/partition_table/partition-table.bin | sed 's/^/  /'
+  |   echo "build/ : $(ls -la --time-style=full-iso firmware/desknode/build/desknode.bin 2>&1)"
+  |   echo "git describe --tags --always --dirty : $(git describe --tags --always --dirty 2>&1)"
+  |   echo "git tag (brut, entre crochets) : [$(git tag)]"
+  |   echo "git ls-remote origin (toutes refs) :"; git ls-remote origin 2>&1 | sed 's/^/  /'
+  |   echo "git ls-remote --tags origin (brut, entre crochets) : [$(git ls-remote --tags origin 2>&1)]"
+  |   echo "git rev-list --left-right --count origin/main...main : $(git rev-list --left-right --count origin/main...main 2>&1)"
+  |   echo "gh api repos/nasbarok/desknode/releases (brut) : $(gh api repos/nasbarok/desknode/releases 2>&1)"
+  |   echo "gh api repos/nasbarok/desknode/tags (brut) : $(gh api repos/nasbarok/desknode/tags 2>&1)"
+  |   echo "git rev-parse v0.1.0-beta^{} : $(git rev-parse 'v0.1.0-beta^{}' 2>&1)"
+  |   echo "git ls-files | grep -icE '\.(mp4|webm|mov|mkv|gif)\$' : $(git ls-files | grep -icE '\.(mp4|webm|mov|mkv|gif)$')"
+  |   echo "git ls-files | grep -icE '\.(mp4|webm|mov|mkv)\$' (videos seules) : $(git ls-files | grep -icE '\.(mp4|webm|mov|mkv)$')"
+  |   echo "taille de la vitrine : $(stat -c '%s o  %n' README.md)"
+  |   echo "gh repo view nasbarok/desknode --json visibility,hasIssuesEnabled,forkCount,stargazerCount : $(gh repo view nasbarok/desknode --json visibility,hasIssuesEnabled,forkCount,stargazerCount 2>&1)"
+  |   echo
+  |   } > "$R"
+  |   ;;
+  | gates)
+  |   : > "$OUT/gates.tsv"
+  |   for g in tools/verif_*.py; do
+  |     [ "$(basename "$g")" = verif_campagne_dn56.py ] && continue
+  |     tir_gate "$g" "$OUT/gates.tsv"
+  |   done
+  |   ;;
+  | dn56)
+  |   rm -f "$OUT/dn56.fini"
+  |   : > "$OUT/gates-dn56.tsv"
+  |   tir_gate tools/verif_campagne_dn56.py "$OUT/gates-dn56.tsv"
+  |   echo "=== dn56 fini $(date -Iseconds) ===" >> "$OUT/dn56.fini"
+  |   ;;
+  | nongates)
+  |   nongate() {  # $1 = etiquette, reste = commande
+  |     local e="$1"; shift
+  |     local t0 t1 rc
+  |     t0=$(date +%s.%N)
+  |     "$@" > "$OUT/nongate-$e.txt" 2>&1; rc=$?
+  |     t1=$(date +%s.%N)
+  |     printf -- '--- %s : rc=%s  %s s\n' "$*" "$rc" "$(duree "$t0" "$t1")" >> "$OUT/nongates.txt"
+  |   }
+  |   : > "$OUT/nongates.txt"
+  |   nongate banc_langue node tools/banc_langue_dalle_dn73.mjs
+  |   grep -E '^BANC :' "$OUT/nongate-banc_langue.txt" | sed 's/^/      /' >> "$OUT/nongates.txt"
+  |   nongate banc_couverture node tools/banc_couverture_dn82.mjs
+  |   grep -E '^COUVERTURE' "$OUT/nongate-banc_couverture.txt" | sed 's/^/      /' >> "$OUT/nongates.txt"
+  |   nongate inventaire_motif python3 tools/inventaire_motif_dn53.py
+  |   grep -nE 'population|fichiers|sites|VERDICT|classe' "$OUT/nongate-inventaire_motif.txt" | head -30 | sed 's/^/      /' >> "$OUT/nongates.txt"
+  |   nongate campagne_ctrl python3 tools/campagne_ctrl_dn440.py --cockpit "$CK"
+  |   grep -E 'BILAN|\[KO\]' "$OUT/nongate-campagne_ctrl.txt" | head -10 | sed 's/^/      /' >> "$OUT/nongates.txt"
+  |   nongate ledger_manifeste python3 tools/verif_ledger_dn416.py --cockpit "$CK" --manifeste
+  |   nongate scission_dn84 python3 tools/scission_readme_dn84.py --verifier --avant baf4265a292a7db1ae9f6bc8673779f2e743d45b --apres WORKTREE
+  |   grep -E 'IDENTIQUE|DIFFERENT|rebasage' "$OUT/nongate-scission_dn84.txt" | head -3 | sed 's/^/      /' >> "$OUT/nongates.txt"
+  |   nongate compile_outils python3 -m py_compile tools/dn_console.py tools/gen_font_dn.py tools/dn_gates.py
+  |   nongate bash_n_rendre_port bash -n tools/rendre-port.sh
+  |   ;;
+  | rungates)
+  |   rm -f "$OUT/rungates.fini"
+  |   t0=$(date +%s.%N)
+  |   bash tools/run_gates.sh --silencieux --cockpit "$CK" > "$OUT/run_gates.txt" 2>&1; rc=$?
+  |   t1=$(date +%s.%N)
+  |   printf -- 'run_gates.sh --silencieux --cockpit %s : rc=%s  %s s\n' "$CK" "$rc" "$(duree "$t0" "$t1")" > "$OUT/rungates.fini"
+  |   ;;
+  | fin)
+  |   if [ ! -f "$OUT/entete.marqueur" ]; then echo "⛔ fin REFUSEE : entete.marqueur absent — la passe n'a pas d'entete" >&2; exit 3; fi
+  |   for f in dn56.fini rungates.fini; do
+  |     if [ ! -f "$OUT/$f" ]; then echo "⛔ fin REFUSEE : $f absent — une etape detachee n'est pas terminee" >&2; exit 3; fi
+  |     if [ ! "$OUT/$f" -nt "$OUT/entete.marqueur" ]; then echo "⛔ fin REFUSEE : $f ANTERIEUR a l'entete — il appartient a une passe precedente" >&2; exit 3; fi
+  |   done
+  |   for f in gates.tsv nongates.txt; do
+  |     if [ ! -f "$OUT/$f" ]; then echo "⛔ fin REFUSEE : $f absent — l'etape au premier plan n'a pas tourne" >&2; exit 3; fi
+  |     if [ ! "$OUT/$f" -nt "$OUT/entete.marqueur" ]; then echo "⛔ fin REFUSEE : $f ANTERIEUR a l'entete — sortie d'une passe precedente" >&2; exit 3; fi
+  |   done
+  |   {
+  |   echo "=== LE COMPTE DE CHAQUE GATE (tir isole, timeout 900 s, ordre du glob) ==="
+  |   sort "$OUT/gates.tsv" "$OUT/gates-dn56.tsv" 2>/dev/null
+  |   echo
+  |   echo "=== LES OUTILS QUI NE SONT PAS DES GATES ==="
+  |   cat "$OUT/nongates.txt"
+  |   echo
+  |   echo "=== bash tools/run_gates.sh --silencieux --cockpit (APRES les tirs isoles) ==="
+  |   cat "$OUT/rungates.fini"
+  |   tail -25 "$OUT/run_gates.txt" | sed 's/^/      /'
+  |   echo
+  |   echo "EMPREINTE desknode APRES (contenu) : $(emp)"
+  |   echo "EMPREINTE desknode APRES (index)   : $(empidx)"
+  |   echo "EMPREINTE cockpit  APRES (suivis + non suivis + modifies) : $(empck)"
+  |   echo "EMPREINTE desknode APRES (non suivis) : $(empnon)"
+  |   echo "sha256 .github/ (apres) :"; sha256sum "${GH3[@]}" | sed 's/^/  /'
+  |   echo "git rev-parse v0.1.0-beta^{} (apres) : $(git rev-parse 'v0.1.0-beta^{}' 2>&1)"
+  |   echo "git ls-remote origin (apres) :"; git ls-remote origin 2>&1 | sed 's/^/  /'
+  |   echo "gh repo view (apres) : $(gh repo view nasbarok/desknode --json visibility,hasIssuesEnabled,forkCount,stargazerCount 2>&1)"
+  |   echo "git status --porcelain desknode (apres) :"; git -C "$DN" status --porcelain | sed 's/^/  /'
+  |   echo "=== fin $(date -Iseconds) ==="
+  |   } >> "$R"
+  |   ;;
+  | *) echo "etape inconnue : $ETAPE" >&2; exit 2 ;;
+  | esac
+  `temoins-passe.sh` (§ 2 f), source integrale :
+  | #!/usr/bin/env bash
+  | # dn8-8 / T2 — temoins de la copie durcie `passe-t2.sh` (revues boucles 2 et 3) : `fin` REFUSE une passe a
+  | # cheval ou close sur les `.fini` d'une passe precedente, ou sur un `gates.tsv` / `nongates.txt` anterieur a
+  | # l'entete ; `entete` PURGE les `.fini`. Dossiers jetables, supprimes.
+  | set -u
+  | cd "$(dirname "$0")" || exit 9
+  | S="$(pwd)"
+  | n=0; ko=0
+  | voir() {  # <id> <rc attendu> <motif> <etiquette> <etape>
+  |   local out rc
+  |   out="$(bash passe-t2.sh "$4" "$5" 2>&1)"; rc=$?
+  |   if [ "$rc" = "$2" ] && printf '%s' "$out" | grep -q -- "$3"; then echo "  ✅ $1 rc=$rc « $(printf '%s' "$out" | tail -1) »"; else echo "  ❌ $1 rc=$rc (attendu $2 « $3 ») « $out »"; ko=$((ko+1)); fi
+  |   n=$((n+1))
+  | }
+  | for e in TEMOIN-FIN-A TEMOIN-FIN-B TEMOIN-FIN-C TEMOIN-ENTETE TEMOIN-FIN-F TEMOIN-FIN-G; do rm -rf "$S/$e"; done
+  | # (a) etiquette VIDE : ni entete, ni .fini
+  | voir "(a) fin sans entete" 3 "entete.marqueur absent" TEMOIN-FIN-A fin
+  | # (b) entete + dn56.fini seul
+  | mkdir -p "$S/TEMOIN-FIN-B"; : > "$S/TEMOIN-FIN-B/entete.marqueur"; sleep 1; echo "=== dn56 fini ===" > "$S/TEMOIN-FIN-B/dn56.fini"
+  | voir "(b) fin avec dn56.fini seul" 3 "rungates.fini absent" TEMOIN-FIN-B fin
+  | # (c) les deux .fini d'une passe PRECEDENTE, puis un entete NEUF sous la meme etiquette (marqueur pose a la main)
+  | mkdir -p "$S/TEMOIN-FIN-C"; echo "=== dn56 fini ===" > "$S/TEMOIN-FIN-C/dn56.fini"; echo "rc=0" > "$S/TEMOIN-FIN-C/rungates.fini"; sleep 1; : > "$S/TEMOIN-FIN-C/entete.marqueur"
+  | voir "(c) fin sur les .fini d'une passe precedente" 3 "ANTERIEUR a l'entete" TEMOIN-FIN-C fin
+  | # (d) le VRAI `entete` purge les .fini de la passe precedente (⛔ requete GitHub autre que GET : `gh api`, `gh repo view`)
+  | mkdir -p "$S/TEMOIN-ENTETE"; echo "vieux" > "$S/TEMOIN-ENTETE/dn56.fini"; echo "vieux" > "$S/TEMOIN-ENTETE/rungates.fini"
+  | bash passe-t2.sh TEMOIN-ENTETE entete > /dev/null 2>&1; rc=$?
+  | if [ "$rc" = 0 ] && [ ! -e "$S/TEMOIN-ENTETE/dn56.fini" ] && [ ! -e "$S/TEMOIN-ENTETE/rungates.fini" ] && [ -f "$S/TEMOIN-ENTETE/entete.marqueur" ]; then echo "  ✅ (d) entete rc=0 : dn56.fini et rungates.fini PURGES, marqueur pose"; else echo "  ❌ (d) entete rc=$rc"; ko=$((ko+1)); fi
+  | n=$((n+1))
+  | # (e) chaque etape detachee supprime SON .fini avant de demarrer — lu dans la source (⛔ jouee : 760 s et 1 000 s)
+  | if awk '/^dn56\)/{f=1} f&&/rm -f "\$OUT\/dn56.fini"/{print; exit}' passe-t2.sh | grep -q . && awk '/^rungates\)/{f=1} f&&/rm -f "\$OUT\/rungates.fini"/{print; exit}' passe-t2.sh | grep -q .; then echo "  ✅ (e) dn56) et rungates) suppriment leur .fini en premiere ligne (lu dans la source, ⛔ joue)"; else echo "  ❌ (e)"; ko=$((ko+1)); fi
+  | n=$((n+1))
+  | # (f) (boucle 3) les deux .fini FRAIS, mais gates.tsv d'une passe PRECEDENTE (anterieur au marqueur)
+  | mkdir -p "$S/TEMOIN-FIN-F"; echo "vieux" > "$S/TEMOIN-FIN-F/gates.tsv"; sleep 1; : > "$S/TEMOIN-FIN-F/entete.marqueur"; sleep 1
+  | echo "=== dn56 fini ===" > "$S/TEMOIN-FIN-F/dn56.fini"; echo "rc=0" > "$S/TEMOIN-FIN-F/rungates.fini"; : > "$S/TEMOIN-FIN-F/nongates.txt"
+  | voir "(f) fin sur un gates.tsv anterieur a l'entete" 3 "gates.tsv ANTERIEUR a l'entete" TEMOIN-FIN-F fin
+  | # (g) (boucle 3) .fini et gates.tsv FRAIS, nongates.txt ABSENT (etape au premier plan oubliee)
+  | mkdir -p "$S/TEMOIN-FIN-G"; : > "$S/TEMOIN-FIN-G/entete.marqueur"; sleep 1
+  | echo "=== dn56 fini ===" > "$S/TEMOIN-FIN-G/dn56.fini"; echo "rc=0" > "$S/TEMOIN-FIN-G/rungates.fini"; : > "$S/TEMOIN-FIN-G/gates.tsv"
+  | voir "(g) fin sans nongates.txt" 3 "nongates.txt absent" TEMOIN-FIN-G fin
+  | for e in TEMOIN-FIN-A TEMOIN-FIN-B TEMOIN-FIN-C TEMOIN-ENTETE TEMOIN-FIN-F TEMOIN-FIN-G; do rm -rf "$S/$e"; done
+  | echo "TEMOINS passe-t2.sh : $((n-ko)) tenus sur $n"
+  | [ "$ko" = 0 ]
