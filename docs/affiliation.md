@@ -55,6 +55,17 @@ lignes AliExpress — la carte, les deux capteurs du palier « DeskNode + Ambian
 hors palier — chacun avec la mention `affiliate link` dans la même cellule. ⛔ **Aucun lien Waveshare** :
 la candidature attend son approbation, et elle est **hors de la marche qui a posé ces liens** (§6).
 
+⚠️ **Annoté le 2026-09-15 (`dn6-7`), plus tard le même jour — le paragraphe ci-dessus est PÉRIMÉ pour
+Waveshare, ⛔ pas effacé.** La candidature Waveshare est **approuvée** : l'owner a trouvé l'espace affilié
+ouvert, sans e-mail. Sur décision owner du même jour, la **ligne de la carte** de la page d'achat pointe
+désormais vers la **boutique Waveshare** avec un lien affilié Waveshare, et son lien suivi AliExpress est
+**retiré** — la règle Waveshare interdit de diriger vers des vendeurs tiers de ses produits (§3). Les quatre
+autres lignes gardent leur lien AliExpress : toujours **cinq** liens, tous dans la page d'achat, de **deux**
+programmes.
+
+🔵 **Ce dépôt porte des liens affiliés** — de deux programmes : Waveshare pour la carte, AliExpress pour les
+quatre autres lignes.
+
 Relevé le 2026-09-07 sur **tous les fichiers de texte suivis par git** — les pages `.md` **et** les
 relevés `.txt`, ⛔ pas un échantillon : **0** adresse portant un marqueur d'affiliation, **0** sur un
 domaine de redirection.
@@ -78,6 +89,10 @@ Un achat passé par l'un de ces liens peut rémunérer l'owner — ou non : les 
 chaque lien suivi (désigné par son seul code, ⛔ jamais par son adresse entière) et l'adresse de
 recherche nue d'où l'owner l'a généré est dans
 [le relevé du 2026-09-15](../mesures/dn6-6/T1-releves-du-2026-09-15.txt).
+⚠️ *Annoté le 2026-09-15 (`dn6-7`), plus tard le même jour* : toujours **5** adresses marquées, mais
+**quatre** seulement sur le redirecteur d'AliExpress ; la cinquième, sur la ligne de la carte, est la
+**fiche produit Waveshare** portant l'identifiant d'affiliation de l'owner — ⛔ pas générée depuis une
+recherche. Le relevé est [celui de `dn6-7`](../mesures/dn6-7/T1-releve-waveshare-du-2026-09-15.txt).
 
 ⚠️ **Ces deux zéros ⛔ ne sont pas un instantané** : ils sont **re-dérivés à chaque tir** de la
 vérification du §8, sur la population que `git ls-files` rend. Un chiffre publié que rien ne
@@ -104,6 +119,8 @@ Mesuré le 2026-09-07, ça fait **deux** domaines — ⛔ pas onze. Le détail d
 ⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : **toujours deux**. Les cinq cellules AliExpress pointent désormais sur
 le redirecteur de suivi `s.click.aliexpress.com`, que la vérification attribue à son domaine parent,
 `aliexpress.com` — ⛔ un redirecteur n'est pas un fournisseur.
+⚠️ *Annoté le 2026-09-15 (`dn6-7`)* : **toujours deux**, mais les cellules AliExpress sont **quatre** ; celle
+de la carte cite désormais `waveshare.com` directement.
 
 | Domaine | Programme, tel que sa page le nomme | Ce que sa propre page affiche | Adresse relevée | Date | Verdict |
 |---|---|---|---|---|---|
@@ -115,18 +132,26 @@ le redirecteur de suivi `s.click.aliexpress.com`, que la vérification attribue 
 | `waveshare.com` | *la boutique elle-même* | — | `https://www.waveshare.com/` | 2026-09-07 | ✅ **ATTEINTE** (méthode : en-tête de navigateur) — répond normalement. |
 | `aliexpress.com` | **AliExpress Portals — « Affiliate Program Rules »**, version du 2025-08-01 | Commission : **7 %** pour « Other Categories » si le vendeur est affilié, **0** sinon (§5.1.5.5 des règles) ; la grille des taux ⛔ n'a **aucune ligne pour les composants électroniques** (lecture owner), d'où « Other Categories ». Plafond : **50 USD** de commission par commande. Retrait par virement : seuil de paiement **16 USD**, frais de **15 USD** par retrait. Durée de suivi : ⛔ **écrite nulle part** dans les règles. | `https://portals.aliexpress.com/` — ⚠️ l'adresse exacte du document de règles n'a **pas** été relevée | 2026-09-15 | ✅ **LU PAR L'OWNER** (méthode : lecture par l'owner dans un navigateur connecté au portail) — relevé owner, ⛔ pas relu par l'agent : le portail exige le compte de l'owner. |
 | `waveshare.com` | **Waveshare® Affiliate Program** — relu le jour de la bascule | à *« What is the validity period of URL tracking? »*, la page affiche **toujours** *« At least 72 hours. »* puis *« Flexible Tracking: Your link remains active until the customer's browser session expires. »* ; *Who can Join* invite toujours *« primarily »* les présences sur **GitHub** ; la liste des promotions interdites nomme *« directing traffic to specific third-party sellers of Waveshare® products instead of the official Waveshare® store »* | `https://www.waveshare.com/join_affiliate.html` | 2026-09-15 | ✅ **LU** (méthode : en-tête de navigateur, `curl -A "Mozilla/5.0 …"`) — HTTP 200, 105 653 octets. |
+| `waveshare.com` | **Waveshare® Affiliate Program** — candidature approuvée | candidature **approuvée** : l'espace affilié s'ouvre, ⛔ aucun e-mail reçu ; la durée de suivi ⛔ **n'y est affichée nulle part** ; prix de la carte en version *With Touch Function* : **29.99 USD** (la fiche affiche 22.99 – 29.99 USD selon les options) | `https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm` | 2026-09-15 | ✅ **LU PAR L'OWNER** (méthode : lecture par l'owner dans un navigateur connecté à l'espace affilié) — ⚠️ l'adresse de l'espace affilié n'a pas été relevée ; la fourchette de prix est relue par l'agent (méthode : en-tête de navigateur, HTTP 200, fiche **sans** identifiant d'affiliation). |
 
 ⚠️ **Annoté le 2026-09-15 (`dn6-6`) — DEUX RELEVÉS WAVESHARE DIVERGENT, ET LES DEUX SONT ÉCRITS, ⛔ PAS
 TRANCHÉS.** La ligne du 2026-09-07 ci-dessus écrit un suivi valable *« au moins 72 h »*. Le 2026-09-15,
 l'owner a relevé un suivi *« désormais limité à la session du navigateur »* (méthode : lecture par
 l'owner ; ⚠️ l'adresse où il l'a lu n'a pas été relevée). Le **même jour**, la page publique du
-programme, relue par l'agent avec un en-tête de navigateur (dernière ligne du tableau), affiche
+programme, relue par l'agent avec un en-tête de navigateur (dernière ligne du tableau — ⚠️ *annoté le
+2026-09-15, `dn6-7` : la ligne « relu le jour de la bascule », qui n'est plus la dernière*), affiche
 **toujours** *« At least 72 hours »*. ⇒ ⛔ cette page ne publie pas que les 72 h ont disparu, et ⛔ elle
 ne publie pas non plus que le relevé de l'owner est faux : ce qui les départagerait est l'espace
 affilié Waveshare, que la candidature en attente ne donne pas encore.
+⚠️ *Annoté le 2026-09-15 (`dn6-7`)* : la candidature est approuvée et l'espace affilié s'ouvre — mais il
+**n'affiche la durée de suivi nulle part** (relevé owner, ligne « candidature approuvée » du tableau). ⛔ L'écart reste non
+tranché, et le lien Waveshare est posé quand même, sur décision owner.
 ⚠️ *Et la règle Waveshare citée ci-dessus* — ne pas diriger vers des vendeurs tiers — ⛔ est
 **assumée par l'owner**, ⛔ pas ignorée : la carte de la page d'achat pointe vers AliExpress. C'est une
 décision owner du 2026-09-15, écrite ici pour qu'elle ne se redécouvre pas.
+⚠️ *Annoté le 2026-09-15 (`dn6-7`), plus tard le même jour* : ⛔ **plus vrai** — la candidature approuvée,
+l'owner a décidé que la carte **s'achète chez Waveshare** ; son lien AliExpress est retiré de la page
+d'achat, et le conflit avec cette règle est **levé** (§6).
 ⚠️ *Ce que la ligne AliExpress du 2026-09-15 ⛔ ne dit pas* : l'adresse exacte du document de règles
 n'a pas été relevée, et la durée de suivi n'y est écrite nulle part — ⛔ ni l'une ni l'autre n'est
 comblée ici. L'owner a aussi reçu l'e-mail *« Your affiliate account is ready »* ; il est consigné dans
@@ -134,7 +159,7 @@ comblée ici. L'owner a aussi reçu l'e-mail *« Your affiliate account is ready
 
 ⚠️ *Annoté le 2026-09-15 (`dn6-6`, revue)* : dans la citation qui suit, « ces deux lignes » désigne les
 deux lignes `waveshare.com` **du 2026-09-07** du tableau — le programme et la boutique —, ⛔ pas les deux
-lignes du 2026-09-15 ajoutées depuis sous le tableau.
+lignes du 2026-09-15 ajoutées depuis sous le tableau *(trois depuis `dn6-7`)*.
 
 > ⏪ **CE QUE CES DEUX LIGNES DISAIENT LE MÊME JOUR, ET QUI EST RÉFUTÉ — ⛔ pas effacé (`NFR3`) :**
 > les deux portaient un verdict d'échec, motivé par un **HTTP 403** — la première en le
@@ -209,6 +234,8 @@ relevé ne les a pas. ⛔ Cette liste ne peut donc pas pourrir en silence.
 
 ⚠️ `waveshare.com` est le seul des dix qui est **aussi** un fournisseur du §3, par la prose : c'est
 le fabricant de la carte. Ses deux lignes de relevé sont ci-dessus.
+⚠️ *Annoté le 2026-09-15 (`dn6-7`)* : `waveshare.com` est désormais **aussi** cité par une cellule `Source`
+(la ligne de la carte), ⛔ plus seulement par la prose ; il a **quatre** lignes de relevé au §3.
 
 ---
 
@@ -300,6 +327,14 @@ qu'elle attrape.
 - *annoter les deux phrases d'état* — **fait**, le même jour, dans les deux pages : la vérification ⛔ n'est
   pas restée rouge.
 
+⚠️ **Annoté le 2026-09-15 (`dn6-7`), plus tard le même jour** : *suivre la candidature Waveshare* — elle est
+**approuvée** (espace affilié ouvert, ⛔ sans e-mail) ; la durée de suivi n'y est **pas affichée** (§3) ; et la
+**nouvelle décision owner** qu'exigeait le conflit avec la règle sur les vendeurs tiers est **prise** : la
+carte s'achète chez Waveshare, son lien AliExpress est retiré de la page d'achat. Les **conditions** du
+programme ont été acceptées par l'owner en déposant sa candidature (case des conditions du formulaire —
+relevé owner du 2026-09-15). ⚠️ Le geste *cliquer une fois chacun des cinq liens suivis* porte désormais
+sur **quatre** recherches AliExpress **et** la fiche Waveshare de la carte, ⛔ plus sur cinq recherches.
+
 ---
 
 ## 7. Le point de bascule
@@ -329,10 +364,15 @@ qu'elle attrape.
    ⚠️ **Annoté le 2026-09-15 (`dn6-6`)** : pour **AliExpress**, la condition est **réunie** — le compte de
    l'owner est actif (relevé owner, §3). Pour **Waveshare**, ⛔ pas encore : la candidature attend son
    approbation, et ⛔ aucun lien Waveshare n'est publié.
+   ⚠️ **Annoté le 2026-09-15 (`dn6-7`)** : pour **Waveshare** aussi, la condition est **réunie** — la
+   candidature est approuvée le même jour, et un lien Waveshare est publié, sur la seule ligne de la carte.
 2. **Un geste de l'owner** : ouvrir le compte, accepter les conditions générales, relever les quatre
    conditions inconnues (§6).
    ⚠️ **Annoté le 2026-09-15 (`dn6-6`)** : **fait par l'owner** pour AliExpress — trois conditions sur
    quatre relevées, la durée de suivi introuvable dans les règles.
+   ⚠️ **Annoté le 2026-09-15 (`dn6-7`)** : **fait par l'owner** pour Waveshare aussi — candidature déposée
+   avec la case des conditions cochée (relevé owner), approuvée le même jour ; la durée de suivi ⛔ n'est
+   affichée nulle part dans l'espace affilié.
 3. **Une annotation des deux phrases d'état** : celle du §2 de cette page, et celle de la section
    correspondante de [ce qu'il faut acheter](bom.md). ⛔ **Elles ne s'effacent pas** : la phrase
    périmée **reste**, et la nouvelle s'écrit **en dessous** — c'est la règle « annoter, ⛔ pas

@@ -8,6 +8,19 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- 🆕 **The board is bought from Waveshare, through its affiliate link** (`dn6-7`, 2026-09-15).
+  Later the same day, the Waveshare application was approved — the owner found the affiliate space open,
+  without any e-mail — and, on the owner's decision, the board row of `docs/bom.md` links to Waveshare's own
+  store instead of AliExpress, because Waveshare's programme forbids sending buyers to third-party sellers
+  of its products. The row reads 29.99 USD for the *With Touch Function* version, dated
+  2026-09-15, with the words `affiliate link` beside the link; the AliExpress values it carried before are
+  named under the table, ⛔ not erased. The four other rows keep their AliExpress links: five affiliate
+  links, two programmes. `docs/affiliation.md` records the approval and the price, and says the Waveshare
+  tracking window is still not settled. Three mutants had to be re-anchored because the new row moved
+  what they hit: in `tools/verif_bom_dn61.py`, the one about tried addresses now aims at the table of
+  addresses tried rather than the board row; in `tools/verif_affiliation_dn65.py`, the one that flips the
+  declaration aims at the declaration in force, and the one that removes the tracked links now removes
+  the Waveshare link too. Both checks stay green and every mutant still turns red on its own fault.
 - 🆕 **The purchase list speaks English, and it carries its affiliate links** (`dn6-6`, 2026-09-15).
   Measured that day: the front page sends "What to buy" to `docs/bom.md`, which was written entirely
   in French, and its five AliExpress addresses were bare search pages. What changed, on owner
@@ -26,6 +39,8 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   for approval), no sponsor button exists, and the destination of each tracked link was ⛔ not
   opened by the agent that wrote it — a click is counted by the programme, so checking them once is
   the owner's gesture.
+  ⚠️ *Annotated later on 2026-09-15 (`dn6-7`)*: the Waveshare application was approved that same day;
+  the board row now links to Waveshare's store, and four AliExpress rows remain — see the `dn6-7` entry.
 - 🆕 **The affiliation check guards the new commitment instead of the old one** (`dn6-6`, 2026-09-15).
   `tools/verif_affiliation_dn65.py` had written its control `(c5)` — *no published address is
   marked* — as a commitment, and named its own remedy. It is applied in the same change as the

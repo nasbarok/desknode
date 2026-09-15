@@ -1177,8 +1177,16 @@ def muter(etat):
         # 🆕 2026-09-15 (`dn6-6`) : la faute d'origine retournait la phrase
         #    NEG en POS. La phrase NEG reste (NFR3) et la POS est ecrite EN
         #    DESSOUS : la faute est desormais de REBASCULER celle qui fait foi.
-        p[PAGE] = p[PAGE].replace("**Ce dépôt " + POS + ".**",
-                                  "**Ce dépôt " + NEG + ".**")
+        # 🆕 2026-09-15 (`dn6-7`) : une SECONDE declaration POS est ecrite plus bas
+        #    (« **Ce dépôt porte des liens affiliés** — de deux programmes »), et
+        #    c'est ELLE qui fait foi. L'ancre litterale frappait la precedente et le
+        #    mutant sortait VERT (mesure). ⇒ la cible est DERIVEE : la DERNIERE
+        #    declaration en gras de la page, rebasculee de POS a NEG.
+        ms = list(RE_DECL_GRAS.finditer(p[PAGE]))
+        if not ms or ms[-1].group(1) != POS:
+            return e                      # plus de POS en vigueur ⇒ NO-OP ⇒ rc=3
+        m = ms[-1]
+        p[PAGE] = (p[PAGE][:m.start(1)] + NEG + p[PAGE][m.end(1):])
     elif _MUTANT == 6:
         p[BOM] = p[BOM].replace(A_DECL_BOM, "Rien à signaler de ce côté.")
     elif _MUTANT == 7:
@@ -1346,9 +1354,15 @@ def muter(etat):
     elif _MUTANT == 42:
         # 🔴 LA FAUTE REELLE, ET ELLE EST SILENCIEUSE : les liens s'en vont, les
         #    deux phrases « PORTE des liens » restent.
+        # 🆕 2026-09-15 (`dn6-7`) : la carte porte un lien Waveshare au MARQUEUR
+        #    FRANC (`aff_id=`), ⛔ un redirecteur. Ne retirer que les redirecteurs le
+        #    laissait publie, (c6) restait VERT (mesure). ⇒ TOUTE cellule suivie
+        #    dont l'adresse est marquee (redirecteur OU marqueur franc) redevient nue.
         p[BOM] = RE_CELLULE_SUIVIE.sub(
             lambda m: ("`https://www.aliexpress.com/w/wholesale-TEMOIN42.html`"
-                       if est_redirecteur(hote(m.group(2))) else m.group(0)),
+                       if (est_redirecteur(hote(m.group(2)))
+                           or RE_MARQUEUR_FRANC.search(m.group(2)))
+                       else m.group(0)),
             p[BOM])
     elif _MUTANT == 43:
         p[PAGE] = p[PAGE].replace(

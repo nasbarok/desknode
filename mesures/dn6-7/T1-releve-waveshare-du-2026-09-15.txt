@@ -1,0 +1,55 @@
+==============================================================================
+dn6-7 / T1 — LE RELEVE WAVESHARE DU 2026-09-15 : APPROBATION, PRIX, DECISIONS OWNER
+==============================================================================
+  Arbre de depart : desknode 91495124b0959e0da385181e0bbc52fc0e5ab9af (cloture de dn6-6,
+  ⛔ pas pousse), cockpit e939a78. Les deux arbres etaient propres.
+  ⛔ Ce releve ne porte AUCUNE adresse marquee : le lien affilie Waveshare n'est ecrit
+     qu'une fois, dans `docs/bom.md` ; il est designe ici par son parametre seul
+     (`aff_id`, identifiant de l'owner), ⛔ jamais par son adresse entiere.
+
+── (a) CE QUE L'OWNER A RAPPORTE, LE 2026-09-15 (RELEVE OWNER, ⛔ PAS RELU PAR L'AGENT) ──
+  · la candidature Waveshare est APPROUVEE : l'espace affilie s'ouvre, ⛔ aucun e-mail
+    d'approbation recu ;
+  · l'owner a fourni le lien affilie de la fiche produit de la carte : l'adresse de la
+    fiche `https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm` suivie du parametre
+    `aff_id` ; ⛔ l'agent ne l'a PAS ouvert (un clic est compte sur le compte de l'owner) ;
+  · la duree de suivi ⛔ n'est affichee NULLE PART dans l'espace affilie ;
+  · le prix de la version « With Touch Function » : 29.99 USD (lu par l'owner
+    dans un navigateur : la fiche n'affiche le prix de chaque version qu'avec JavaScript).
+
+── (b) CE QUE L'AGENT A RELU, LE 2026-09-15 (methode : en-tete de navigateur) ──────
+  curl -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)
+       Chrome/126.0 Safari/537.36" https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm
+  ⇒ HTTP 200, 317 849 octets — la fiche SANS identifiant d'affiliation.
+  · titre : « ESP32-S3 2.8inch Display Development Board Type B, 480×640, IPS, … »
+  · fourchette de prix affichee : 22.99 USD - 29.99 USD, suivie de « Add to Cart »
+  · « Version Options » : « With Touch Function » | « Without Touch Function » — DEUX versions
+    (deux SKU dans le script de la page), « With Touch Function » selectionnee par defaut
+  ⚠️ CORRIGE A LA REVUE DU 2026-09-15 : la 1re redaction ecrivait qu'un boitier metal CNC etait
+     propose en option. ⛔ FAUX pour cette fiche : les mentions « CNC Metal Case » du HTML sont les
+     TITRES d'autres produits (liste des produits associes). La question posee a l'owner disait
+     « sans le boitier » sur cette premisse fausse ; sa reponse (29.99 USD) vaut pour la version
+     tactile, ⛔ il n'existe pas de variante « avec boitier » a en distinguer.
+  · la chaine « Out of Stock » presente dans le HTML est un COMMENTAIRE de gabarit
+    (liste des etats sans panier), ⛔ pas l'etat de ce produit : le formulaire d'ajout au
+    panier est present.
+  ⛔ La correspondance version ⇄ prix ⛔ n'est pas dans le HTML statique : elle est
+     rapportee par l'owner, (a).
+
+── (c) LES DECISIONS OWNER DU 2026-09-15, TELLES QUE CHOISIES ─────────────────────
+  Q « que doit devenir le lien de la carte ? »  ⇒ « Waveshare remplace AliExpress »
+  Q « quand pousser dn6-6 ? »                   ⇒ « Attendre, pousser tout ensemble »
+  Q « la duree de suivi est-elle lisible ? »    ⇒ « Elle n'y est pas affichee »
+  Q « comment faire la marche ? »               ⇒ « Marche legere »
+  Q « prix de la version tactile ? »            ⇒ « 29.99 USD » (question formulee « sans le
+                                                   boitier » : premisse fausse, voir (b))
+
+── (d) CE QUI CHANGE DANS LA PAGE D'ACHAT, ET CE QUI NE CHANGE PAS ──────────────
+  · la ligne de la CARTE : fournisseur « Waveshare official store », prix 29.99 USD
+    (version tactile ; fourchette 22.99 - 29.99 USD sur les deux versions), date 2026-09-15, source
+    la fiche Waveshare avec `aff_id` et la mention `affiliate link` ;
+  · son lien suivi AliExpress (code `_c3yKWEah`) est RETIRE de la page ; les valeurs de la
+    ligne au 2026-09-06 (26.77 - 27.88 EUR, mediane 27.32 EUR, 2 annonces AliExpress) sont
+    NOMMEES dans l'annotation sous la table ;
+  · les QUATRE autres liens AliExpress (BME680, BH1750, VL6180X, INA219) ⛔ ne changent pas ;
+  · total : toujours CINQ adresses marquees, toutes dans `docs/bom.md`.

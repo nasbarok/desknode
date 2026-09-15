@@ -9,6 +9,8 @@ which is why every one of them carries its own.
 
 ⚠️ **Affiliate links on this page**: the `Source` links of the five AliExpress rows are affiliate links,
 each marked `affiliate link` where it appears — the details are in the last section of this page.
+⚠️ *Annotated later on 2026-09-15 (`dn6-7`)*: the board row's link is now **Waveshare's own store**, still an
+affiliate link; the four other rows keep their AliExpress links.
 
 ---
 
@@ -27,7 +29,7 @@ These are the same two tiers as the [README](../README.md) — same names, ⛔ n
 
 | Item | Exact reference | Qty | Supplier | Price | Survey date | Source |
 |---|---|---|---|---|---|---|
-| Touchscreen development board | **Waveshare ESP32-S3-Touch-LCD-2.8B** (Type B, **480 × 640**) | 1 | AliExpress marketplace | **26.77 – 27.88 €** (median **27.32 €**, 2 listings) | 2026-09-06 | [AliExpress search: Waveshare ESP32-S3-Touch-LCD-2.8B](https://s.click.aliexpress.com/e/_c3yKWEah) — affiliate link |
+| Touchscreen development board | **Waveshare ESP32-S3-Touch-LCD-2.8B** (Type B, **480 × 640**) | 1 | Waveshare official store | **29.99 USD** (version *With Touch Function*; the page shows 22.99 – 29.99 USD across its two versions) | 2026-09-15 | [Waveshare store: ESP32-S3-Touch-LCD-2.8B](https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm?&aff_id=180651) — affiliate link |
 | USB-C data cable | any, **data AND charging** | 1 | — | ⛔ **not surveyed** — generic consumable, no single reference to order: ⛔ so no source was tried | — | — |
 
 ⛔ **Manufacturer price not surveyable.** `https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm` returns
@@ -41,6 +43,17 @@ of the retrieval tool, ⛔ not of the address — the lesson is written in secti
 [the affiliate links page](affiliation.md). ⇒ the manufacturer price **is** surveyable. ⛔ It is
 still not filled in here: a price table is re-surveyed, ⛔ not patched, and that re-survey is carried
 by the project's planning ledger.
+
+⚠️ *Annotated on 2026-09-15 (`dn6-7`)* — **the manufacturer price is now in the row above.** The board is
+bought from Waveshare's own store since the owner's decision of 2026-09-15, because Waveshare's affiliate
+programme forbids sending buyers to third-party sellers of its products. The price range shown on the
+product page, **22.99 – 29.99 USD** across its options, was read that day by the agent with a browser
+header (HTTP 200, the page **without** any affiliate identifier); the price of the *With Touch Function*
+version, **29.99 USD**, was read by the owner in a browser — the page shows the price of each
+version only with JavaScript. **Until that day the row read**: supplier AliExpress marketplace,
+26.77 – 27.88 € (median 27.32 €, 2 listings), surveyed on 2026-09-06, source an AliExpress search tracked
+link — ⛔ named here, not erased. ⚠️ Neither price includes shipping or taxes, and they are neither in the
+same currency nor from the same day: ⛔ they are not compared here.
 
 ### 🔴 The most likely buying mistake — and it costs less than the right one
 
@@ -101,6 +114,10 @@ the listing says **680**, ⛔ not "6xx".
 
 **Cost of the tier, as of 2026-09-06:** about **27.32 + 11.74 + 1.93 ≈ 41 €**, excluding shipping, excluding cables.
 
+⚠️ *Annotated on 2026-09-15 (`dn6-7`)*: the 27.32 € in that sum is the board's AliExpress median of
+2026-09-06; the board row now reads 29.99 USD at Waveshare, on 2026-09-15. ⛔ The sum is not recomputed: no
+exchange rate was surveyed.
+
 <!-- ⛔ ANNOTATION, NOT A REWRITE (NFR3): the "Jumper wire" row
      above stays AS IT IS. What follows makes it precise; the
      deferral inherited from dn6-1 designated wiring as the territory of the next step. -->
@@ -147,6 +164,8 @@ while the median only moves from 1.86 to 1.93 €.
 
 ⇒ on a marketplace, **the median is what settles it**. Every row above publishes it, and the
 range is given next to it so that you can see the spread.
+⚠️ *Annotated on 2026-09-15 (`dn6-7`)*: ⛔ no longer every row — the board row now carries the price of a
+single product page at Waveshare's store, ⛔ not a median of marketplace listings.
 
 ### What the project measured on these two modules
 
@@ -233,6 +252,8 @@ own "BME680 Breakout" at **11.05 GBP** excluding VAT (surveyed on 2026-09-06) �
 ⚠️ **What these prices do not contain**: neither shipping, nor import taxes, nor lead time. And
 no product page was opened one by one — these are the prices of the results pages, where a
 product page may carry cheaper or more expensive variants.
+⚠️ *Annotated on 2026-09-15 (`dn6-7`)*: this holds for the prices surveyed on 2026-09-06. The board row's
+price of 2026-09-15 comes from **a product page**, Waveshare's own — see the note under the first tier table.
 
 ---
 
@@ -332,6 +353,39 @@ DeskNode.
    it. The check that guarded the old promise was rewritten the same day to guard the new one:
    **every tracked address is declared, in its place** — on this page, in its own cell, next to the
    words `affiliate link` — and those words never decorate an address that is not tracked.
+
+⚠️ *Outdated later on 2026-09-15 (`dn6-7`) for the board row* — in the annotation above, "the five
+AliExpress rows", "the same five search pages", "no price, no date … was changed" and "for Waveshare, not
+yet" stopped being true for the board that day; they are kept as written. **What is in force is the
+annotation of 2026-09-15 (`dn6-7`) below.**
+
+<!-- ⛔ ANNOTATION, NOT A REWRITE (NFR3): the dn6-6 annotation above stays as it
+     was written earlier on 2026-09-15; what changed later that day is written
+     below it. -->
+
+### Annotation of 2026-09-15 (`dn6-7`) — Waveshare approved the application, and the board is bought from Waveshare
+
+**This page carries affiliate links** from **two** programmes. Later on 2026-09-15, the owner found the
+Waveshare application **approved** — the affiliate space had opened, without any e-mail. On the owner's
+decision of the same day, the **board row** now links to **Waveshare's own store** with a Waveshare
+affiliate link, and its AliExpress tracked link was **removed** from this page: Waveshare's programme forbids
+*"directing traffic to specific third-party sellers of Waveshare® products instead of the official Waveshare®
+store"*, and the board is a Waveshare product. The four other rows — the two sensors of the
+"DeskNode + Ambiance" tier and the two modules outside the tiers, none of them a Waveshare product — keep
+their AliExpress tracked links. ⇒ **five** affiliate links in total, each with the words `affiliate link` in
+its own cell.
+
+⚠️ What changed in the board row — supplier, price, date and source — is written under the first tier
+table, with the AliExpress values of 2026-09-06 named ⛔ rather than erased. The Waveshare link was ⛔ not
+opened by the agent either: the same product page, **without** the affiliate identifier, was read on
+2026-09-15. The terms of the Waveshare programme are on [the affiliate links page](affiliation.md),
+section 3 — and its tracking window is still **not settled**: the owner found it displayed nowhere in the
+affiliate space.
+
+⇒ **The switch-over point is now met for both programmes**: for Waveshare, condition 1 is met by the
+approval; condition 2 by the owner, who applied and ticked the programme's terms on the application form
+(reported by the owner on 2026-09-15); condition 3 by this annotation and the one on
+[the affiliate links page](affiliation.md).
 
 ---
 

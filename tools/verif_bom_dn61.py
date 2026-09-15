@@ -587,8 +587,12 @@ def muter(texte):
         #    substitution « la 1re occurrence » frappait la prose et laissait
         #    la table intacte — le mutant sortait VERT sans rien prouver
         #    (mesure du 2026-09-07). On vise LA LIGNE DE TABLE.
+        # 🆕 2026-09-15 (`dn6-7`) : la ligne de la CARTE porte desormais une adresse
+        #    `waveshare.com` datee (le lien de la boutique Waveshare) — et elle est la
+        #    1re de la page. Le mutant la frappait, ⛔ plus la table des tentatives, et
+        #    sortait VERT (mesure). ⇒ la ligne visee COMMENCE par l'URL tentee.
         for l in texte.split("\n"):
-            if l.strip().startswith("|") and "waveshare.com" in l \
+            if l.strip().startswith("| `https://") and "waveshare.com" in l \
                     and RE_DATE.search(l):
                 c = cellules(l)
                 c[0] = "`waveshare.com` (product page)"
