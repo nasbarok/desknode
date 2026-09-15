@@ -32,6 +32,14 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   protecting the tag `v0.1.0-beta`, turning on private vulnerability reporting, what was actually
   read without an account, and the continuous integration run of the pushed `main`. Each
   one is written here by a dated annotation only once it has been measured, and not before.
+  ✅ *Measured on 2026-09-15, once played (`mesures/dn8-8/P1-bascule.txt`):* the tag `v0.1.0-beta` is
+  protected by a ruleset that blocks its deletion, its update and any non-fast-forward change, with
+  nobody allowed to bypass it; private vulnerability reporting is on, read back as enabled; 15 pages,
+  the 6 release assets and a clone were read **without an account** — every page answered 200, every
+  asset matched its digest, the four `.bin` matched `PROVENANCE.md` and `manifest.json` its copy at
+  the tag, and the clone carries `55006c1`; the archive downloaded without an account started its
+  installer, which answered over HTTP, on the maintainer's machine, which already has Python; and
+  the continuous integration run of the pushed `main` concluded `success`.
   ⚠️ **What this does ⛔ not provide, written**: proof that the bot records the signature of a
   real outside contributor — that waits for the first such pull request, and nobody opens one on
   purpose —; activating the agent from a downloaded copy, which stays a known issue until the

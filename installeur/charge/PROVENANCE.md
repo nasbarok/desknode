@@ -204,6 +204,11 @@ première release). ⛔ Un écart sans porteur écrit est un oubli déguisé, et
 > ⚠️ **ANNOTÉ LE 2026-09-15 (`dn8-8`).** La bascule du dépôt en public a été jouée ce jour : il ne
 > reste **rien** du second manque, et `epic-dn8` n'a plus rien à porter pour lui.
 
+> ✅ **MESURÉ LE 2026-09-15 (`dn8-8`), après la bascule** (`mesures/dn8-8/P1-bascule.txt`) : sans
+> compte, la page du tag, l'arbre du tag et l'arbre de la révision `55006c1` répondent 200 ; les
+> quatre images téléchargées depuis la release ont la taille et le sha256 de la table de cette
+> page ; un clone anonyme porte `55006c1`.
+
 ## Pourquoi ces binaires sont AU DÉPÔT, et pourquoi le dossier s'appelle `charge/`
 
 Quelqu'un qui télécharge DeskNode **n'a pas de build**. Sans images dans l'arbre, la page n'a

@@ -42,6 +42,9 @@ link still does not open a form, the setting is not on yet — come back to this
 not fall back to a public issue: the first section of this page still applies. The form has not
 been tried from a second account.*
 
+*Measured on 2026-09-15 (`dn8-8`): the reporting setting was turned on after the switch and read
+back as enabled. The form itself has still not been tried from a second account.*
+
 ## What to include
 
 - **Which part is affected**: the firmware, the Windows agent, the local install page and the

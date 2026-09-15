@@ -1,0 +1,423 @@
+==============================================================================
+dn8-8 / P1 — LA BASCULE, GESTE PAR GESTE (B0 → B11), RELEVEE LE 2026-09-15
+  Sorties BRUTES de `bascule.py` (sha256 ecf15b9b69889e7b, celui des 202
+  temoins de T3). B1 et B3 ont balaye les objets C1 et C2 : 0 valeur derivee
+  survivante. Chemins de scratchpad ecrits <scratchpad>.
+==============================================================================
+
+── 0. CE QUI S'EST PASSE, DANS L'ORDRE, ET LES ECARTS DECLARES ────────────────
+  C1 = 3cffb948f0d3e4ee1bdcb92935d01ca5238e9cf6 (commit de la Phase A revue)
+  C2 = 42efc4128077b9343333f7e37071e7202bc62a76 (cla.yml l.103 figee sur C1)
+  (0)  sha256sum -c des trois outils : OK ; jour = date de bascule lue dans C1
+       (2026-09-15) ⇒ (0b) redater ⛔ necessaire.
+  (1)  B1, (2) B2, (3) B2 --relire-dn56 : joues par l'agent, exit 0.
+  (4)  B3 : REFUSE A L'AGENT par le classifieur de permissions de Claude Code
+       (« Create Public Surface »), deux fois, dont une apres l'accord ecrit de
+       l'owner. ⇒ JOUE PAR L'OWNER dans la session, par le lanceur `~/dn88.sh`
+       (source integrale § 13 : il ne fait que passer les arguments exacts ;
+       chaque garde reste celle de bascule.py). Exit 0.
+       ⚠️ L'owner a relance `b3` une seconde fois : REFUSE en exit 3 sur
+       « refs distantes = T1 » (main distant valait deja C2), ⛔ aucune poussee
+       — la garde a fait son travail. Ce second tir a ECRASE le fichier du
+       premier : le premier est RECOPIE MOT POUR MOT depuis la sortie de la
+       session (§ 4), le second est garde (§ 4 bis).
+  (5)  B4 : joue par l'owner (`~/dn88.sh b4`), exit 0 : le depot est PUBLIC.
+  (6)  B5 : joue par l'agent, exit 0 (ruleset 23422936).
+  (7)  B6 : refuse a l'agent par le classifieur, joue par l'owner, exit 0.
+  (8)  `urls` : joue par l'agent (15 pages).
+  (9)→(12) B7, B8, B9, B10 : refuses a l'agent (le classifieur bloquait desormais
+       meme les relectures), joues par l'owner d'un seul tir `~/dn88.sh suite`,
+       qui ENCHAINE chaque geste SEULEMENT apres l'exit 0 du precedent (T3 § 4).
+       Tous exit 0.
+  B11 : les 48 gates hors verif_campagne_dn56 (etape `gates` de passe-t2.sh,
+       etiquette P1), comptes compares a T2 hors durees : IDENTIQUES (48 sur 48).
+  ⚠️ Biais ECRITS de B8 (T3 § 3 f) : la tour a Python et les modules, ⛔ une
+     machine d'inconnu ; la banniere de l'Explorateur ⛔ se rejoue pas ;
+     curl.exe ⛔ pose pas la Marque du Web et tar.exe ⛔ la propage pas — les
+     deux sont des REPLIQUES declarees ; le vrai .bat ouvre le navigateur de la
+     tour, ⛔ compte.
+  ⚠️ Relus par l'agent APRES B4 et AVANT ce releve : `main` distant = C2, tag
+     `f382819…` et `^{}` `fb6d646…` inchanges, 7 refs.
+
+── 1. B1 GARDE ──
+  | ── B1 garde ──
+  |   [OK ] date                                                     date du jour = 2026-09-15 · date de bascule lue dans C1 = 2026-09-15
+  |   [OK ] arbre-propre                                             vide
+  |   [OK ] HEAD=C1                                                  3cffb948f0d3e4ee1bdcb92935d01ca5238e9cf6
+  |   [OK ] refs-distantes=T1                                        7 ref(s), 0 ecart
+  |   [OK ] visibilite-PRIVATE                                       HTTP 200 visibility=private
+  |   [OK ] 0-fork                                                   forks_count=0
+  |   [OK ] magasin-vide                                             0 signature(s) sur main distant 7246f5248d16
+  |       balayage | valeurs derivees sur 23fae3fb0155 (COMPTE seulement) : ssid=2 · employeur=1 · gmail=1 · utilisateur=1 · prenom=1 · hote=1
+  |       balayage | objet 3cffb948f0d3 depuis 23fae3fb0155 : 18 fichier(s) ajoute(s) ou modifie(s) · 18 texte(s) lu(s) · 0 binaire(s) ⛔ balaye(s)
+  |       balayage | fichiers ou une valeur derivee SURVIT (par categorie, COMPTE) : 0
+  |       balayage | fichiers qui portent PLUS de formes d'adresse e-mail que la base : 0
+  |       balayage | BALAYAGE OBJET : 0 valeur derivee survivante, 0 forme d'adresse de plus
+  |   [OK ] balayage-objet-C1                                        0 valeur derivee survivante depuis 23fae3fb0155
+  | VERDICT: B1 garde tenue (exit 0) — 8 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+
+── 2. B2 C2 ──
+  | ── B2 C2 (ancre figee) ──
+  |   [OK ] date du jour = date de bascule lue dans C1 (2026-09-15)  2026-09-15
+  |   [OK ] arbre propre avant ecriture                              0 ligne(s)
+  |   [OK ] HEAD = C1                                                3cffb948f0d3e4ee1bdcb92935d01ca5238e9cf6
+  |   [OK ] l.103 = `blob/main/CLA.md` ou ancre d'un ancetre au CLA.md identique blob/main/CLA.md
+  |   [OK ] l.103 relue CHANGEE                                      path-to-document: 'https://github.com/nasbarok/desknode/blob/3cffb948f0d3e4ee1bdcb92935d01
+  |   [OK ] commit C2                                                rc=0 
+  | C2: 42efc4128077b9343333f7e37071e7202bc62a76
+  |   [OK ] C2 distinct de C1                                        42efc4128077b9343333f7e37071e7202bc62a76
+  |   [OK ] parent de C2 = C1                                        3cffb948f0d3e4ee1bdcb92935d01ca5238e9cf6
+  |   [OK ] diff --numstat C1 C2 = cla.yml 1/1 seul                  '1\t1\t.github/workflows/cla.yml'
+  |   [OK ] git show C1:CLA.md = git show C2:CLA.md                  5533 octets
+  |   [OK ] C2:cla.yml l.103 = blob/<C1>                             objet committe
+  |   [OK ] arbre = C2 (propre)                                      0 ligne(s)
+  |   [OK ] dn52 nominal sur C2                                      rc=0 ['BILAN : 34 OK, 0 KO']
+  |   [OK ] dn52 --mutant 32 : rc=1 avec BILAN                       rc=1 ['BILAN : 33 OK, 1 KO']
+  |       verif_campagne_dn56.py DETACHE ⇒ dn88-b2 (relire : b2 --relire-dn56)
+  | VERDICT: B2 C2 committe, ancre figee, dn52 tenu — dn56 lance (exit 0) — 14 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+
+── 3. B2 RELECTURE DE dn56 ──
+  | ── B2 C2 (ancre figee) ──
+  |   [OK ] HEAD = C2 (dn56 a porte C2)                              42efc4128077b9343333f7e37071e7202bc62a76
+  |   [OK ] verif_campagne_dn56.py au compte                         rc=0 ['BILAN : 8 OK, 0 KO']
+  |   [OK ] dn56 tenu sur C2 (dn56.head = C2)                        rc=0 · ['BILAN : 8 OK, 0 KO'] · campagne sur 42efc4128077
+  | VERDICT: B2 dn56 tenu sur C2 (exit 0) — 3 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+
+── 4. B3 POUSSEE (tir de l'owner, recopie mot pour mot) ──
+  | ── B3 poussee (main fast-forward) ──
+  |   [OK ] date du jour = date de bascule lue dans C1 (2026-09-15)  2026-09-15
+  |   [OK ] refs distantes = T1 juste avant                          0 ecart
+  |   [OK ] main local = C2                                          42efc4128077b9343333f7e37071e7202bc62a76
+  |   [OK ] parent(C2)=C1 (la date lue est celle de la prose poussee) 3cffb948f0d3
+  |   [OK ] main distant ancetre de C2 (fast-forward)                7246f5248d16
+  |   [OK ] visibilite-PRIVATE juste avant                           HTTP 200 visibility=private
+  |   [OK ] 0-fork juste avant                                       forks_count=0
+  |   [OK ] magasin-vide sur main distant juste avant                0 signature(s) sur 7246f5248d16
+  |   [OK ] verif_campagne_dn56.py tenue sur C2 (rc=0, BILAN : 8 OK, 0 KO) rc=0 · ['BILAN : 8 OK, 0 KO'] · campagne sur 42efc4128077
+  |       balayage | valeurs derivees sur 23fae3fb0155 (COMPTE seulement) : ssid=2 · employeur=1 · gmail=1 · utilisateur=1 · prenom=1 · hote=1
+  |       balayage | objet 42efc4128077 depuis 23fae3fb0155 : 19 fichier(s) ajoute(s) ou modifie(s) · 19 texte(s) lu(s) · 0 binaire(s) ⛔ balaye(s)
+  |       balayage | fichiers ou une valeur derivee SURVIT (par categorie, COMPTE) : 0
+  |       balayage | fichiers qui portent PLUS de formes d'adresse e-mail que la base : 0
+  |       balayage | BALAYAGE OBJET : 0 valeur derivee survivante, 0 forme d'adresse de plus
+  |   [OK ] balayage-objet-C2                                        0 valeur derivee survivante depuis 23fae3fb0155
+  |     $ git push origin refs/heads/main:refs/heads/main
+  |     | To https://github.com/nasbarok/desknode.git
+  |     |    7246f52..42efc41  main -> main
+  |   [OK ] main distant = C2                                        42efc4128077b9343333f7e37071e7202bc62a76
+  |   [OK ] refs/tags/v0.1.0-beta INCHANGE                           f382819016ea
+  |   [OK ] refs/tags/v0.1.0-beta^{} INCHANGE                        fb6d64601f5b
+  |   [OK ] aucune autre ref n'a bouge                               0
+  | VERDICT: B3 main pousse (exit 0) — 14 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+  | exit=0
+  | (recopie mot pour mot de la sortie du tir joue par l'owner via `! bash ~/dn88.sh b3` ; un 2e tir identique, refuse en exit 3 sur « refs distantes = T1 », a ecrase le fichier d'origine et est garde dans P1-b3-rejeu-refuse.txt)
+
+── 4 bis. B3 SECOND TIR, REFUSE ──
+  | ── B3 poussee (main fast-forward) ──
+  |   [OK ] date du jour = date de bascule lue dans C1 (2026-09-15)  2026-09-15
+  |   [KO ] refs distantes = T1 juste avant                          ⛔ HEAD, refs/heads/main
+  |   [OK ] main local = C2                                          42efc4128077b9343333f7e37071e7202bc62a76
+  |   [OK ] parent(C2)=C1 (la date lue est celle de la prose poussee) 3cffb948f0d3
+  |   [OK ] main distant ancetre de C2 (fast-forward)                42efc4128077
+  |   [OK ] visibilite-PRIVATE juste avant                           HTTP 200 visibility=private
+  |   [OK ] 0-fork juste avant                                       forks_count=0
+  |   [OK ] magasin-vide sur main distant juste avant                0 signature(s) sur 42efc4128077
+  |   [OK ] verif_campagne_dn56.py tenue sur C2 (rc=0, BILAN : 8 OK, 0 KO) rc=0 · ['BILAN : 8 OK, 0 KO'] · campagne sur 42efc4128077
+  |       balayage | valeurs derivees sur 23fae3fb0155 (COMPTE seulement) : ssid=2 · employeur=1 · gmail=1 · utilisateur=1 · prenom=1 · hote=1
+  |       balayage | objet 42efc4128077 depuis 23fae3fb0155 : 19 fichier(s) ajoute(s) ou modifie(s) · 19 texte(s) lu(s) · 0 binaire(s) ⛔ balaye(s)
+  |       balayage | fichiers ou une valeur derivee SURVIT (par categorie, COMPTE) : 0
+  |       balayage | fichiers qui portent PLUS de formes d'adresse e-mail que la base : 0
+  |       balayage | BALAYAGE OBJET : 0 valeur derivee survivante, 0 forme d'adresse de plus
+  |   [OK ] balayage-objet-C2                                        0 valeur derivee survivante depuis 23fae3fb0155
+  | VERDICT: blocked — garde de poussee KO, ⛔ poussee (exit 3) — 9 OK / 1 KO · bascule.py sha256 ecf15b9b69889e7b
+  | exit=3
+
+── 5. B4 BASCULE PUBLIC ──
+  | ── B4 bascule PUBLIC ──
+  |   [OK ] date                                                     date du jour = 2026-09-15 · date de bascule lue dans C1 = 2026-09-15
+  |   [OK ] parent(C2)=C1                                            3cffb948f0d3
+  |   [OK ] main-distant=C2                                          42efc4128077b9343333f7e37071e7202bc62a76
+  |   [OK ] autres-refs=T1                                           7 ref(s), 0 ecart
+  |   [OK ] visibilite-PRIVATE                                       HTTP 200 visibility=private
+  |   [OK ] 0-fork                                                   forks_count=0
+  |   [OK ] magasin-vide                                             0 signature(s) sur main distant 42efc4128077
+  |   [OK ] PATCH visibility=public ⇒ 200                            HTTP 200
+  |   [OK ] gh repo view : PUBLIC, issues true                       {'hasIssuesEnabled': True, 'visibility': 'PUBLIC'}
+  |   [OK ] API SANS jeton : 200 et visibility=public                HTTP 200 visibility=public
+  | VERDICT: B4 PUBLIC (exit 0) — 10 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+  | exit=0
+
+── 6. B5 REGLE DU TAG ──
+  | ── B5 regle du tag ──
+  |   [OK ] depot relu PUBLIC (garde de B5)                          HTTP 200 visibility=public
+  |   [OK ] GET rulesets ⇒ 200                                       HTTP 200
+  |   [OK ] POST rulesets ⇒ 201                                      HTTP 201
+  |   [OK ] GET rulesets/23422936 ⇒ 200                              HTTP 200
+  |   [OK ] cible refs/tags/v0.1.0-beta                              tag ['refs/tags/v0.1.0-beta']
+  |   [OK ] enforcement = active                                     active
+  |   [OK ] rules ⊇ deletion, update, non_fast_forward               deletion, non_fast_forward, update
+  |       current_user_can_bypass = never (releve, ⛔ juge)
+  | VERDICT: B5 tag protege, relu (exit 0) — 7 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+
+── 7. B6 SIGNALEMENT PRIVE DE FAILLES ──
+  | ── B6 signalement prive de failles ──
+  |   [OK ] depot relu PUBLIC (garde de B6)                          HTTP 200 visibility=public
+  |   [OK ] PUT private-vulnerability-reporting ⇒ 204                HTTP 204
+  |   [OK ] GET ⇒ enabled: true                                      HTTP 200 {'enabled': True}
+  | VERDICT: B6 signalement active, relu (exit 0) — 3 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+  | exit=0
+
+── 8. B7 RELECTURES SANS SESSION ──
+  | ── B7 relectures sans session ──
+  |   [OK ] page https://github.com/nasbarok/desknode                HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page ://github.com/nasbarok/desknode/releases/tag/v0.1.0-beta HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page https://github.com/nasbarok/desknode/tree/v0.1.0-beta HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page k/desknode/tree/55006c19182b3ff1ccc017044057347841ede475 HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page node/blob/v0.1.0-beta/CHANGELOG.md#010-beta---2026-09-14 HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page e/blob/v0.1.0-beta/CONTRIBUTING.md#building-the-firmware HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page 0.1.0-beta/CONTRIBUTING.md#what-this-project-is-honestly HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page thub.com/nasbarok/desknode/blob/v0.1.0-beta/LICENSING.md HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page k/desknode/blob/v0.1.0-beta/LICENSING.md#binary-releases HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page /github.com/nasbarok/desknode/blob/v0.1.0-beta/README.md HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page com/nasbarok/desknode/blob/v0.1.0-beta/README.md#install HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page asbarok/desknode/blob/v0.1.0-beta/README.md#known-issues HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page ub.com/nasbarok/desknode/blob/v0.1.0-beta/THIRD-PARTY.md HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page esknode/blob/v0.1.0-beta/installeur/charge/PROVENANCE.md HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] page ode/blob/3cffb948f0d3e4ee1bdcb92935d01ca5238e9cf6/CLA.md HTTP 200 · curl -q sans session, ⛔ -L
+  |   [OK ] API sans jeton repos/nasbarok/desknode                   HTTP 200 visibility=public
+  |   [OK ] API sans jeton : release v0.1.0-beta, 6 assets           HTTP 200, 6 asset(s)
+  |   [OK ] table de PROVENANCE.md (RE_PROV_LIGNE importee)          4 ligne(s)
+  |   [OK ] asset bootloader.bin : sha256 = digest (prefixe `sha256:` retire) HTTP 200 · 20848 o · sha256 d1bf1fd347b3494b
+  |   [OK ] asset bootloader.bin = ligne de PROVENANCE.md            table : 20848 o, sha256 d1bf1fd347b3494b
+  |   [OK ] asset desknode-v0.1.0-beta.zip : sha256 = digest (prefixe `sha256:` retire) HTTP 200 · 23228908 o · sha256 0989e0ed2448d6ae
+  |   [OK ] asset desknode-v0.1.0-beta.zip : SOURCE UNIQUE = le digest de l'API aucune table ni aucun blob du depot ne porte l'empreinte de l'archive
+  |   [OK ] asset desknode.bin : sha256 = digest (prefixe `sha256:` retire) HTTP 200 · 1266928 o · sha256 2b845a161079de8b
+  |   [OK ] asset desknode.bin = ligne de PROVENANCE.md              table : 1266928 o, sha256 2b845a161079de8b
+  |   [OK ] asset living_pcb_v0.bin : sha256 = digest (prefixe `sha256:` retire) HTTP 200 · 614416 o · sha256 fae162a0a422c3c1
+  |   [OK ] asset living_pcb_v0.bin = ligne de PROVENANCE.md         table : 614416 o, sha256 fae162a0a422c3c1
+  |   [OK ] asset manifest.json : sha256 = digest (prefixe `sha256:` retire) HTTP 200 · 509 o · sha256 8835022afbf87d82
+  |   [OK ] asset manifest.json = blob v0.1.0-beta:installeur/charge/manifest.json blob sha256 8835022afbf87d82
+  |   [OK ] asset partition-table.bin : sha256 = digest (prefixe `sha256:` retire) HTTP 200 · 3072 o · sha256 0934eb422b7c7f52
+  |   [OK ] asset partition-table.bin = ligne de PROVENANCE.md       table : 3072 o, sha256 0934eb422b7c7f52
+  |   [OK ] clone ANONYME porte 55006c19182b                         clone rc=0 · cat-file -e rc=0
+  | VERDICT: B7 tout relu sans session (exit 0) — 31 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+  | B7 exit=0
+
+── 9. B8 TIR WINDOWS ──
+  | ── B8 tir Windows ──
+  |   [OK ] API sans jeton : release v0.1.0-beta lue                 HTTP 200
+  |   [OK ] API sans jeton : desknode-v0.1.0-beta.zip, digest lu     sha256:0989e0ed2448d6ae…
+  |   [OK ] staging %TEMP%\dn88-38610472                             {'existe': True, 'staging': 'dn88-38610472'}
+  |   [OK ] curl.exe -q sans session ⇒ desknode-v0.1.0-beta.zip      {'rc': 0, 'taille': 23228908, 'http': '200'}
+  |   [OK ] empreinte MESUREE (Get-FileHash)                         {'sha256': '0989e0ed2448d6aeefe5b39ec92f704c5131437e8b6461d0b9db39420c81329a'}
+  |   [OK ] sha256 (Get-FileHash) = digest, prefixe `sha256:` retire 0989e0ed2448d6aeefe5b39ec92f704c5131437e8b6461d0b9db39420c81329a
+  |   [OK ] Marque du Web MESUREE (Get-Item -Stream *)               mesuree=False replique=True 
+  |       Marque du Web posee par le telechargement : NON (mesuree absente)
+  |       ⚠️ RÉPLIQUE DÉCLARÉE : aucune marque posée par le téléchargement ; posée à l'identique d'un navigateur (ZoneId=3, HostUrl=l'URL réelle)
+  |   [OK ] extraction MESUREE (tar.exe)                             {'marque_bat_mesuree': False, 'rc': 0, 'bat_present': True, 'fichiers': 876, 'marques_repliquees': 876}
+  |   [OK ] tar.exe rc=0 (archive extraite ENTIERE)                  rc=0, 876 fichier(s)
+  |   [OK ] le .bat est dans l'archive extraite                      {'marque_bat_mesuree': False, 'rc': 0, 'bat_present': True, 'fichiers': 876, 'marques_repliquees': 876}
+  |       ⚠️ RÉPLIQUE DÉCLARÉE : tar.exe ne propage pas la marque ; posée sur 876 fichier(s) comme l'Explorateur
+  |   [OK ] .bat verifier : rc mesure                                rc=0
+  |       verifier | ==========================================================================
+  |       verifier | DeskNode - installeur local   (pre-vol)
+  |       verifier | ==========================================================================
+  |       verifier |   Python              : 3.13.4  (%USERPROFILE%\AppData\Local\Programs\Python\Python313\python.exe)
+  |       verifier |   la page             : %TEMP%\dn88-38610472\x\desknode-v0.1.0-beta\installeur\index.html
+  |       verifier |   l'outil de l'agent  : H:\dev\projets\desknode\dn_agent_tour.ps1  [l'action de la tache planifiee]
+  |       verifier |   psutil              : present
+  |       verifier |   pyserial            : present
+  |       verifier |   LibreHardwareMonitor : present
+  |       verifier | 
+  |       verifier |   la charge a poser    : %TEMP%\dn88-38610472\x\desknode-v0.1.0-beta\installeur\charge
+  |       verifier |   version au manifeste : 55006c1
+  |       verifier |   bootloader.bin       : 20848 o
+  |       verifier |   partition-table.bin  : 3072 o
+  |       verifier |   desknode.bin         : 1266928 o
+  |       verifier |   living_pcb_v0.bin    : 614416 o
+  |       verifier |   manifest.json        : 509 o
+  |       verifier |   asset (integrite)    : intact (614400 o + 16 o de queue, CRC32 verifie)
+  |   [OK ] lancement MESURE (port, http, sortie)                    {'port': 54780, 'http': 200}
+  |   [OK ] lancement nominal : port imprime, sonde HTTP 127.0.0.1:<port> port=54780 HTTP=200 octets=203190
+  |       sortie du lancement, ENTIERE (24 ligne(s)) :
+  |       lancement | ==========================================================================
+  |       lancement | DeskNode - installeur local   (pre-vol)
+  |       lancement | ==========================================================================
+  |       lancement |   Python              : 3.13.4  (%USERPROFILE%\AppData\Local\Programs\Python\Python313\python.exe)
+  |       lancement |   la page             : %TEMP%\dn88-38610472\x\desknode-v0.1.0-beta\installeur\index.html
+  |       lancement |   l'outil de l'agent  : H:\dev\projets\desknode\dn_agent_tour.ps1  [l'action de la tache planifiee]
+  |       lancement |   psutil              : present
+  |       lancement |   pyserial            : present
+  |       lancement |   LibreHardwareMonitor : present
+  |       lancement | 
+  |       lancement |   la charge a poser    : %TEMP%\dn88-38610472\x\desknode-v0.1.0-beta\installeur\charge
+  |       lancement |   version au manifeste : 55006c1
+  |       lancement |   bootloader.bin       : 20848 o
+  |       lancement |   partition-table.bin  : 3072 o
+  |       lancement |   desknode.bin         : 1266928 o
+  |       lancement |   living_pcb_v0.bin    : 614416 o
+  |       lancement |   manifest.json        : 509 o
+  |       lancement |   asset (integrite)    : intact (614400 o + 16 o de queue, CRC32 verifie)
+  |       lancement | 
+  |       lancement | ==========================================================================
+  |       lancement |   la page est servie ICI  ->  http://127.0.0.1:54780/
+  |       lancement |   (port TIRE au lancement : il change a chaque fois, et c'est voulu)
+  |       lancement |   Fermer cette fenetre, ou Ctrl+C, arrete le serveur.
+  |       lancement | ==========================================================================
+  |   [OK ] compte des processus MESURE                              avant=3 apres=0 
+  |       processus du staging : 3 avant l'arret (cmd.exe, py.exe, python.exe), 0 apres
+  |   [OK ] compte = 0 apres l'arret                                 0
+  |   [OK ] staging supprime                                         {'existe_apres': False}
+  | VERDICT: B8 .bat telecharge demarre, repond en HTTP, arret propre, compte 0 (exit 0) — 16 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+  | B8 exit=0
+
+── 10. B9 LECTURES ──
+  | ── B9 lectures ──
+  |   [OK ] branches/main/protection ⇒ 404 EXACT                     HTTP 404
+  |   [OK ] community/profile ⇒ 200                                  HTTP 200
+  |       health_percentage = 100
+  |       files.code_of_conduct          present
+  |       files.code_of_conduct_file     present
+  |       files.contributing             present
+  |       files.issue_template           null
+  |       files.license                  present
+  |       files.pull_request_template    present
+  |       files.readme                   present
+  |       issues/new/choose SANS session : HTTP 302 → https://github.com/login?return_to=https%3A%2F%2Fgithub.com%2Fnasbarok%2Fdesknode%2Fissues%2Fnew%2Fchoose (releve, ⛔ juge)
+  |   [OK ] fork-pr-contributor-approval ⇒ 200                       HTTP 200 approval_policy=first_time_contributors
+  | VERDICT: B9 lectures relevees (exit 0) — 3 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+  | B9 exit=0
+
+── 11. B10 CI DU MAIN POUSSE ──
+  | ── B10 CI ──
+  |       run 34943761725 · event=push · status=completed · conclusion=success
+  |       duree 330 s · 3 ligne(s) BILAN au journal, TOUTES relevees :
+  |       journal | 2026-09-15T07:50:40.5998595Z               motif : CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. La MOITIE DEPOT joue toujours (la place, les deux comptes, la notice, la roadmap, le CHANGELOG) ; sans le cockpit, les DEUX controles qui lisent le ledger et le tracker sont DECLARES non joues avec leur motif — ⛔ ni joues, ni comptes verts — et la gate rend 4. ⚠️ ⛔ AUCUN COMPTE OK/KO N'EST PUBLIE ICI, ET C'EST DELIBERE : la declaration voisine de verif_dossier_dn415.py en annonce un qui est FAUX depuis qu'un controle a ete ajoute chez elle, et ce defaut est deja au ledger (porteur epic-dn4). ⛔ On ne reproduit pas le defaut qu'on vient de declarer. Le seul compte qui fait foi est la ligne BILAN du tir.
+  |       journal | 2026-09-15T07:55:31.5209194Z               motif : CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Les 94 CIBLES d'ancre 📍 que (c2) rejoue, portees par 86 lignes, vivent dans son ledger (⚠️ 87 lignes portent le glyphe ; la 87e est de la PROSE qui le cite entre accents graves, et ancres_du l'ecarte — le « 87 » ecrit ici d'abord comptait des LIGNES pour des CIBLES) : sans lui, (c2) n'a AUCUNE population. ⚠️ (c1) et (c3), eux, sont JOUABLES dans un clone nu — mais la gate ⛔ ne se coupe PAS en deux : un verdict partiel publie sous la meme ligne de BILAN serait indiscernable d'un verdict complet, et c'est le defaut que dn8-1 existe pour fermer. ⇒ elle rend 4 EN AMONT, et le dit. ⛔ CE N'EST PAS UN SKIP : la regle (3) la joue QUAND MEME pour verifier qu'elle rend bien ce 4.
+  |       journal | 2026-09-15T07:55:54.3708719Z BILAN : 38 VERTE, 0 ROUGE, 11 NON-JOUABLE sur 49 gates (318s)
+  |   [OK ] conclusion = success                                     success
+  |   [OK ] BILAN lu dans le journal                                 rc=0
+  | VERDICT: B10 CI verte au compte (exit 0) — 2 OK / 0 KO · bascule.py sha256 ecf15b9b69889e7b
+  | B10 exit=0 (tir 1)
+
+── 12. B11 LES GATES APRES LA BASCULE (P1/gates.tsv) ──
+  | verif_affiliation_dn65.py          rc=0       1.96 s  BILAN : 23 OK, 0 KO 
+  | verif_banc_langue_dn73.py          rc=0       2.64 s  BILAN : 81 OK, 0 KO 
+  | verif_bme680_retard_dn45.py        rc=0       0.04 s  BILAN : 15 OK, 0 KO 
+  | verif_boitier_dn64.py --cockpit    rc=0       1.53 s  BILAN : 29 OK, 0 KO 
+  | verif_bom_dn61.py                  rc=0       0.07 s  BILAN : 24 OK, 0 KO 
+  | verif_cablage_dn62.py              rc=0       0.09 s  BILAN : 37 OK, 0 KO 
+  | verif_campagne_dn440.py --cockpit  rc=0     141.43 s  BILAN CAMPAGNE : 39 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien BILAN : 62 OK, 0 KO 
+  | verif_courbe_dn413.py              rc=0      10.40 s  ⛔ aucune ligne BILAN
+  | verif_cumul_ambient_dn45.py        rc=0       1.36 s  BILAN : 23 OK, 0 KO 
+  | verif_d4_nvs_dn45.py               rc=0       0.35 s  BILAN : 6 OK, 0 KO 
+  | verif_decoupe_horloge_dn418.py     rc=0       6.24 s  ⛔ aucune ligne BILAN
+  | verif_demarrage_dn443.py           rc=0       0.71 s  BILAN : 58 OK, 0 KO 
+  | verif_dossier_d5_dn45.py --cockpit rc=0       6.11 s  BILAN : 12 OK, 0 KO 
+  | verif_dossier_dn415.py --cockpit   rc=1       9.19 s  BILAN : 23 OK, 10 KO 
+  | verif_entree_dn82.py               rc=0       0.15 s  BILAN : 45 OK, 0 KO 
+  | verif_flash_dn72.py                rc=0       0.23 s  BILAN : 30 OK, 0 KO 
+  | verif_harnais_dn413.py             rc=0       9.20 s  ⛔ aucune ligne BILAN
+  | verif_harnais_dn81.py --cockpit    rc=0       6.08 s  BILAN : 28 OK, 0 KO 
+  | verif_hist_dn413.py                rc=0       4.01 s  ⛔ aucune ligne BILAN
+  | verif_installeur_dn71.py           rc=0       0.20 s  BILAN : 28 OK, 0 KO 
+  | verif_instruments_dn423.py         rc=0       0.66 s  BILAN : 163 OK, 0 KO 
+  | verif_journal_soak_dn45.py         rc=0       0.09 s  BILAN : 26 OK, 0 KO 
+  | verif_langue_dalle_dn73.py         rc=0       0.11 s  BILAN : 61 OK, 0 KO 
+  | verif_langues_dn442.py             rc=0       1.13 s  BILAN : 31 OK, 0 KO 
+  | verif_ledger_dn416.py --cockpit    rc=0       0.80 s  BILAN : 36 OK, 0 KO 
+  | verif_lhm_ps_dn83.py               rc=0      19.18 s  BILAN : 26 OK, 0 KO 
+  | verif_licences_dn52.py             rc=0       1.26 s  BILAN : 34 OK, 0 KO 
+  | verif_lissage_dn45.py              rc=0       0.15 s  BILAN : 21 OK, 0 KO 
+  | verif_miroir_horloge_dn418.py      rc=0       0.09 s  ⛔ aucune ligne BILAN
+  | verif_page_dn722.py                rc=0       0.15 s  BILAN : 56 OK, 0 KO 
+  | verif_paliers_dn441.py             rc=0       0.19 s  BILAN : 42 OK, 0 KO 
+  | verif_photos_dn63.py               rc=0       0.45 s  BILAN : 28 OK, 0 KO 
+  | verif_placement_dn74.py            rc=0       0.11 s  BILAN : 42 OK, 0 KO 
+  | verif_polices_dn440.py             rc=0       0.03 s  BILAN : 11 OK, 0 KO 
+  | verif_preconditions_dn76.py        rc=0       0.18 s  BILAN : 55 OK, 0 KO 
+  | verif_prerequis_dn75.py            rc=0       0.51 s  BILAN : 51 OK, 0 KO 
+  | verif_rebouclage_dn45.py           rc=0       3.07 s  BILAN : 30 OK, 0 KO 
+  | verif_reception_dn85.py            rc=0       0.17 s  BILAN : 16 OK, 0 KO 
+  | verif_reprise_horloge_dn418.py     rc=0       0.11 s  ⛔ aucune ligne BILAN
+  | verif_selection_dn49.py            rc=0       0.07 s  ⛔ aucune ligne BILAN
+  | verif_serie_dn412.py               rc=0       1.82 s  BILAN : 50 OK / 0 KO 
+  | verif_source_lhm_dn48.py           rc=0       4.15 s  ⛔ aucune ligne BILAN
+  | verif_sr03.py                      rc=2       0.12 s  ⛔ aucune ligne BILAN
+  | verif_temoin_filtre_dn447.py       rc=0       1.85 s  BILAN : 5 OK, 0 KO 
+  | verif_veille_dn33.py               rc=0       8.17 s  BILAN : 267 OK · 0 KO 
+  | verif_verrou_lvgl_dn413.py         rc=0      16.83 s  ⛔ aucune ligne BILAN
+  | verif_vitrine_dn84.py              rc=0       0.11 s  BILAN : 16 OK, 0 KO 
+  | verif_xip_dn422.py                 rc=0       0.03 s  BILAN : 10 OK / 0 KO 
+
+── 13. LE LANCEUR ~/dn88.sh, SOURCE INTEGRALE ──
+  | #!/usr/bin/env bash
+  | # dn8-8 — lanceur des gestes que le classifieur interdit a l'agent (usage : bash ~/dn88.sh b3 | b4).
+  | # Chaque geste est garde par bascule.py lui-meme ; ce lanceur ne fait que passer les arguments exacts.
+  | set -u
+  | S=<scratchpad>
+  | B=$S/dn88b/bascule.py
+  | C1=3cffb948f0d3e4ee1bdcb92935d01ca5238e9cf6
+  | C2=42efc4128077b9343333f7e37071e7202bc62a76
+  | T1=mesures/dn8-8/T1-releve-de-ce-qui-devient-public.txt
+  | cd ~/projects/desknode || exit 2
+  | case "${1:-}" in
+  |   b3)
+  |     [ -f "$S/P1-b3-pousse.txt" ] && { echo "⛔ B3 a DEJA pousse (P1-b3-pousse.txt) : ⛔ rejoue"; exit 3; }
+  |     python3 "$B" b3 --c1 "$C1" --c2 "$C2" --refs "$T1" --dn56-sortie "$S/dn88-b2" 2>&1 | tee "$S/P1-b3.txt"
+  |     echo "exit=${PIPESTATUS[0]}" | tee -a "$S/P1-b3.txt" ;;
+  |   b4)
+  |     grep -q 'VERDICT: B3 main pousse (exit 0)' "$S/P1-b3-pousse.txt" 2>/dev/null || { echo "⛔ B3 n'a pas rendu exit 0 : B4 refuse"; exit 3; }
+  |     [ -f "$S/P1-b4.txt" ] && grep -q 'VERDICT: B4 PUBLIC' "$S/P1-b4.txt" && { echo "⛔ B4 a DEJA bascule (P1-b4.txt) : ⛔ rejoue"; exit 3; }
+  |     python3 "$B" b4 --c1 "$C1" --c2 "$C2" --refs "$T1" 2>&1 | tee "$S/P1-b4.txt"
+  |     echo "exit=${PIPESTATUS[0]}" | tee -a "$S/P1-b4.txt" ;;
+  |   b6)
+  |     grep -q 'VERDICT: B5 tag protege, relu (exit 0)' "$S/P1-b5.txt" 2>/dev/null || { echo "⛔ B5 n'a pas rendu exit 0 : B6 refuse"; exit 3; }
+  |     [ -f "$S/P1-b6.txt" ] && grep -q 'VERDICT: B6 signalement active, relu (exit 0)' "$S/P1-b6.txt" && { echo "⛔ B6 DEJA tenu (P1-b6.txt) : ⛔ rejoue"; exit 3; }
+  |     python3 "$B" b6 2>&1 | tee "$S/P1-b6.txt"
+  |     echo "exit=${PIPESTATUS[0]}" | tee -a "$S/P1-b6.txt" ;;
+  |   suite)
+  |     # B7 → B8 → B9 → B10, chacun SEULEMENT apres l'exit 0 du precedent (T3 § 4) ; le 1er refus ARRETE.
+  |     grep -q 'VERDICT: B6 signalement active, relu (exit 0)' "$S/P1-b6.txt" 2>/dev/null || { echo "⛔ B6 n'a pas rendu exit 0 : suite refusee"; exit 3; }
+  |     [ -s "$S/urls.json" ] || { echo "⛔ urls.json absent"; exit 2; }
+  |     python3 "$B" b7 --urls "$S/urls.json" > "$S/P1-b7.txt" 2>&1; rc=$?
+  |     grep -E '^\s*\[KO|VERDICT' "$S/P1-b7.txt"; echo "B7 exit=$rc" | tee -a "$S/P1-b7.txt"
+  |     [ $rc -eq 0 ] || exit $rc
+  |     DN88_BAT=desknode-v0.1.0-beta/installeur/DeskNode-installeur.bat python3 "$B" b8 > "$S/P1-b8.txt" 2>&1; rc=$?
+  |     grep -E '^\s*\[KO|VERDICT|RÉPLIQUE|lancement \|' "$S/P1-b8.txt" | head -40; echo "B8 exit=$rc" | tee -a "$S/P1-b8.txt"
+  |     [ $rc -eq 0 ] || exit $rc
+  |     python3 "$B" b9 > "$S/P1-b9.txt" 2>&1; rc=$?
+  |     grep -E '^\s*\[KO|VERDICT' "$S/P1-b9.txt"; echo "B9 exit=$rc" | tee -a "$S/P1-b9.txt"
+  |     [ $rc -eq 0 ] || exit $rc
+  |     for essai in 1 2 3 4 5 6 7; do
+  |       python3 "$B" b10 --c2 "$C2" > "$S/P1-b10-$essai.txt" 2>&1; rc=$?
+  |       grep -E 'VERDICT' "$S/P1-b10-$essai.txt"
+  |       if [ $rc -eq 4 ] && grep -q 'EN COURS\|aucun run gates.yml' "$S/P1-b10-$essai.txt"; then continue; fi
+  |       break
+  |     done
+  |     cp "$S/P1-b10-$essai.txt" "$S/P1-b10.txt"; grep -E '^\s*\[KO|journal \||duree|run [0-9]' "$S/P1-b10.txt"; echo "B10 exit=$rc (tir $essai)" | tee -a "$S/P1-b10.txt"
+  |     exit $rc ;;
+  |   c3)
+  |     # B12 : releve P1, gates au compte = T2, balayage, commit C3, poussee gardee. Le 1er echec ARRETE.
+  |     grep -q 'B10 exit=0' "$S/P1-b10.txt" 2>/dev/null || { echo "⛔ B10 n'a pas rendu exit 0 : c3 refuse"; exit 3; }
+  |     [ "$(git rev-parse HEAD)" = "$C2" ] || { echo "⛔ HEAD ≠ C2 : c3 refuse (deja committe ?)"; exit 3; }
+  |     python3 "$S/composer_P1.py" "$S" "$PWD" || { echo "⛔ releve P1 ⛔ compose"; exit 3; }
+  |     ( cd "$S/dn88" && bash passe-t2.sh P1c entete > "$S/dn88/P1c.entete.out" 2>&1 && bash passe-t2.sh P1c gates > "$S/dn88/P1c.gates.out" 2>&1 ) || { echo "⛔ passe des gates en echec"; exit 4; }
+  |     if diff <(sed -E 's/[0-9]+\.[0-9]+ s/ /' "$S/dn88/T2/gates.tsv" | tr -s ' ') <(sed -E 's/[0-9]+\.[0-9]+ s/ /' "$S/dn88/P1c/gates.tsv" | tr -s ' '); then
+  |       echo "gates : 48 comptes IDENTIQUES a T2 apres les annotations"
+  |     else echo "⛔ un compte de gate a bouge (diff ci-dessus) : ⛔ commit"; exit 4; fi
+  |     # ⛔ `releve.py --balayer` : il derive ses valeurs du SOMMET, qui porte desormais T1/T3 et le mot `SSID`
+  |     #    (faux positif mesure a la boucle 3). Le balayage qui compte est celui de b12 : l'OBJET C3, valeurs
+  |     #    derivees sur la base 23fae3f — une valeur survivante y refuse la poussee (exit 3).
+  |     git add -- CHANGELOG.md SECURITY.md installeur/charge/PROVENANCE.md docs/roadmap.md mesures/dn8-8/P1-bascule.txt
+  |     [ "$(git status --porcelain | grep -v '^[AM] ' | wc -l)" = 0 ] || { git status --porcelain; echo "⛔ arbre inattendu : ⛔ commit"; exit 3; }
+  |     git commit -q -F "$S/msg-c3.txt" || exit 3
+  |     C3=$(git rev-parse HEAD); [ "$(git rev-parse "$C3^")" = "$C2" ] || { echo "⛔ parent(C3) ≠ C2"; exit 3; }
+  |     echo "C3=$C3"
+  |     python3 "$B" b12 --c2 "$C2" --c3 "$C3" --refs "$T1" 2>&1 | tee "$S/P1-b12.txt"
+  |     rc=${PIPESTATUS[0]}; echo "exit=$rc" | tee -a "$S/P1-b12.txt"
+  |     git ls-remote origin | cut -c1-60
+  |     exit $rc ;;
+  |   *)
+  |     echo "usage : bash ~/dn88.sh b3|b4|b6|suite|c3"; exit 2 ;;
+  | esac
+
