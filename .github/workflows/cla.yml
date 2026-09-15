@@ -100,6 +100,6 @@ jobs:
           path-to-signatures: '.github/cla-signatures.json'
           # 🔴 Le document DOIT exister : un bot qui fait signer un document
           #    absent est exactement la promesse creuse que `dn5-2` solde.
-          path-to-document: 'https://github.com/nasbarok/desknode/blob/main/CLA.md'
+          path-to-document: 'https://github.com/nasbarok/desknode/blob/3cffb948f0d3e4ee1bdcb92935d01ca5238e9cf6/CLA.md'
           branch: 'main'
           allowlist: 'dependabot[bot]'
