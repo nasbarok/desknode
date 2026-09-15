@@ -117,8 +117,6 @@ une occurrence non listée est **indiscernable d'une occurrence oubliée**.
 > 🆕 **RATTRAPÉ PAR `dn4-16` LE 2026-08-30 — +5 `HISTORIQUE`, +5 `vl53l0x`, total 199 → 204.**
 
 > 🆕 **`dn6-1`, LE 2026-09-07 — +1 `VRAI`, +1 `vl53l0x`, total 204 → 205.** `docs/bom.md` est née de `dn6-1` et NOMME le modèle voisin dans sa mise en garde d'achat. ⛔ Le texte de la BOM est JUSTE : c'est le manifeste qui n'avait pas été tenu.
-
-> 🆕 **`dn6-6`, LE 2026-09-15 — la citation de `docs/bom.md` est RÉ-ANCRÉE À LA MAIN, totaux INCHANGÉS (205).** Décision owner du 2026-09-15 : la page d'achat passe en anglais, en une seule page. La ligne arbitrée — la mise en garde d'achat du capteur de distance, qui nomme le modèle voisin **une seule fois** pour l'écarter — est la même ligne, **traduite** : même verdict `VRAI`, même motif, même rang, même `n`. Seule sa citation change, recopiée depuis l'arbre sur ses 120 premiers caractères, qui s'arrêtent **avant** la cellule `Source` : ⛔ l'adresse suivie qu'elle porte désormais n'entre pas dans ce manifeste. La citation d'origine était `\| Capteur de distance \| **TOF050C-VL6180X** (⛔ **PAS** un …` — ⛔ pas régénérée : le reste du manifeste, et ses écarts préexistants, ne sont pas touchés.
 > `dn4-16` a écrit **cinq citations `VL53L0X`** dans le ledger (le bandeau de collision
 > `bmad-loop-sweep`, et deux lignes de disposition). Elles sont **légitimes** — ce sont des faits
 > datés et une mesure, ⛔ pas des assertions sur le bus — et elles sont **arbitrées ci-dessous**,
@@ -136,6 +134,8 @@ une occurrence non listée est **indiscernable d'une occurrence oubliée**.
 > **NUMÉRO DE LIGNE**, donc il se périme à chaque écriture dans le fichier qu'il décrit — 62
 > contrôles ont rougi d'un coup, sans qu'une seule occurrence change de sens. Voir l'entrée
 > `⇒ [dn4-16 …] CONNAISSANCE` du ledger : *« une adresse se vérifie par MOTIF, jamais par numéro »*.
+
+> 🆕 **`dn6-6`, LE 2026-09-15 — la citation de `docs/bom.md` est RÉ-ANCRÉE À LA MAIN, totaux INCHANGÉS (205).** Décision owner du 2026-09-15 : la page d'achat passe en anglais, en une seule page. La ligne arbitrée — la mise en garde d'achat du capteur de distance, qui nomme le modèle voisin **une seule fois** pour l'écarter — est la même ligne, **traduite** : même verdict `VRAI`, même motif, même rang, même `n`. Seule sa citation change, recopiée depuis l'arbre sur ses 120 premiers caractères, qui s'arrêtent **avant** la cellule `Source` : ⛔ l'adresse suivie qu'elle porte désormais n'entre pas dans ce manifeste. La citation d'origine était `\| Capteur de distance \| **TOF050C-VL6180X** (⛔ **PAS** un …` — ⛔ pas régénérée : le reste du manifeste, et ses écarts préexistants, ne sont pas touchés.
 
 | motif | occurrences |
 |---|---:|

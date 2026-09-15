@@ -568,3 +568,273 @@ dn6-6 / T7 — LES BORNES D'ARRIVEE, RE-TIREES APRES LA DERNIERE ECRITURE DES DE
   |     A("")
   | print("\n".join(out))
 
+── ADDENDUM DU 2026-09-15 — REVUE 4 COUCHES DE LA MARCHE (⛔ rien ci-dessus n'est reecrit) ──
+
+  (1) L'EN-TETE CI-DESSUS ECRIT « Les comptes de la premiere passe etaient les memes » : la
+      sortie de cette premiere passe (14:44 → 15:04) est restee au scratchpad de session, ⛔ PAS
+      PUBLIEE. C'est une affirmation que ce depot ⛔ ne permet pas de re-verifier ; seule T7b fait foi.
+  (2) Apres la revue, les TROIS gates adaptees ont ete corrigees (mutants neufs, regles resserrees,
+      garde du no-op de dn61 a rc=3) et la page d'achat, la page d'affiliation, le manifeste de
+      dn4-15, T1, T3, le CHANGELOG et la roadmap annotes. Ci-dessous : leurs TIRS NUS et leurs
+      CAMPAGNES rejoues sur l'arbre corrige (⛔ pas la passe complete, jouee cote coordination).
+  (3) Empreintes avant/apres chaque campagne (`git ls-files -s | sha256sum` ; contenu des fichiers
+      suivis, arbre de travail) — IDENTIQUES : ⛔ aucun mutant n'a touche l'arbre.
+      debut 2026-09-15T16:25:13+02:00 · index 11573b74ab520300 · contenu des fichiers suivis (arbre de travail) 351d3e801cf26e78
+      verif_affiliation_dn65 tir nu rc=0 BILAN : 24 OK, 0 KO
+      verif_affiliation_dn65 campagne : MUTANTS : 50 · sains (rc=1+BILAN+[KO ]) : 50 · rc=3 : 0 · ecarts CIBLES : 0 · index 11573b74ab520300 · contenu 351d3e801cf26e78
+      verif_bom_dn61 tir nu rc=0 BILAN : 24 OK, 0 KO
+      verif_bom_dn61 campagne : MUTANTS : 33 · sains (rc=1+BILAN+[KO ]) : 33 · rc=3 : 0 · ecarts CIBLES : 0 · index 11573b74ab520300 · contenu 351d3e801cf26e78
+      verif_cablage_dn62 tir nu rc=0 BILAN : 37 OK, 0 KO
+      verif_cablage_dn62 campagne : MUTANTS : 40 · sains (rc=1+BILAN+[KO ]) : 40 · rc=3 : 0 · ecarts CIBLES : 0 · index 11573b74ab520300 · contenu 351d3e801cf26e78
+      fin 2026-09-15T16:29:07+02:00
+
+  ── `verif_affiliation_dn65.py` — CAMPAGNE APRES REVUE, UN MUTANT PAR TIR ──
+    n°  rc  BILAN            vus rougir (colonne fixe)         CIBLES (AST)          verdict
+     1  1   23 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+     2  1   23 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+     3  1   23 OK, 1 KO      c4                                c4                    ✅ SAIN · 0 ecart
+     4  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+     5  1   23 OK, 1 KO      c6                                c6                    ✅ SAIN · 0 ecart
+     6  1   23 OK, 1 KO      c7                                c7                    ✅ SAIN · 0 ecart
+     7  1   23 OK, 1 KO      c8                                c8                    ✅ SAIN · 0 ecart
+     8  1   23 OK, 1 KO      c8                                c8                    ✅ SAIN · 0 ecart
+     9  1   23 OK, 1 KO      c9                                c9                    ✅ SAIN · 0 ecart
+    10  1   22 OK, 2 KO      c10,c11                           c10,c11               ✅ SAIN · 0 ecart
+    11  1   23 OK, 1 KO      c10                               c10                   ✅ SAIN · 0 ecart
+    12  1   23 OK, 1 KO      c11                               c11                   ✅ SAIN · 0 ecart
+    13  1   23 OK, 1 KO      c12                               c12                   ✅ SAIN · 0 ecart
+    14  1   23 OK, 1 KO      c13                               c13                   ✅ SAIN · 0 ecart
+    15  1   23 OK, 1 KO      c14                               c14                   ✅ SAIN · 0 ecart
+    16  1   22 OK, 2 KO      c15,c16                           c15,c16               ✅ SAIN · 0 ecart
+    17  1   22 OK, 2 KO      c15,c16                           c15,c16               ✅ SAIN · 0 ecart
+    18  1   23 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+    19  1   22 OK, 2 KO      c14,c17                           c17,c14               ✅ SAIN · 0 ecart
+    20  1   22 OK, 2 KO      c18,c8                            c18,c8                ✅ SAIN · 0 ecart
+    21  1   22 OK, 2 KO      c17,c19                           c19,c17               ✅ SAIN · 0 ecart
+    22  1   0 OK, 1 KO       c1                                c1                    ✅ SAIN · 0 ecart
+    23  1   19 OK, 5 KO      c2,c24,c3,c4,c6                   c2,c4,c3,c6,c24       ✅ SAIN · 0 ecart
+    24  1   23 OK, 1 KO      c20                               c20                   ✅ SAIN · 0 ecart
+    25  1   23 OK, 1 KO      c21                               c21                   ✅ SAIN · 0 ecart
+    26  1   23 OK, 1 KO      c22                               c22                   ✅ SAIN · 0 ecart
+    27  1   21 OK, 1 KO      z                                 z                     ✅ SAIN · 0 ecart
+    28  1   0 OK, 1 KO       c0                                c0                    ✅ SAIN · 0 ecart
+    29  1   23 OK, 1 KO      c4                                c4                    ✅ SAIN · 0 ecart
+    30  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    31  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    32  1   23 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+    33  1   23 OK, 1 KO      c15                               c15                   ✅ SAIN · 0 ecart
+    34  1   23 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+    35  1   23 OK, 1 KO      c23                               c23                   ✅ SAIN · 0 ecart
+    36  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    37  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    38  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    39  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    40  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    41  1   23 OK, 1 KO      c24                               c24                   ✅ SAIN · 0 ecart
+    42  1   23 OK, 1 KO      c6                                c6                    ✅ SAIN · 0 ecart
+    43  1   23 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+    44  1   23 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+    45  1   23 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+    46  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    47  1   22 OK, 2 KO      c24,c5                            c5,c24                ✅ SAIN · 0 ecart
+    48  1   23 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+    49  1   23 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+    50  1   23 OK, 1 KO      c15                               c15                   ✅ SAIN · 0 ecart
+    ⇒ MUTANTS : 50 · sains (rc=1+BILAN+[KO ]) : 50 · rc=3 : 0 · ecarts CIBLES : 0
+
+  ── `verif_bom_dn61.py` — CAMPAGNE APRES REVUE, UN MUTANT PAR TIR ──
+    n°  rc  BILAN            vus rougir (colonne fixe)         CIBLES (AST)          verdict
+     1  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute ligne a prix porte sa DATE de releve
+     2  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute ligne a prix porte son URL SOURCE
+     3  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute ligne SANS prix se DECLARE
+     4  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] le palier « DeskNode + Ambiance » titre UNE section
+     5  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+          [KO ] INA219 est NOMME dans le document
+          [KO ] INA219 porte un MOTIF d'exclusion
+     6  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] VL6180X porte un MOTIF d'exclusion
+     7  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] elle cite son STATUT
+     8  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] la page DECLARE si elle porte des liens affilies
+     9  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] ⛔ aucun jalon CHIFFRE n'est publie
+    10  1   21 OK, 3 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute ligne SANS prix se DECLARE
+          [KO ] INA219 est HORS des sections de palier
+          [KO ] INA219 porte un MOTIF d'exclusion
+    11  1   0 OK, 1 KO       ?                                 —                     ✅ SAIN
+          [KO ] le document n'est pas vide
+    12  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] aucune table a prix hors du controle
+    13  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] le palier « DeskNode » titre UNE section
+    14  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+          [KO ] VL6180X est NOMME dans le document
+          [KO ] VL6180X porte un MOTIF d'exclusion
+    15  1   21 OK, 3 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute ligne SANS prix se DECLARE
+          [KO ] VL6180X est HORS des sections de palier
+          [KO ] VL6180X porte un MOTIF d'exclusion
+    16  1   21 OK, 3 KO      ?                                 —                     ✅ SAIN
+          [KO ] la BOM cite la marche `dn4-41`
+          [KO ] elle cite son STATUT
+          [KO ] elle cite une DATE de relecture
+    17  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] elle cite une DATE de relecture
+    18  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] aucune table a prix hors du controle
+    19  1   1 OK, 1 KO       ?                                 —                     ✅ SAIN
+          [KO ] au moins une table SE DECLARE table de BOM
+    20  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] le palier « DeskNode + Ambiance » titre UNE section
+    21  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute table de PALIER declare ses 7 colonnes
+          [KO ] toute table de BOM RESOUT ses 3 colonnes
+    22  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute ligne SANS prix se DECLARE
+    23  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+          [KO ] VL6180X porte un MOTIF d'exclusion
+          [KO ] INA219 porte un MOTIF d'exclusion
+    24  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+          [KO ] INA219 est HORS des sections de palier
+          [KO ] INA219 porte un MOTIF d'exclusion
+    25  1   0 OK, 1 KO       ?                                 —                     ✅ SAIN
+          [KO ] le document d'achat existe
+    26  1   5 OK, 1 KO       ?                                 —                     ✅ SAIN
+          [KO ] tout controle prevu est EMIS
+    27  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute ligne a prix porte ses AUTRES champs
+    28  1   22 OK, 2 KO      ?                                 —                     ✅ SAIN
+          [KO ] toute table de PALIER declare ses 7 colonnes
+          [KO ] toute ligne SANS prix se DECLARE
+    29  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] chaque source tentee porte URL, DATE et MOTIF
+    30  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] chaque source tentee porte URL, DATE et MOTIF
+    31  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] la table des sources non atteintes est LA
+    32  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] aucune table a prix hors du controle
+    33  1   23 OK, 1 KO      ?                                 —                     ✅ SAIN
+          [KO ] ⛔ aucun jalon CHIFFRE n'est publie
+    ⇒ MUTANTS : 33 · sains (rc=1+BILAN+[KO ]) : 33 · rc=3 : 0 · ecarts CIBLES : 0
+
+  ── `verif_cablage_dn62.py` — CAMPAGNE APRES REVUE, UN MUTANT PAR TIR ──
+    n°  rc  BILAN            vus rougir (colonne fixe)         CIBLES (AST)          verdict
+     1  1   36 OK, 1 KO      c2                                c2                    ✅ SAIN · 0 ecart
+          [KO ] (c2) aucun § n'est cite SANS son fichier
+     2  1   36 OK, 1 KO      c3                                c3                    ✅ SAIN · 0 ecart
+          [KO ] (c3) chaque paire (fichier, §) EXISTE dans hardware/
+     3  1   36 OK, 1 KO      c4                                c4                    ✅ SAIN · 0 ecart
+          [KO ] (c4) aucune paire citee n'est sur la liste `dn4-34`
+     4  1   36 OK, 1 KO      c5                                c5                    ✅ SAIN · 0 ecart
+          [KO ] (c5) SCL = GPIO7 cite sa mesure
+     5  1   36 OK, 1 KO      c6                                c6                    ✅ SAIN · 0 ecart
+          [KO ] (c6) SDA = GPIO15 cite sa mesure
+     6  1   36 OK, 1 KO      c7                                c7                    ✅ SAIN · 0 ecart
+          [KO ] (c7) l'alimentation 3V3 / GND cite sa mesure
+     7  1   36 OK, 1 KO      c8                                c8                    ✅ SAIN · 0 ecart
+          [KO ] (c8) BME680 a l'adresse 0x77 cite sa mesure
+     8  1   36 OK, 1 KO      c9                                c9                    ✅ SAIN · 0 ecart
+          [KO ] (c9) BH1750 a l'adresse 0x23 cite sa mesure
+     9  1   35 OK, 2 KO      c10,c11                           c10,c11               ✅ SAIN · 0 ecart
+          [KO ] (c10) la page porte l'inversion `SDA`/`SCL` de la source
+          [KO ] (c11) cet avertissement porte SA DATE
+    10  1   36 OK, 1 KO      c11                               c11                   ✅ SAIN · 0 ecart
+          [KO ] (c11) cet avertissement porte SA DATE
+    11  1   36 OK, 1 KO      c12                               c12                   ✅ SAIN · 0 ecart
+          [KO ] (c12) l'embase JST porte son piege (jumelle UART)
+    12  1   36 OK, 1 KO      c13                               c13                   ✅ SAIN · 0 ecart
+          [KO ] (c13) le header 2x12 porte son piege (rangee A)
+    13  1   36 OK, 1 KO      c14                               c14                   ✅ SAIN · 0 ecart
+          [KO ] (c14) la procedure prescrit PLUSIEURS passes
+    14  1   36 OK, 1 KO      c15                               c15                   ✅ SAIN · 0 ecart
+          [KO ] (c15) un desaccord n'est PAS un verdict
+    15  1   36 OK, 1 KO      c16                               c16                   ✅ SAIN · 0 ecart
+          [KO ] (c16) le departage est la LECTURE DE REGISTRE
+    16  1   36 OK, 1 KO      c17                               c17                   ✅ SAIN · 0 ecart
+          [KO ] (c17) un TIMEOUT n'est pas une absence
+    17  1   36 OK, 1 KO      c18                               c18                   ✅ SAIN · 0 ecart
+          [KO ] (c18) `0x76` est nomme FAUX POSITIF MESURE
+    18  1   36 OK, 1 KO      c19                               c19                   ✅ SAIN · 0 ecart
+          [KO ] (c19) la fenetre `0x76` renvoie a `0x77`
+    19  1   36 OK, 1 KO      c20                               c20                   ✅ SAIN · 0 ecart
+          [KO ] (c20) bouger ⇒ COUPER L'ALIM ⇒ rescanner
+    20  1   36 OK, 1 KO      c21                               c21                   ✅ SAIN · 0 ecart
+          [KO ] (c21) chaque palier a UN bloc `TESTED`
+    21  1   36 OK, 1 KO      c22                               c22                   ✅ SAIN · 0 ecart
+          [KO ] (c22) chaque `TESTED` dit COMBIEN DE TEMPS
+    22  1   36 OK, 1 KO      c23                               c23                   ✅ SAIN · 0 ecart
+          [KO ] (c23) chaque `TESTED` dit SUR QUEL SHA
+    23  1   36 OK, 1 KO      c24                               c24                   ✅ SAIN · 0 ecart
+          [KO ] (c24) chaque `TESTED` ecrit ce qui n'a JAMAIS tourne
+    24  1   36 OK, 1 KO      c25                               c25                   ✅ SAIN · 0 ecart
+          [KO ] (c25) le README lie `docs/cablage.md`
+    25  1   36 OK, 1 KO      c26                               c26                   ✅ SAIN · 0 ecart
+          [KO ] (c26) le README lie `docs/bom.md`
+    26  1   36 OK, 1 KO      c27                               c27                   ✅ SAIN · 0 ecart
+          [KO ] (c27) toute photo citee existe
+    27  1   36 OK, 1 KO      c28                               c28                   ✅ SAIN · 0 ecart
+          [KO ] (c28) la page MONTRE au moins une photo
+    28  1   36 OK, 1 KO      c29                               c29                   ✅ SAIN · 0 ecart
+          [KO ] (c29) chaque notion a nommer est DEFINIE dans le clone
+    29  1   0 OK, 1 KO       c1                                c1                    ✅ SAIN · 0 ecart
+          [KO ] (c1) la page de cablage n'est pas vide
+    30  1   36 OK, 1 KO      c30                               c30                   ✅ SAIN · 0 ecart
+          [KO ] (c30) chaque controle est vise par >= 1 mutant
+    31  1   36 OK, 1 KO      c31                               c31                   ✅ SAIN · 0 ecart
+          [KO ] (c31) chaque cible de mutant est un controle REEL
+    32  1   36 OK, 1 KO      c32                               c32                   ✅ SAIN · 0 ecart
+          [KO ] (c32) la regle de (c4) distingue les HOMONYMES
+    33  1   36 OK, 1 KO      c33                               c33                   ✅ SAIN · 0 ecart
+          [KO ] (c33) `CIBLES` et `MUTANTS` se correspondent
+    34  1   36 OK, 1 KO      c34                               c34                   ✅ SAIN · 0 ecart
+          [KO ] (c34) les DEUX temoins positifs et leur portee
+    35  1   36 OK, 1 KO      c35                               c35                   ✅ SAIN · 0 ecart
+          [KO ] (c35) `ADDR` du BH1750 va a la MASSE
+    36  1   36 OK, 1 KO      c36                               c36                   ✅ SAIN · 0 ecart
+          [KO ] (c36) le PIEGE DU MIROIR est ecrit
+    37  1   34 OK, 3 KO      c18,c19,c37                       c37,c18,c19           ✅ SAIN · 0 ecart
+          [KO ] (c37) la section d'ancrage de la procedure existe
+          [KO ] (c18) `0x76` est nomme FAUX POSITIF MESURE
+          [KO ] (c19) la fenetre `0x76` renvoie a `0x77`
+    38  1   18 OK, 1 KO      z                                 z                     ✅ SAIN · 0 ecart
+          [KO ] (z) tout controle prevu est EMIS
+    39  1   36 OK, 1 KO      c29                               c29                   ✅ SAIN · 0 ecart
+          [KO ] (c29) chaque notion a nommer est DEFINIE dans le clone
+    40  1   36 OK, 1 KO      c24                               c24                   ✅ SAIN · 0 ecart
+          [KO ] (c24) chaque `TESTED` ecrit ce qui n'a JAMAIS tourne
+    ⇒ MUTANTS : 40 · sains (rc=1+BILAN+[KO ]) : 40 · rc=3 : 0 · ecarts CIBLES : 0
+
+  ── LES MUTANTS NEUFS DE LA REVUE GARDENT-ILS LEUR BRANCHE ? (garde RETIREE sur une COPIE hors arbre) ──
+     Chaque copie ne differe de la gate que par la garde nommee ; si la garde retiree laisse le mutant
+     VERT, le mutant la garde. #47 : la garde est la maille CELLULE de (c5) — retiree, le mutant reste
+     rouge par (c24), mais (c5) quitte les controles vus rougir : c'est l'ATTRIBUTION qui la garde.
+     #44 garde RETIREE (exception qui exempte TOUT threshold) : tir nu BILAN : 24 OK, 0 KO · mutant 44 rc=0 KO vus []
+     #45 garde RETIREE (sans \btiers?\b) : tir nu BILAN : 24 OK, 0 KO · mutant 45 rc=0 KO vus []
+     #46 garde RETIREE (sans (?<!no )) : tir nu BILAN : 24 OK, 0 KO · mutant 46 rc=0 KO vus []
+     #48 garde RETIREE (sans (?!\s+page)) : tir nu BILAN : 24 OK, 0 KO · mutant 48 rc=0 KO vus []
+     #49 garde RETIREE (sans €/EUR en prefixe) : tir nu BILAN : 24 OK, 0 KO · mutant 49 rc=0 KO vus []
+     #50 garde RETIREE (sans , dans _E) : tir nu BILAN : 24 OK, 0 KO · mutant 50 rc=0 KO vus []
+     #47 garde RETIREE ((c5) a la maille LIGNE) : tir nu BILAN : 24 OK, 0 KO · mutant 47 rc=1 KO vus ['(c24)']
+     #32 garde RETIREE (regle `date` au lieu de `survey date`) : tir nu BILAN : 24 OK, 0 KO · mutant 32 rc=0 BILAN BILAN : 24 OK, 0 KO
+     #33 garde RETIREE (fenetre `[^.\n]` d'avant la revue) : tir nu BILAN : 24 OK, 0 KO · mutant 33 rc=0 BILAN BILAN : 24 OK, 0 KO
+     garde du no-op de dn61 (copie hors arbre, ancre du mutant 7 deplacee) : rc=3, `[KO ] le mutant 7 a
+     bien un EFFET` · `BILAN : 0 OK, 1 KO` — ⛔ plus rc=1.
+
+  ── MESURES DES REGLES RESSERREES (module importe, 2026-09-15) ──
+     ⚠️ Les chaines sondees ⛔ sont PAS recopiees : ce releve est relu par la gate d'affiliation, et un
+        montant de jalon ou un montant pres d'un mot de projection y REPLANTERAIT la faute (mesure : la
+        1re redaction de cet addendum a fait rougir (c15) et (c16) sur lui-meme, 22 OK / 2 KO).
+     motif des jalons (c15) : un millier ecrit avec la VIRGULE anglaise, devise apres OU avant : VU (⛔ vu avant la revue) ;
+       une decimale a virgule (le cas « quatre virgule soixante-quinze euros ») : ⛔ vu ; un point decimal : ⛔ vu ;
+       un millier a espace precede d'un chiffre : ⛔ vu ; un millier a virgule precede d'un chiffre : ⛔ vu
+     montants (c16) : euro ecrit EN PREFIXE, symbole ou code : VU (⛔ vu avant la revue) ; tir nu VERT sur tout le corpus suivi
+     exception « payout threshold » : qualificatif en gras ou entre accents graves : QUALIFIE (⛔ avant la revue) ; `threshold` seul : ⛔ qualifie
+     mention : le libelle du renvoi vers « la page des liens affilies » : ⛔ mention (mention avant la revue) ; la negation « no » : ⛔ mention
+     dn61 (c10) : un verbe au passe sur le mot anglais de cible : ⛔ jalon ; une decimale anglaise dans la fenetre : VUE ; euro en prefixe : VU

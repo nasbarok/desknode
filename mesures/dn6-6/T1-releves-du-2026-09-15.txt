@@ -144,3 +144,20 @@ contrat    : chaque fait porte son ADRESSE (ou l'aveu qu'elle n'a pas ete
      `docs/affiliation.md` §6 avec son porteur, et au ledger de planification.
   ⛔ Aucun compte cree, aucune condition acceptee, aucun lien genere par
      l'agent. ⛔ Aucun lien Waveshare, ⛔ aucun fichier de financement GitHub.
+
+── ADDENDUM DU 2026-09-15 — REVUE 4 COUCHES DE LA MARCHE (⛔ rien ci-dessus n'est reecrit) ─
+
+  (1) LA DESTINATION DES LIENS, AU (c), EST UNE DECLARATION DE L'OWNER, ⛔ UNE LECTURE
+      ETABLIE. Le (c) ecrit que l'owner a genere chaque lien « a partir » d'une adresse de
+      recherche nue ; le (e) dit que la destination n'est verifiee par personne. Les deux
+      tiennent ensemble a une condition, ecrite ici : la correspondance code ⇐ adresse de
+      recherche est CE QUE L'OWNER DECLARE, ⛔ verifie, et elle le reste jusqu'au geste
+      owner — cliquer une fois chaque lien, ⛔ sans acheter.
+  (2) « LES REGLES DU PROGRAMME SANCTIONNENT LE TRAFIC ARTIFICIEL » (au (e)) : c'est une
+      lecture de l'owner, dans l'annexe des penalites des « Affiliate Program Rules », au
+      titre du spam de trafic — ⛔ une lecture de l'agent, qui n'a pas acces au portail.
+  (3) GRILLE DES TAUX (au (b)) : releve owner — la grille ⛔ a aucune ligne pour les
+      composants electroniques ; d'ou le taux « Other Categories ».
+  (4) Les numeros de ligne de la page d'achat cites au (c) sont ceux du commit `a144e68` ;
+      la revue a ajoute des lignes au-dessus des tables (annotations datees) : ils ont
+      decale, ⛔ les codes ni les adresses.

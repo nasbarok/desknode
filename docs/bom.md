@@ -7,6 +7,9 @@ looked**. It is written for someone who has never seen this project.
 on marketplaces where prices move without notice. **A price without its date is worth nothing** —
 which is why every one of them carries its own.
 
+⚠️ **Affiliate links on this page**: the `Source` links of the five AliExpress rows are affiliate links,
+each marked `affiliate link` where it appears — the details are in the last section of this page.
+
 ---
 
 ## The two tiers
@@ -24,7 +27,7 @@ These are the same two tiers as the [README](../README.md) — same names, ⛔ n
 
 | Item | Exact reference | Qty | Supplier | Price | Survey date | Source |
 |---|---|---|---|---|---|---|
-| Touchscreen development board | **Waveshare ESP32-S3-Touch-LCD-2.8B** (Type B, **480 × 640**) | 1 | AliExpress marketplace | **26.77 – 27.88 €** (median **27.32 €**, 2 listings) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c3yKWEah) — affiliate link |
+| Touchscreen development board | **Waveshare ESP32-S3-Touch-LCD-2.8B** (Type B, **480 × 640**) | 1 | AliExpress marketplace | **26.77 – 27.88 €** (median **27.32 €**, 2 listings) | 2026-09-06 | [AliExpress search: Waveshare ESP32-S3-Touch-LCD-2.8B](https://s.click.aliexpress.com/e/_c3yKWEah) — affiliate link |
 | USB-C data cable | any, **data AND charging** | 1 | — | ⛔ **not surveyed** — generic consumable, no single reference to order: ⛔ so no source was tried | — | — |
 
 ⛔ **Manufacturer price not surveyable.** `https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm` returns
@@ -58,7 +61,7 @@ the wrong one. There is also a round `2.8C` at 480 × 480 — ⛔ **surveyed now
 **What settles it is the resolution: 480 × 640.** If the listing does not state it, ⛔ do not buy it.
 
 ⚠️ **And the manufacturer's documentation is not reliable on this point.** The hardware folder
-confronted three sources on four verifiable points: they got it wrong or contradicted each other
+cross-checked three sources on four verifiable points: they got it wrong or contradicted each other
 **four times** — including a reseller mirror that announces a `CH343P` chip **measured absent** from the
 real board, because it mixes up the `2.8` and `2.8B` variants. Details in **§14.2** of
 `hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`. **The silkscreen and the measurement are what count.**
@@ -92,15 +95,15 @@ the listing says **680**, ⛔ not "6xx".
 
 | Item | Exact reference | Qty | Supplier | Price | Survey date | Source |
 |---|---|---|---|---|---|---|
-| Temperature / humidity / pressure / gas sensor | **BME680**, breakout type **CJMCU-680** (6 pins `VCC GND SCL SDA SDO CS`) | 1 | AliExpress marketplace | median **11.74 €** (10 listings, 7.77 – 16.96 €) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c4Dp3sBL) — affiliate link |
-| Light sensor | **BH1750**, module **GY-302** (5 pins `VCC GND SCL SDA ADDR`, 3 – 5 V) | 1 | AliExpress marketplace | median **1.93 €** (10 listings, 1.45 – 14.62 €) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c4OQ98X7) — affiliate link |
-| Jumper wire | Dupont female-female, ~10 cm | 4 min. | — | ⛔ **not surveyed** — generic consumable sold in lots, no single reference: ⛔ so no source was tried | — | — |
+| Temperature / humidity / pressure / gas sensor | **BME680**, breakout type **CJMCU-680** (6 pins `VCC GND SCL SDA SDO CS`) | 1 | AliExpress marketplace | median **11.74 €** (10 listings, 7.77 – 16.96 €) | 2026-09-06 | [AliExpress search: BME680 module](https://s.click.aliexpress.com/e/_c4Dp3sBL) — affiliate link |
+| Light sensor | **BH1750**, module **GY-302** (5 pins `VCC GND SCL SDA ADDR`, 3 – 5 V) | 1 | AliExpress marketplace | median **1.93 €** (10 listings, 1.45 – 14.62 €) | 2026-09-06 | [AliExpress search: BH1750 GY-302](https://s.click.aliexpress.com/e/_c4OQ98X7) — affiliate link |
+| Jumper wire | Dupont female-female, ~10 cm | 4 min. | — | ⛔ **not surveyed** — generic consumable sold in packs, no single reference: ⛔ so no source was tried | — | — |
 
 **Cost of the tier, as of 2026-09-06:** about **27.32 + 11.74 + 1.93 ≈ 41 €**, excluding shipping, excluding cables.
 
 <!-- ⛔ ANNOTATION, NOT A REWRITE (NFR3): the "Jumper wire" row
-     above stays AS IT IS. What follows makes it precise; the report
-     inherited from dn6-1 designated wiring as the territory of the next step. -->
+     above stays AS IT IS. What follows makes it precise; the
+     deferral inherited from dn6-1 designated wiring as the territory of the next step. -->
 
 ### ⚠️ Annotation of 2026-09-07 — the "Jumper wire" row, made precise
 
@@ -132,14 +135,14 @@ either from the board (row `B` carries `3V3` and `G`, and row `A` carries **two 
 branched off the 1st module. In both cases these are **four more wires**.
 
 ⇒ **Nine wires in total**, and ⛔ it is neither 8 nor 5: `SDA`/`SCL` are **shared** in the
-**electrical** sense — one bus, ⛔ not two — but that ⛔ saves **no wire**. **Get a lot**, ⛔ do not
+**electrical** sense — one bus, ⛔ not two — but that ⛔ saves **no wire**. **Get a pack**, ⛔ do not
 count to the exact wire: it is a consumable, and that is why the row above has no price,
 no source, and no firm quantity.
 
 ### ⚠️ Why a median and not a mean
 
 Because the mean lies, and it is **measured here**. Out of the 10 BH1750 listings, **a single one at
-14.62 €** (a lot, or a pricing error) moves the mean from **2.14 to 3.39 €** — **+58 %** —
+14.62 €** (a pack, or a pricing error) moves the mean from **2.14 to 3.39 €** — **+58 %** —
 while the median only moves from 1.86 to 1.93 €.
 
 ⇒ on a marketplace, **the median is what settles it**. Every row above publishes it, and the
@@ -155,10 +158,10 @@ cites the measurement it comes from** — ⛔ never a copy of a datasheet.
 | I²C address **measured** | `0x77` (§13.3) | `0x23` (§13.3) |
 | How it was established | reading an identity register, then the factory coefficients (§13.6 bis) | by **light stimulus** — it has no register to read (§13.16.8) |
 | Address pin | `SDO` measured at 3.3 V ⇒ `0x77` | `ADDR` **left free** ⇒ `0x23`, deterministic, **5 answers out of 5** |
-| Voltage | +3.3 V measured with the multimeter, board powered | 3 – 5 V (bag) |
+| Voltage | +3.3 V measured with the multimeter, board powered | 3 – 5 V (printed on the bag) |
 | Pin header | **supplied unsoldered** | **supplied unsoldered** |
 
-🔴 **Both are soldered, and ⛔ they are not wired the same way.** Neither breakout lines up
+🔴 **Both need soldering, and ⛔ they are not wired the same way.** Neither breakout lines up
 "first pin with first pin": on these two modules, **`SDA` and `SCL` are crossed** relative
 to each other. The wiring diagram is the subject of the next step — until then, the
 photos are here:
@@ -166,6 +169,9 @@ photos are here:
 [BH1750 pin side](cablage/2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg) ·
 [BH1750 silkscreen V322](cablage/2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg) ·
 [BH1750 silkscreen and bag](cablage/2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg)
+
+⚠️ *Annotated on 2026-09-15 (`dn6-6`)*: "the next step" above has shipped (`dn6-2`, 2026-09-07) — the
+wiring page is [wiring a DeskNode](cablage.md). The sentence and the photos stay as they were.
 
 ⚠️ **The board's I²C pinout is `SDA = GPIO15`, `SCL = GPIO7`** — and a third-party source gave
 them **swapped**. Measurement and silkscreen in **§13.1** of the sensors folder.
@@ -180,8 +186,8 @@ without a written reason would be a defect.
 
 | Module | Exact reference | Price surveyed | Survey date | Source | Why it is **not** in the catalogue |
 |---|---|---|---|---|---|
-| Distance sensor | **TOF050C-VL6180X** (⛔ **NOT** a VL53L0X) | **3.21 €** (1 listing naming it explicitly) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c3w7WL8h) — affiliate link | 🔴 **The tested unit is doubly defective**: its **analog stage is dead** — no reaction to a light variation of **~2 280×**, while its digital stage answers perfectly — **and** its presence **prevents the board from booting** (black screen, processor halted, no more USB). ⇒ ⛔ outside V1. |
-| Current sensor | **INA219**, module **CJMCU** (shunt `R100`, 0.1 Ω) | median **1.87 €** (3 listings, 1.80 – 2.41 €) | 2026-09-06 | [AliExpress search](https://s.click.aliexpress.com/e/_c3vm4Fkp) — affiliate link | Project decision: **not now**. It was **physically removed from the bus on 2026-08-21** and the corresponding reading removed from the code. ⇒ power consumption **will not be measured in V1**. |
+| Distance sensor | **TOF050C-VL6180X** (⛔ **NOT** a VL53L0X) | **3.21 €** (1 listing naming it explicitly) | 2026-09-06 | [AliExpress search: TOF050C-VL6180X](https://s.click.aliexpress.com/e/_c3w7WL8h) — affiliate link | 🔴 **The tested unit is doubly defective**: its **analog stage is dead** — no reaction to a light variation of **~2 280×**, while its digital stage answers perfectly — **and** its presence **prevents the board from booting** (black screen, processor halted, no more USB). ⇒ ⛔ outside V1. |
+| Current sensor | **INA219**, module **CJMCU** (shunt `R100`, 0.1 Ω) | median **1.87 €** (3 listings, 1.80 – 2.41 €) | 2026-09-06 | [AliExpress search: INA219 CJMCU](https://s.click.aliexpress.com/e/_c3vm4Fkp) — affiliate link | Project decision: **not now**. It was **physically removed from the bus on 2026-08-21** and the corresponding reading removed from the code. ⇒ power consumption **will not be measured in V1**. |
 
 These two modules are on the photos of the prototype, and **the captions say so**: ⛔ what you
 see there is not what you buy.
@@ -215,6 +221,11 @@ shop name cannot be retried, a URL can.
 | `https://www.berrybase.de/search?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 | page rendered, **no product page** |
 | `https://thepihut.com/search?q=BME680` | 2026-09-06 | page rendered, "no results found" |
 
+⚠️ *Annotated on 2026-09-15 (`dn6-6`)*: the **first row** of this table — the manufacturer's product page,
+HTTP 403 — is refuted the same way as the paragraph under the first tier table: re-read on 2026-09-07
+with a browser header, that page returns HTTP 200. The row stays as it was tried on 2026-09-06, with an
+automated retrieval tool; ⛔ it is not rewritten.
+
 Only one European alternative answered, and it is **a different product**: Pimoroni sells its
 own "BME680 Breakout" at **11.05 GBP** excluding VAT (surveyed on 2026-09-06) — ⛔ it is not the
 6-pin module of the prototype.
@@ -229,6 +240,9 @@ product page may carry cheaper or more expensive variants.
 
 **This page carries no affiliate link.** The URLs above are bare search addresses.
 
+⚠️ *Outdated since 2026-09-15 (`dn6-6`)* — the sentence above was true until that day and is kept as it
+was; what is in force is the annotation of 2026-09-15 at the end of this section.
+
 ⚠️ If that changes one day, it will be said **here**, in this place. Setting up an affiliation is not
 a box to tick — it means signing up somewhere, declaring it, and keeping the promise
 over time. It is therefore carried as a subject in its own right, ⛔ not as a footnote line.
@@ -237,6 +251,9 @@ over time. It is therefore carried as a subject in its own right, ⛔ not as a f
      above stay WORD FOR WORD. What follows completes them — the subject
      announced "in its own right" now has its page, and the switch-over
      point is written here, where the status sentence already lives. -->
+<!-- ⚠️ ANNOTATED ON 2026-09-15 (dn6-6): those two paragraphs were TRANSLATED
+     from French that day, with the whole page. "Word for word" now holds for
+     their translation; the French original lives in the git history. -->
 
 ### Annotation of 2026-09-07 — the subject has its page, and the switch-over point is written
 
@@ -256,13 +273,18 @@ change:
    ⚠️ *annotated on 2026-09-15 (`dn8-8`): this repository is **public** there since that day;*
 2. **the owner must open the account themselves** and accept the terms and conditions — ⛔ this is not
    a gesture that an agent can make in their place;
-3. **both status sentences must be rewritten** — this one and the one of the page above. They
-   will stop saying "no" to say what is true; ⛔ they will not be erased.
+3. **both status sentences must be rewritten** — this one and the one on the page above. They
+   will stop saying "none" to say what is true; ⛔ they will not be erased.
 
 ⚠️ **And it will be said here, in this place.** This is not an intention: it is **guarded mechanically,
 in both directions**. As long as no published address carries an affiliate marker, both
 pages must **assert it**; the day one of them carries one, the assertion becomes false and the
 check **turns red** — even if nobody thought of coming back to write here.
+
+⚠️ *Annotated on 2026-09-15 (`dn6-6`)*: the check described in the paragraph above is the one that guarded
+the old promise. It was rewritten that day for the new one — every tracked address is declared in its own
+cell, next to the mention, and the mention never sits on an address that is not tracked (see the
+annotation of 2026-09-15 below).
 
 <!-- ⛔ ANNOTATION, NOT A REWRITE (NFR3): the status sentence at the top of
      this section stays, translated from its original, and so do the three
@@ -285,7 +307,8 @@ annotation.**
 
 **Where each link comes from.** The owner generated the five links on 2026-09-15 with the
 programme's batch link tool, from the **same five search pages** where the prices above were read on
-2026-09-06 — so each `Source` cell is still the source of its price. The correspondence between each
+2026-09-06 — so each `Source` cell is still the source of its price, **as the owner states it**: that
+statement is pending the owner's one-time click check on each link. The correspondence between each
 link code and the bare search address it was generated from is published in
 [the survey of 2026-09-15](../mesures/dn6-6/T1-releves-du-2026-09-15.txt), so that a price can be
 checked again **without clicking a tracked link**. ⚠️ The destination of the links was ⛔ **not**
@@ -294,7 +317,8 @@ it is a gesture of the owner. ⛔ No price, no date and none of the 10 addresses
 on 2026-09-15.
 
 ⚠️ The two modules outside the tiers carry a tracked link too: that does ⛔ **not** put them back in a
-tier, and their reasons for exclusion above are unchanged.
+tier, their reasons for exclusion above are unchanged, and they are ⛔ **not** to be bought to build a V1
+DeskNode.
 
 **The switch-over point, condition by condition, as of 2026-09-15:**
 
@@ -303,7 +327,7 @@ tier, and their reasons for exclusion above are unchanged.
    not yet**: the application is **waiting for approval**, and ⛔ no Waveshare link is published here;
 2. **the owner opened the account themselves** and accepted the programme's rules — a gesture of the
    owner, ⛔ not of an agent;
-3. **both status sentences are annotated** — this one, and the one of
+3. **both status sentences are annotated** — this one, and the one on
    [the affiliate links page](affiliation.md): the old sentence stays, the new one is written below
    it. The check that guarded the old promise was rewritten the same day to guard the new one:
    **every tracked address is declared, in its place** — on this page, in its own cell, next to the

@@ -56,7 +56,8 @@ PRIX SANS SA DATE ET SA SOURCE. Cette gate garde cette regle, et rien d'autre.
    cette date, texte d'origine dans l'historique git). Decision owner du
    2026-09-15 : la page passe en anglais, ⛔ UNE SEULE page (pas de
    `bom.en.md`). Les controles gardent le MEME invariant, sur les litteraux
-   anglais, et ⛔ aucun controle n'est ajoute ni retire (24 + (z), 31 mutants) :
+   anglais, et ⛔ aucun controle n'est ajoute ni retire (24 + (z) ; 31 mutants,
+   33 apres la revue du meme jour) :
      `Date du relevé` ⇒ `Survey date` · `Prix` ⇒ `Price` · `Qté` ⇒ `Qty` ·
      `Désignation` ⇒ `Item` · `Référence exacte` ⇒ `Exact reference` ·
      `Fournisseur` ⇒ `Supplier` · `Pourquoi il n'est pas…` ⇒ `Why it is not…`
@@ -66,18 +67,26 @@ PRIX SANS SA DATE ET SA SOURCE. Cette gate garde cette regle, et rien d'autre.
      « ne porte aucun lien affilié » / « porte des liens affiliés » ⇒
      « carries no affiliate link » / « carries affiliate links ».
 🔴 (c1) SE DECLARE DESORMAIS PAR `Survey date` ET `Source`, ⛔ plus par la
-   seule sous-chaine `date`. Mesure du 2026-09-15 (`mesures/dn6-6/T3`) :
-   `Date du relevé` CONTIENT `date` ⇒ une table de palier retraduite en
-   francais continuait de se declarer table de BOM, et ⛔ n'etait vue que par
-   RICOCHET (`22 OK, 2 KO` : colonnes `item · price · …` introuvables). Avec
-   `Survey date`, elle CESSE de se declarer et (c1c) la NOMME (`23 OK, 1 KO`,
-   « table a prix ni declaree ni exemptee ») ; et la page francaise d'origine
-   ENTIERE sort a `1 OK, 1 KO` — AUCUNE table ne se declare.
+   seule sous-chaine `date`. `Date du relevé` CONTIENT `date` ⇒ une table de
+   palier retraduite en francais continuait de se declarer table de BOM, et
+   ⛔ n'etait vue que par RICOCHET (colonnes `item · price · …` introuvables).
+   Avec `Survey date`, elle CESSE de se declarer et (c1c) la NOMME (`23 OK,
+   1 KO`, « table a prix ni declaree ni exemptee ») ; et la page francaise
+   d'origine ENTIERE sort a `1 OK, 1 KO` — AUCUNE table ne se declare. Ces deux
+   derniers comptes sont PUBLIES : `mesures/dn6-6/T3`, temoins W9bis et W9.
+   ⚠️ CORRIGE PAR LA REVUE 4 COUCHES DU 2026-09-15 : cette phrase citait aussi
+      un `22 OK, 2 KO` de l'ANCIENNE regle comme « mesure publiee dans T3 » —
+      ⛔ il n'y est pas (les trois `22 OK, 2 KO` de T3 sont des mutants de la
+      gate d'affiliation). Ce compte a ete OBSERVE pendant le dev, ⛔ pas publie.
+   🆕 Et le mutant 32 garde desormais cette branche : il remet `Date du relevé`
+      dans une table de palier, ce que l'ancienne regle laissait VERT.
 ⚠️ LES PAGES QUI RESTENT EN FRANCAIS NE SONT PAS LUES ICI : cette gate ⛔ ne
    lit que `docs/bom.md`. `docs/affiliation.md` reste francaise, et c'est
    `verif_affiliation_dn65.py` qui lit ses deux langues.
 
-Sortie : `BILAN : n OK, m KO`, rc 0 si tout passe, 1 sinon.
+Sortie : `BILAN : n OK, m KO`, rc 0 si tout passe, 1 sinon, 3 si le mutant
+         demande n'a plus d'effet (🆕 2026-09-15, revue de `dn6-6` : il rendait 1,
+         que `verif_campagne_dn56.py` compte « sain » — c'est le rc de dn65/dn62).
 Usage  : python3 tools/verif_bom_dn61.py [--mutant <n>] [--liste-mutants]
          `--mutant` REPLANTE UNE FAUTE EN MEMOIRE et doit faire ROUGIR.
          ⛔ Aucun fichier du depot n'est modifie — la substitution vit dans
@@ -217,6 +226,13 @@ MUTANTS[30] = ("retire la DATE d'une tentative de source "
 MUTANTS[31] = ("renomme l'en-tete de la table des sources non atteintes "
                "(elle cesse d'etre reconnue, et le SILENCE ne vaut pas "
                "« toutes les sources ont repondu »)")
+# 🆕 2026-09-15 (`dn6-6`, REVUE 4 COUCHES) — DEUX BRANCHES NEUVES QU'AUCUN MUTANT
+#    NE GARDAIT (revenir a l'ancienne forme laissait le tir nu et les 31 mutants
+#    identiques, mesure de la revue).
+MUTANTS[32] = ("remet l'en-tete FRANCAIS `Date du relevé` dans une table de "
+               "palier (l'ancienne regle `date` la laissait se declarer)")
+MUTANTS[33] = ("replante « Milestone: 12.50 € » (une decimale ANGLAISE coupait "
+               "la fenetre de (c10))")
 _MUTANT = 0
 
 
@@ -543,6 +559,11 @@ def muter(texte):
                              "| Free comment |", 1)
     if _MUTANT == 24:
         return texte.replace("**BH1750**", "**BH1750** (see also ina219)", 1)
+    if _MUTANT == 32:
+        return texte.replace("| Survey date | Source |",
+                             "| Date du relevé | Source |", 1)
+    if _MUTANT == 33:
+        return texte + "\n\nMilestone: 12.50 €\n"
     if _MUTANT == 31:
         return texte.replace("| Address tried | Date of the attempt |",
                              "| Shop | When |", 1)
@@ -659,7 +680,10 @@ def main():
         ctrl(False, "le mutant %d a bien un EFFET" % _MUTANT,
              "⛔ SANS EFFET — sa cible litterale a disparu de %s. ⛔ Ce n'est "
              "PAS un controle vert." % BOM_REL)
-        return bilan(1, "le mutant %d n'a eu aucun effet" % _MUTANT)
+        # 🆕 2026-09-15 (revue de `dn6-6`) : rc=3, ⛔ plus rc=1 — rc=1 + BILAN +
+        #    [KO ] est EXACTEMENT le contrat « sain » de `verif_campagne_dn56.py`,
+        #    et 16 mutants venaient d'etre re-ancres : un perime passait pour sain.
+        return bilan(3, "le mutant %d n'a eu aucun effet" % _MUTANT)
 
     if not ctrl(bool(texte.strip()), "le document n'est pas vide",
                 "%d caractere(s)" % len(texte.strip())):
@@ -938,12 +962,19 @@ def main():
     #    faux positif : il ferme une porte, il n'en ouvre aucune.
     # 🆕 2026-09-15 (`dn6-6`) : la page est anglaise ⇒ les mots de jalon
     #    anglais sont AJOUTES aux francais, ⛔ ils ne les remplacent pas.
+    # 🆕 2026-09-15 (revue 4 couches) — TROIS TROUS DE L'AJOUT ANGLAIS, MESURES :
+    #    les mots anglais n'avaient ⛔ aucune borne (`targets?` mordait sur
+    #    « targeted ») ; la fenetre `[^.\n]` s'arretait sur la DECIMALE anglaise
+    #    (« Milestone: 12.50 € » sortait VERT) ; un montant en euros ecrit EN
+    #    PREFIXE (`€300`) n'etait pas vu. ⇒ bornes `\b`, point admis ENTRE deux
+    #    chiffres, `€`/`EUR` admis devant. Le mutant 33 replante la decimale.
     RE_JALON = (r"(?:jalons?|seuils?|objectifs?|d[ée]clencheurs?|paliers? de dons?"
-                r"|milestones?|thresholds?|targets?|goals?|triggers?"
-                r"|donation tiers?)")
-    jalons = [w.group(0) for w in re.finditer(RE_JALON + r"[^.\n]{0,200}",
-                                              texte, re.I)
-              if re.search(r"\d[\d\s  ]*(?:€|EUR)", w.group(0))]
+                r"|\b(?:milestones?|thresholds?|targets?|goals?|triggers?"
+                r"|donation tiers?)\b)")
+    jalons = [w.group(0) for w in re.finditer(
+                  RE_JALON + r"(?:[^.\n]|(?<=\d)\.(?=\d)){0,200}", texte, re.I)
+              if re.search(r"\d[\d\s  ]*(?:€|EUR)|(?:€|EUR)\s?\d",
+                           w.group(0))]
     ctrl(not jalons, "⛔ aucun jalon CHIFFRE n'est publie",
          "aucun" if not jalons
          else "⛔ %d — ils sont SORTIS du perimetre, le sujet est `dn6-5` : %s"

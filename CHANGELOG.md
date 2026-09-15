@@ -35,10 +35,19 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   affiliation page in French. A redirector host such as the programme's click tracker counts for
   its parent domain, so the survey still covers **two** domains. `tools/verif_bom_dn61.py` and
   `tools/verif_cablage_dn62.py` read the English page; a table retranslated into French stops
-  declaring itself and is named. Six new mutants replant a marked link outside the purchase page,
-  a link without its mention, a mention on a bare address, links removed while both pages still
-  declare them, a survey row given to the redirector itself, and an unqualified revenue threshold;
-  each one is seen red on the control it names.
+  declaring itself and is named. Twelve new mutants in the affiliation check replant a marked link
+  outside the purchase page, a link without its mention, a mention on a bare address, links removed
+  while both pages still declare them, a survey row given to the redirector itself, an unqualified
+  threshold, an English tier amount, a mention turned into "no affiliate link", a mention moved to
+  another cell of the row, a tracked link beside a link to the affiliate links page, a euro amount
+  written before the number, and a thousands separator written with a comma; two new mutants in the
+  purchase-list check replant a French date header and a milestone with an English decimal. Each
+  one is seen red on the control it names.
+  🔍 *Reviewed on 2026-09-15 (four layers)*: the review found that six of those branches, one
+  exception and two vocabulary gaps were guarded by nothing, that a stale mutant of the
+  purchase-list check still counted as healthy, and that the translation had changed the meaning of
+  a few sentences; all of it is fixed in the same step, and what the review raised without fixing
+  is written in the planning ledger.
 - 🆕 **The repository is public, and what that makes possible** (`dn8-8`, 2026-09-15).
   Measured on 2026-09-14, before anything was pushed: the repository was private, with 0 forks and 0
   stars, `main` on GitHub was 59 commits behind, and what the release promises a stranger — the

@@ -309,9 +309,14 @@ RE_DECL_GRAS_BOM = _re_decl(NEG_BOM, POS_BOM)
 # ⚠️ LA MENTION est le litteral `affiliate link` — (singulier ou pluriel), ⛔ pas
 #    « no affiliate link » : une cellule qui dit n'en porter aucune ⛔ ne
 #    declare pas l'adresse qu'elle porterait.
-RE_MENTION = re.compile(r"(?<!no )\baffiliate links?\b", re.I)
+# 🆕 2026-09-15 (`dn6-6`, revue 4 couches) — ⛔ PAS NON PLUS « the affiliate links
+#    PAGE » : la page d'achat renvoie vers `affiliation.md` par ce libelle, et une
+#    adresse suivie posee dans un tel paragraphe se comptait DECLAREE (mesure :
+#    `unite_autour` + l'ancien motif ⇒ vrai). Un renvoi ⛔ n'est pas une mention.
+#    Le mutant 48 replante ce paragraphe ; le mutant 46 replante « no ».
+RE_MENTION = re.compile(r"(?<!no )\baffiliate links?\b(?!\s+page)", re.I)
 # La forme publiee d'une cellule suivie : `[texte](adresse) — affiliate link`.
-# ⚠️ Elle ne sert QU'AUX MUTANTS 2, 40, 42 : les controles, eux, lisent la
+# ⚠️ Elle ne sert QU'AUX MUTANTS 2, 40, 42, 46, 47 : les controles lisent la
 #    mention par `RE_MENTION` dans l'unite, ⛔ par cette forme exacte.
 RE_CELLULE_SUIVIE = re.compile(
     r"\[([^\]]*)\]\((https?://[^)\s]+)\)\s*—\s*affiliate link")
@@ -324,7 +329,11 @@ OFFICIELS = ("legifrance.gouv.fr", "eur-lex.europa.eu", "impots.gouv.fr",
              "economie.gouv.fr", "service-public.fr")
 
 # ⛔ LES CHIFFRES SORTIS DU PERIMETRE PAR L'OWNER LE 2026-09-06.
-_E = r"[\s  ]?"
+# 🆕 2026-09-15 (`dn6-6`, revue 4 couches) : `,` ACCEPTE comme separateur de
+#    milliers — la page d'achat est anglaise, et « 1,000 € » ⛔ n'etait PAS vu
+#    par (c15) (mesure). ⚠️ La 2e borne de `_JALONS` ci-dessous reste entiere :
+#    « 4,75 € » ⛔ ne rend toujours PAS `75 €` (mesure). Mutant 50.
+_E = r"[\s  ,]?"
 # ⚠️ `(?<![0-9])` N'EST ⛔ PAS DU CONFORT : sans lui, un prix ORDINAIRE de
 #    `175 €` CONTIENT `75 €` et (c15) rougit sur du contenu JUSTE.
 # 🔴 ET IL NE SUFFISAIT ⛔ PAS — MESURE PAR LA REVUE DE SUIVI DU 2026-09-08 :
@@ -343,15 +352,21 @@ _JALONS = (r"(?<![0-9])(?<![0-9][.,\s])"
 _DEVISE = r"(?:€|EUR|USD|GBP|US\$|\$|£)"
 RE_JALON = re.compile(_JALONS + r"\s*" + _DEVISE
                       + r"|" + _DEVISE + r"\s*" + _JALONS)
+# 🆕 2026-09-15 (`dn6-6`, revue 4 couches) : `€`/`EUR` ACCEPTES EN PREFIXE — en
+#    anglais « €300 » s'ecrit devant, et « revenue target of €300 per month »
+#    passait (c16) VERT (mesure). ⛔ Aucun fichier suivi n'y gagne de faux KO
+#    (mesure au tir nu du meme jour). Mutant 49.
 RE_MONTANT = re.compile(r"\d+(?:[.,]\d+)?\s*(?:€|EUR|USD|GBP)"
-                        r"|(?:US\$|\$|£)\s?\d+(?:[.,]\d+)?")
+                        r"|(?:US\$|\$|£|€|EUR)\s?\d+(?:[.,]\d+)?")
 # 🔴 `paliers?|seuils?` SONT DANS LA LISTE, ET C'EST UNE MESURE : un jalon
 #    ecrit avec un montant HORS des quatre valeurs nommees — « palier posé à
 #    300 € » — passait (c15) ET (c16). Le MOT compte, ⛔ pas que le chiffre.
 # 🆕 2026-09-15 (`dn6-6`) : la page d'achat est anglaise ⇒ le vocabulaire
 #    ANGLAIS est AJOUTE au francais (⛔ il ne le remplace pas : la page
 #    d'affiliation et les releves restent francais). `tiers?` est le `paliers?`
-#    de la page anglaise, et c'est la meme mesure qui l'exige (mutant 17).
+#    de la page anglaise, et c'est la meme mesure qui l'exige (mutant 45 — ⚠️ ⛔ le
+#    17 : sa charge porte `1 000 €` et reste rouge par (c15) SEUL si le mot
+#    manque, mesure de la revue du 2026-09-15).
 RE_PROJECTION = re.compile(
     r"par carte|par mois|revenus?|jalons?|objectifs?|rapporter"
     r"|paliers?|seuils?"
@@ -403,8 +418,17 @@ PORTEE_PROJECTION = 200
 #      de `payout`/`payment`/`withdrawal`. ⛔ `payout target`, `payment goal`
 #      ou `revenue threshold` restent des projections — le mutant 44 replante
 #      la derniere et doit rougir.
+#    ⚠️ CORRIGE PAR LA REVUE 4 COUCHES DU 2026-09-15 — LE MUTANT 44 NE GARDAIT
+#      PAS CETTE EXCEPTION : sa charge « the revenue threshold… » portait AUSSI
+#      `revenue`, et restait rouge meme si l'exception exemptait TOUT
+#      `threshold`. Sa charge est desormais « the threshold is set at 300 € » :
+#      `threshold` y est le SEUL mot de projection, et ⛔ aucun mot de versement
+#      ne le precede ⇒ il rougit si et seulement si l'exception reste etroite.
+#    ⚠️ ET LA DECORATION MARKDOWN EST ADMISE entre le mot et `threshold`
+#      (« payout **threshold** », « `payout` threshold ») : une condition
+#      publiee en gras sortait en faux KO (mesure de la meme revue).
 RE_SEUIL_DE_VERSEMENT = re.compile(
-    r"\b(?:payouts?|payments?|withdrawals?)\s+$", re.I)
+    r"\b(?:payouts?|payments?|withdrawals?)[\s*`_]+$", re.I)
 # ⚠️ LA CLAUSE SE COUPE SUR UN POINT DE PHRASE, ⛔ PAS SUR UNE DECIMALE :
 #    `re.split(r"[.\n]", …)` coupait « rapporterait environ 0.44 € par carte »
 #    juste apres le `0`, et le revenu projete sortait VERT — la meme phrase
@@ -673,9 +697,31 @@ CIBLES[42] = ("c6",)
 MUTANTS[43] = ("ajoute au releve une ligne pour le REDIRECTEUR lui-meme "
                "(`s.click.aliexpress.com`) ⇒ il n'est PAS un fournisseur")
 CIBLES[43] = ("c3",)
-MUTANTS[44] = ("replante « the revenue threshold is set at 300 € » ⇒ `threshold` "
-               "NON qualifie par un mot de versement reste une projection")
+MUTANTS[44] = ("replante « the threshold is set at 300 € » ⇒ `threshold` NON "
+               "qualifie par un mot de versement reste une projection")
 CIBLES[44] = ("c16",)
+
+# 🆕 2026-09-15 (`dn6-6`, REVUE 4 COUCHES) — SIX MUTANTS DE PLUS, CHACUN POUR UNE
+#    BRANCHE que la revue a montree gardee par RIEN (la retirer laissait le tir
+#    nu ET tous les mutants inchanges).
+MUTANTS[45] = ("replante « The first tier is set at 300 € of commissions. » dans "
+               "`docs/bom.md` ⇒ le vocabulaire ANGLAIS de (c16), seul")
+CIBLES[45] = ("c16",)
+MUTANTS[46] = ("change la mention d'une cellule suivie en `— no affiliate link` "
+               "⇒ la negation que `RE_MENTION` refuse")
+CIBLES[46] = ("c5",)
+MUTANTS[47] = ("deplace `— affiliate link` de la cellule `Source` vers une AUTRE "
+               "cellule de la meme ligne ⇒ la maille CELLULE de (c5)")
+CIBLES[47] = ("c5", "c24")
+MUTANTS[48] = ("pose une adresse suivie dans un paragraphe qui renvoie vers « the "
+               "affiliate links page » ⇒ un renvoi n'est pas une mention")
+CIBLES[48] = ("c5",)
+MUTANTS[49] = ("replante « revenue target of €300 per month » ⇒ un montant en "
+               "euros ecrit EN PREFIXE")
+CIBLES[49] = ("c16",)
+MUTANTS[50] = ("replante « 1,000 € » ⇒ un jalon au separateur de milliers "
+               "ANGLAIS")
+CIBLES[50] = ("c15",)
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL, hors le controle final qui le confronte.
 #    Il se PERIME si on ajoute un controle sans le mettre a jour — et c'est
@@ -1314,8 +1360,45 @@ def muter(etat):
     elif _MUTANT == 44:
         if "docs/roadmap.md" not in p:
             return e                      # fichier hors corpus ⇒ NO-OP ⇒ rc=3
-        p["docs/roadmap.md"] += ("\n\nREPLANTED: the revenue threshold is set "
-                                 "at 300 €.\n")
+        # 🆕 revue du 2026-09-15 : `threshold` SEUL mot de projection de la charge.
+        p["docs/roadmap.md"] += "\n\nREPLANTED: the threshold is set at 300 €.\n"
+    elif _MUTANT == 45:
+        p[BOM] += "\n\nThe first tier is set at 300 € of commissions.\n"
+    elif _MUTANT == 46:
+        lignes = p[BOM].split("\n")
+        k = next((i for i, l in enumerate(lignes)
+                  if l.strip().startswith("|") and RE_CELLULE_SUIVIE.search(l)),
+                 None)
+        if k is None:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        lignes[k] = re.sub(r"—\s*affiliate link", "— no affiliate link",
+                           lignes[k], 1)
+        p[BOM] = "\n".join(lignes)
+    elif _MUTANT == 47:
+        # ⚠️ LA MENTION VA DANS LA CELLULE DE DATE DE LA MEME LIGNE. (c24) rougit
+        #    AUSSI — une mention sans adresse marquee — et c'est MESURE : la maille
+        #    cellule de (c5) se lit alors a l'ATTRIBUTION (c5 parmi les controles
+        #    vus rougir), ⛔ au seul rc ; `mesures/dn6-6/T7` la re-derive.
+        lignes = p[BOM].split("\n")
+        k = next((i for i, l in enumerate(lignes)
+                  if l.strip().startswith("|") and RE_CELLULE_SUIVIE.search(l)
+                  and "| 2026-09-06 |" in l), None)
+        if k is None:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        l = re.sub(r"\s*—\s*affiliate link", "", lignes[k], 1)
+        lignes[k] = l.replace("| 2026-09-06 |", "| 2026-09-06 — affiliate link |", 1)
+        p[BOM] = "\n".join(lignes)
+    elif _MUTANT == 48:
+        u = next((x for x in RE_URL.findall(p[BOM])
+                  if est_redirecteur(hote(x))), None)
+        if u is None:
+            return e                      # plus aucun lien suivi ⇒ rc=3
+        p[BOM] += ("\n\nSee [the affiliate links page](affiliation.md) about "
+                   "%s\n" % u)
+    elif _MUTANT == 49:
+        p[BOM] += "\n\nExpected: a revenue target of €300 per month.\n"
+    elif _MUTANT == 50:
+        p[BOM] += "\n\n- Replanted: 1,000 € accumulated.\n"
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e

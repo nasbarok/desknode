@@ -768,3 +768,18 @@ attribution: les controles VUS rougir sont relus A COLONNE FIXE (`  [KO ] ` puis
   |     A("")
   | print("\n".join(out))
 
+
+── ADDENDUM DU 2026-09-15 — REVUE 4 COUCHES DE LA MARCHE (⛔ rien ci-dessus n'est reecrit) ─
+
+  (1) LE § 7 OMET LE MUTANT 44 : il replante la ligne « `threshold` non qualifie reste une
+      projection », rendue necessaire par l'exception etroite « payout threshold » de (c16).
+      ⚠️ Et la revue a MESURE qu'il ⛔ la gardait pas : sa charge portait aussi `revenue`.
+      Corrige depuis : `threshold` est le SEUL mot de projection de sa charge (⛔ recopiee ici —
+      ce fichier est relu par la gate, et la charge y rougirait) ; campagne rejouee en `T7`.
+  (2) LA NUMEROTATION DES TEMOINS SAUTE W8, ET C'EST VOULU MAIS TU : la ligne de matrice
+      « redirecteur en cellule Source » n'a pas de charge a poser — elle est lue sur le tir nu
+      W1 ((c2) « 2 domaine(s) », (c3) vert) et sur le mutant 43. Le § 7 le dit ; W8 n'existe pas.
+  (3) Le temoin W10-dn61 (« rc=1 · SANS EFFET ») decrit la gate d'AVANT la revue : sa garde
+      du no-op rend desormais rc=3, comme dn65 et dn62 (`T7`, addendum).
+  (4) La revue a ajoute des mutants : dn65 45 a 50, dn61 32 et 33. Ils ne sont PAS dans ce
+      fichier ; leur campagne, et celle des trois gates rejouees apres la revue, sont en `T7`.
