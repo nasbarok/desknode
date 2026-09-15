@@ -334,7 +334,10 @@ link code and the bare search address it was generated from is published in
 [the survey of 2026-09-15](../mesures/dn6-6/T1-releves-du-2026-09-15.txt), so that a price can be
 checked again **without clicking a tracked link**. ⚠️ The destination of the links was ⛔ **not**
 opened by the agent that wrote this annotation — a click is counted by the programme — and checking
-it is a gesture of the owner. ⛔ No price, no date and none of the 10 addresses tried was changed
+it is a gesture of the owner. ⚠️ *Annotated on 2026-09-15 (`dn6-7`)*: the owner has since opened **three**
+of the five, ⛔ without buying — the board, the BME680 and the BH1750, the three of the
+"DeskNode + Ambiance" tier — and each one opens the right page. The two links of the modules **outside the
+tiers** were ⛔ **not** opened: their destination is still the owner's statement, ⛔ not an observation. ⛔ No price, no date and none of the 10 addresses tried was changed
 on 2026-09-15.
 
 ⚠️ The two modules outside the tiers carry a tracked link too: that does ⛔ **not** put them back in a

@@ -334,6 +334,11 @@ carte s'achète chez Waveshare, son lien AliExpress est retiré de la page d'ach
 programme ont été acceptées par l'owner en déposant sa candidature (case des conditions du formulaire —
 relevé owner du 2026-09-15). ⚠️ Le geste *cliquer une fois chacun des cinq liens suivis* porte désormais
 sur **quatre** recherches AliExpress **et** la fiche Waveshare de la carte, ⛔ plus sur cinq recherches.
+✅ **Annoté le 2026-09-15 (`dn6-7`) — TROIS des cinq sont FAITS** : l'owner a cliqué, ⛔ sans acheter, les
+trois liens du palier « DeskNode + Ambiance » — la **carte** (fiche Waveshare), le **BME680** et le
+**BH1750** — et chacun ouvre la bonne page. ⛔ **Les deux liens des modules hors palier** (`VL6180X`,
+`INA219`) ⛔ **n'ont pas été cliqués** : leur destination reste une **déclaration de l'owner**, ⛔ pas une
+observation, et c'est au ledger de planification avec son porteur.
 
 ---
 
