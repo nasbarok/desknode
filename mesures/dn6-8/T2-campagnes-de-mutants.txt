@@ -1,0 +1,140 @@
+==============================================================================
+dn6-8 / T2 — LES DEUX CAMPAGNES DE MUTANTS, ET L'ATTRIBUTION REELLE
+            Tire le 2026-09-15 sur l'arbre livre.
+==============================================================================
+
+-- A. verif_bom_dn61.py — TIR NU -------------------------------------------
+  rc=0 BILAN : 24 OK, 0 KO  (reference a 7e05a47 : rc=0, 24 OK, 0 KO)
+
+-- B. verif_bom_dn61.py — LES 33 MUTANTS ------------------------------------
+   contrat : rc=1 ET un BILAN ET au moins un [KO ]. rc=3 = mutant PERIME.
+    1  rc=1  BILAN : 23 OK, 1 KO     toute ligne a prix porte sa DATE de releve                
+    2  rc=1  BILAN : 23 OK, 1 KO     toute ligne a prix porte son URL SOURCE                   
+    3  rc=1  BILAN : 23 OK, 1 KO     toute ligne SANS prix se DECLARE                          
+    4  rc=1  BILAN : 23 OK, 1 KO     le palier « DeskNode + Ambiance » titre UNE section     
+    5  rc=1  BILAN : 22 OK, 2 KO     INA219 est NOMME dans le document                         
+    6  rc=1  BILAN : 23 OK, 1 KO     VL6180X porte un MOTIF d'exclusion                        
+    7  rc=1  BILAN : 23 OK, 1 KO     elle cite son STATUT                                      
+    8  rc=1  BILAN : 23 OK, 1 KO     la page DECLARE si elle porte des liens affilies          
+    9  rc=1  BILAN : 23 OK, 1 KO     ⛔ aucun jalon CHIFFRE n'est publie                      
+   10  rc=1  BILAN : 21 OK, 3 KO     toute ligne SANS prix se DECLARE                          
+   11  rc=1  BILAN : 0 OK, 1 KO      le document n'est pas vide                                
+   12  rc=1  BILAN : 23 OK, 1 KO     aucune table a prix hors du controle                      
+   13  rc=1  BILAN : 23 OK, 1 KO     le palier « DeskNode » titre UNE section                
+   14  rc=1  BILAN : 22 OK, 2 KO     VL6180X est NOMME dans le document                        
+   15  rc=1  BILAN : 21 OK, 3 KO     toute ligne SANS prix se DECLARE                          
+   16  rc=1  BILAN : 21 OK, 3 KO     la BOM cite la marche `dn4-41`                            
+   17  rc=1  BILAN : 23 OK, 1 KO     elle cite une DATE de relecture                           
+   18  rc=1  BILAN : 23 OK, 1 KO     aucune table a prix hors du controle                      
+   19  rc=1  BILAN : 1 OK, 1 KO      au moins une table SE DECLARE table de BOM                
+   20  rc=1  BILAN : 23 OK, 1 KO     le palier « DeskNode + Ambiance » titre UNE section     
+   21  rc=1  BILAN : 22 OK, 2 KO     toute table de PALIER declare ses 7 colonnes              
+   22  rc=1  BILAN : 23 OK, 1 KO     toute ligne SANS prix se DECLARE                          
+   23  rc=1  BILAN : 22 OK, 2 KO     VL6180X porte un MOTIF d'exclusion                        
+   24  rc=1  BILAN : 22 OK, 2 KO     INA219 est HORS des sections de palier                    
+   25  rc=1  BILAN : 0 OK, 1 KO      le document d'achat existe                                
+   26  rc=1  BILAN : 5 OK, 1 KO      tout controle prevu est EMIS                              
+   27  rc=1  BILAN : 23 OK, 1 KO     toute ligne a prix porte ses AUTRES champs                
+   28  rc=1  BILAN : 22 OK, 2 KO     toute table de PALIER declare ses 7 colonnes              
+   29  rc=1  BILAN : 23 OK, 1 KO     chaque source tentee porte URL, DATE et MOTIF             
+   30  rc=1  BILAN : 23 OK, 1 KO     chaque source tentee porte URL, DATE et MOTIF             
+   31  rc=1  BILAN : 23 OK, 1 KO     la table des sources non atteintes est LA                 
+   32  rc=1  BILAN : 23 OK, 1 KO     aucune table a prix hors du controle                      
+   33  rc=1  BILAN : 23 OK, 1 KO     ⛔ aucun jalon CHIFFRE n'est publie                      
+   => 33 mutants, 0 non conforme(s)
+
+-- C. LES TROIS MUTANTS RE-ANCRES : MEME FAUTE QU'AVANT ---------------------
+   AVANT = l'arbre 7e05a47 deploye par `git archive` (la table dans bom.md)
+   APRES = l'arbre livre (la table dans journal-de-bord.md)
+   -- mutant 29
+      AVANT rc=1  BILAN : 23 OK, 1 KO  ::  chaque source tentee porte URL, DATE et MOTIF       
+      APRES rc=1  BILAN : 23 OK, 1 KO  ::  chaque source tentee porte URL, DATE et MOTIF       
+   -- mutant 30
+      AVANT rc=1  BILAN : 23 OK, 1 KO  ::  chaque source tentee porte URL, DATE et MOTIF       
+      APRES rc=1  BILAN : 23 OK, 1 KO  ::  chaque source tentee porte URL, DATE et MOTIF       
+   -- mutant 31
+      AVANT rc=1  BILAN : 23 OK, 1 KO  ::  la table des sources non atteintes est LA           
+      APRES rc=1  BILAN : 23 OK, 1 KO  ::  la table des sources non atteintes est LA           
+
+-- D. verif_affiliation_dn65.py — ATTRIBUTION REELLE, MUTANT PAR MUTANT ----
+   `mesure` = les identifiants des [KO ] REELLEMENT emis ; `CIBLES` = ce que
+   le fichier DECLARE. Un ecart est une reciproque qui ment, ⛔ pas un detail.
+   rc=3 = mutant PERIME (ancre disparue) — il compte comme un ecart.
+
+    1  rc=1  mesure=c3                     CIBLES=c3                     OK
+    2  rc=1  mesure=c3                     CIBLES=c3                     OK
+    3  rc=1  mesure=c4                     CIBLES=c4                     OK
+    4  rc=1  mesure=c5                     CIBLES=c5                     OK
+    5  rc=1  mesure=c6                     CIBLES=c6                     OK
+    6  rc=1  mesure=c7                     CIBLES=c7                     OK
+    7  rc=1  mesure=c8                     CIBLES=c8                     OK
+    8  rc=1  mesure=c8                     CIBLES=c8                     OK
+    9  rc=1  mesure=c9                     CIBLES=c9                     OK
+   10  rc=1  mesure=c10,c11                CIBLES=c10,c11                OK
+   11  rc=1  mesure=c10                    CIBLES=c10                    OK
+   12  rc=1  mesure=c11                    CIBLES=c11                    OK
+   13  rc=1  mesure=c12                    CIBLES=c12                    OK
+   14  rc=1  mesure=c13                    CIBLES=c13                    OK
+   15  rc=1  mesure=c14                    CIBLES=c14                    OK
+   16  rc=1  mesure=c15,c16                CIBLES=c15,c16                OK
+   17  rc=1  mesure=c15,c16                CIBLES=c15,c16                OK
+   18  rc=1  mesure=c16                    CIBLES=c16                    OK
+   19  rc=1  mesure=c14,c17                CIBLES=c14,c17                OK
+   20  rc=1  mesure=c18,c8                 CIBLES=c18,c8                 OK
+   21  rc=1  mesure=c17,c19                CIBLES=c17,c19                OK
+   22  rc=1  mesure=c1                     CIBLES=c1                     OK
+   23  rc=1  mesure=c2,c24,c3,c6           CIBLES=c2,c24,c3,c6           OK
+   24  rc=1  mesure=c20                    CIBLES=c20                    OK
+   25  rc=1  mesure=c21                    CIBLES=c21                    OK
+   26  rc=1  mesure=c22                    CIBLES=c22                    OK
+   27  rc=1  mesure=z                      CIBLES=z                      OK
+   28  rc=1  mesure=c0                     CIBLES=c0                     OK
+   29  rc=1  mesure=c4                     CIBLES=c4                     OK
+   30  rc=1  mesure=c5                     CIBLES=c5                     OK
+   31  rc=1  mesure=c5                     CIBLES=c5                     OK
+   32  rc=1  mesure=c3                     CIBLES=c3                     OK
+   33  rc=1  mesure=c15                    CIBLES=c15                    OK
+   34  rc=1  mesure=c16                    CIBLES=c16                    OK
+   35  rc=1  mesure=c23                    CIBLES=c23                    OK
+   36  rc=1  mesure=c5                     CIBLES=c5                     OK
+   37  rc=1  mesure=c5                     CIBLES=c5                     OK
+   38  rc=1  mesure=c5                     CIBLES=c5                     OK
+   39  rc=1  mesure=c5                     CIBLES=c5                     OK
+   40  rc=1  mesure=c5                     CIBLES=c5                     OK
+   41  rc=1  mesure=c24                    CIBLES=c24                    OK
+   42  rc=1  mesure=c3,c6                  CIBLES=c3,c6                  OK
+   43  rc=1  mesure=c3                     CIBLES=c3                     OK
+   44  rc=1  mesure=c16                    CIBLES=c16                    OK
+   45  rc=1  mesure=c16                    CIBLES=c16                    OK
+   46  rc=1  mesure=c5                     CIBLES=c5                     OK
+   47  rc=1  mesure=c24,c5                 CIBLES=c24,c5                 OK
+   48  rc=1  mesure=c5                     CIBLES=c5                     OK
+   49  rc=1  mesure=c16                    CIBLES=c16                    OK
+   50  rc=1  mesure=c15                    CIBLES=c15                    OK
+   51  rc=1  mesure=c5                     CIBLES=c5                     OK
+   52  rc=1  mesure=c5                     CIBLES=c5                     OK
+   53  rc=1  mesure=c24                    CIBLES=c24                    OK
+   54  rc=1  mesure=c4                     CIBLES=c4                     OK
+
+   => 54 mutants, 0 ecart(s), 0 rc=3
+
+-- E. CE QUE LA MESURE A CORRIGE, ⛔ CE QUE L'INTENTION DISAIT -------------
+   · mutant  4 : rc=3 PERIME — son ancre (une adresse tentee de la page
+                 d'achat) est partie dans le journal. Re-ancre : la MEME
+                 adresse et le MEME marqueur, poses dans la prose de la
+                 page d'achat ⇒ meme branche `sans_mention` de (c5).
+   · mutant 41 : rc=3 PERIME, meme cause. Re-ancre A L'ENVERS : au lieu de
+                 poser la mention a cote d'une adresse nue, il rend NUE
+                 l'adresse d'une cellule qui porte deja la mention ⇒ meme
+                 faute, meme maille CELLULE de (c24).
+   · CIBLES[23] : `c4` SORT. Casser les schemas de la page d'achat ⛔ ne vide
+                 plus la 2e population : elle se derive du journal.
+   · CIBLES[42] : `c3` ENTRE. `waveshare.com` entrait dans la 1re population
+                 par DEUX chemins ; le paragraphe en prose qui en etait le
+                 second est parti dans le journal ⇒ le mutant coupe le seul
+                 qui reste, et la ligne de releve devient ORPHELINE.
+   · mutant 31 de dn61 : sorti VERT (rc=0, 24 OK, 0 KO) a la 1re redaction —
+                 la prose du journal citait l'en-tete LITTERAL de la table et
+                 `replace(…, 1)` frappait la PHRASE. Corrige DES DEUX COTES :
+                 la prose ne recopie plus l'en-tete, et le mutant vise la
+                 LIGNE de table, ⛔ plus « la 1re occurrence du texte ».

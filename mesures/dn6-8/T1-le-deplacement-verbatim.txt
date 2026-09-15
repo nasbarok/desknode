@@ -1,0 +1,66 @@
+==============================================================================
+dn6-8 / T1 — LA COUPE DE LA PAGE D'ACHAT, LIGNE A LIGNE ET PARAGRAPHE A
+            PARAGRAPHE. Tire le 2026-09-15 sur l'arbre livre.
+==============================================================================
+ancienne page : git show 7e05a47a7763f7977b64e520a92951c49e5755d6:docs/bom.md
+nouvelle page : docs/bom.md
+journal       : docs/journal-de-bord.md
+
+-- COMPTES BRUTS ------------------------------------------------------------
+  ancienne page  :  398 lignes
+  nouvelle page  :  122 lignes
+  journal        : 2984 lignes
+
+-- 1. LIGNES NON VIDES PERDUES PAR LA PAGE, ET OU ELLES SONT ---------------
+  lignes non vides de l'ancienne page ABSENTES de la nouvelle : 256
+  ... retrouvees A L'IDENTIQUE dans le journal                : 250
+  ... introuvables telles quelles                             : 6
+      ⛔ Waveshare sells **several boards with almost the same name**. Surveyed on 2026-09-06, **on the
+      ⛔ same results page**:
+      ⛔ **Exactly** the board above, **plus these two sensors** — the connection row that
+      ⛔ follows is a consumable, ⛔ not a third module.
+      ⛔ **in no tier**, and here is **why** — ⛔ a component of the prototype absent from this page
+      ⛔ without a written reason would be a defect.
+
+-- 2. LE MEME CONTROLE A LA MAILLE PARAGRAPHE (espaces normalises) ---------
+  paragraphes de l'ancienne page introuvables (page OU journal) : 2
+      ⛔ Waveshare sells **several boards with almost the same name**. Surveyed on 2026-09-06, **on the same results page**:
+      ⛔ **Exactly** the board above, **plus these two sensors** — the connection row that follows is a consumable, ⛔ not a third module.
+
+  ⇒ CE QUE CES DEUX-LA SONT, ET CE QU'ILS NE SONT PAS : ce ne sont ⛔ PAS
+    des blocs retires mais des phrases REECRITES SUR PLACE par la coupe.
+    Elles disent la meme chose au meme endroit ; seule leur formulation a
+    bouge. Elles sont NOMMEES dans le journal plutot que tues, et portees
+    au ledger (`dn6-8`, CONNAISSANCE).
+
+-- 3. CE QUE LA PAGE D'ACHAT ANNONCE AVOIR PERDU, RETROUVE UN A UN --------
+  le cout du palier            page:0  journal:1
+  la note de non-recalcul      page:0  journal:1
+  mediane contre moyenne       page:0  journal:1
+  les adresses I2C mesurees    page:0  journal:1
+  le decompte des neuf fils    page:0  journal:1
+  la table des dix adresses    page:0  journal:1
+  l'alternative Pimoroni       page:0  journal:1
+  le 403 refute                page:0  journal:1
+  l'annotation du 2026-09-07   page:0  journal:2
+  la bascule dn6-6             page:0  journal:1
+  la bascule dn6-7             page:0  journal:1
+
+-- 4. LES SIX CITATIONS DE PHOTOS ONT SUIVI --------------------------------
+  2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg           page:0 journal:1
+  2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr page:0 journal:1
+  2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322. page:0 journal:1
+  2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg     page:0 journal:1
+  2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg         page:0 journal:1
+  2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg   page:0 journal:1
+
+-- 5. ⛔ AUCUNE ADRESSE SUIVIE N'EST ENTREE DANS LE JOURNAL ----------------
+  s.click.aliexpress.com   journal:0   (attendu 0)
+  aff_id=                  journal:0   (attendu 0)
+  aff_trace_key=           journal:0   (attendu 0)
+
+-- 6. LE SEUL ECART DE FORME, NOMME ----------------------------------------
+  ancienne page : '## The sources we could not reach'  ->  present:1
+  journal       : '### The sources we could not reach' ->  present:1
+  ⇒ un titre descendu d'UN niveau pour tenir sous la section d'accueil.
+    ⛔ Sa phrase est intacte ; l'ecart est ecrit dans l'en-tete de la section.

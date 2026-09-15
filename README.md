@@ -41,7 +41,11 @@ The board alone is **not a degraded mode**: the firmware knows it has no sensor,
 - Where to plug the sensors, and how to check that the bus answers: [docs/cablage.md](docs/cablage.md)
 - The enclosure — where its files will live, and why none is required: [docs/boitier.md](docs/boitier.md)
 
-⚠️ Those three pages are in French for now.
+⚠️ `docs/cablage.md` and `docs/boitier.md` are in French for now; `docs/bom.md` is in English.
+
+**Buy it** — these five links are **affiliate links**: they may pay this project, and cost you nothing more.
+[Board](https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm?&aff_id=180651) · [BME680](https://s.click.aliexpress.com/e/_c4Dp3sBL) · [BH1750](https://s.click.aliexpress.com/e/_c4OQ98X7) — that is a whole DeskNode + Ambiance.
+Also on the prototype, ⛔ not needed for a V1: [VL6180X](https://s.click.aliexpress.com/e/_c3w7WL8h) · [INA219](https://s.click.aliexpress.com/e/_c3vm4Fkp). Prices, exact references and terms: [docs/bom.md](docs/bom.md).
 
 ## Install
 

@@ -1,0 +1,110 @@
+==============================================================================
+dn6-8 / T3 — LA PASSE FINALE : 48 GATES, PUIS LE CONTRAT DE dn56
+            UNE SEULE passe, tiree apres la derniere ecriture.
+⚠️ DATE : la marche est celle du 2026-09-15 (les decisions owner, la coupe, les
+   deux gates rouvertes, T1 et T2). CETTE passe-ci, elle, a franchi minuit : elle
+   a ete lancee le 2026-09-15 et s'est terminee le 2026-09-16. C'est ecrit plutot
+   que lisse — un releve qui se date d'un jour qu'il n'a pas vu est un releve faux.
+==============================================================================
+REFERENCE : l'arbre `7e05a47a7763f7977b64e520a92951c49e5755d6` (cloture de dn6-7).
+METHODE   : chaque gate lancee UNE PAR UNE, au PREMIER PLAN, `--cockpit` passe
+            aux seules gates qui le declarent (lu a l'AST). ⛔ Jamais en arriere-
+            plan : le harnais tue les tirs longs, et l'a fait une fois ce jour-la.
+
+-- A. LES 48 GATES, rc ET COMPTE -------------------------------------------
+   gate                                     reference      passe dn6-8   
+   verif_affiliation_dn65.py                rc=0 24/0      rc=0 24/0      
+   verif_banc_langue_dn73.py                rc=0 81/0      rc=0 81/0      
+   verif_bme680_retard_dn45.py              rc=0 15/0      rc=0 15/0      
+   verif_boitier_dn64.py                    rc=0 29/0      rc=0 29/0      
+   verif_bom_dn61.py                        rc=0 24/0      rc=0 24/0      
+   verif_cablage_dn62.py                    rc=0 37/0      rc=0 37/0      
+   verif_campagne_dn440.py                  rc=0 62/0      rc=0 62/0      
+   verif_courbe_dn413.py                    rc=0 —         rc=0 —         
+   verif_cumul_ambient_dn45.py              rc=0 23/0      rc=0 23/0      
+   verif_d4_nvs_dn45.py                     rc=0 6/0       rc=0 6/0       
+   verif_decoupe_horloge_dn418.py           rc=0 —         rc=0 —         
+   verif_demarrage_dn443.py                 rc=0 58/0      rc=0 58/0      
+   verif_dossier_d5_dn45.py                 rc=0 12/0      rc=0 12/0      
+   verif_dossier_dn415.py                   rc=1 23/10     rc=1 23/10     
+   verif_entree_dn82.py                     rc=0 45/0      rc=0 45/0      
+   verif_flash_dn72.py                      rc=0 30/0      rc=0 30/0      
+   verif_harnais_dn413.py                   rc=0 —         rc=0 —         
+   verif_harnais_dn81.py                    rc=0 28/0      rc=0 28/0      
+   verif_hist_dn413.py                      rc=0 —         rc=0 —         
+   verif_installeur_dn71.py                 rc=0 28/0      rc=0 28/0      
+   verif_instruments_dn423.py               rc=0 163/0     rc=0 163/0     
+   verif_journal_soak_dn45.py               rc=0 26/0      rc=0 26/0      
+   verif_langue_dalle_dn73.py               rc=0 61/0      rc=0 61/0      
+   verif_langues_dn442.py                   rc=0 31/0      rc=0 31/0      
+   verif_ledger_dn416.py                    rc=0 36/0      rc=0 36/0      
+   verif_lhm_ps_dn83.py                     rc=0 26/0      rc=0 26/0      
+   verif_licences_dn52.py                   rc=0 34/0      rc=0 34/0      
+   verif_lissage_dn45.py                    rc=0 21/0      rc=0 21/0      
+   verif_miroir_horloge_dn418.py            rc=0 —         rc=0 —         
+   verif_page_dn722.py                      rc=0 56/0      rc=0 56/0      
+   verif_paliers_dn441.py                   rc=0 42/0      rc=0 42/0      
+   verif_photos_dn63.py                     rc=0 28/0      rc=0 28/0      
+   verif_placement_dn74.py                  rc=0 42/0      rc=0 42/0      
+   verif_polices_dn440.py                   rc=0 11/0      rc=0 11/0      
+   verif_preconditions_dn76.py              rc=0 55/0      rc=0 55/0      
+   verif_prerequis_dn75.py                  rc=0 51/0      rc=0 51/0      
+   verif_rebouclage_dn45.py                 rc=0 30/0      rc=0 30/0      
+   verif_reception_dn85.py                  rc=0 16/0      rc=0 16/0      
+   verif_reprise_horloge_dn418.py           rc=0 —         rc=0 —         
+   verif_selection_dn49.py                  rc=0 —         rc=0 —         
+   verif_serie_dn412.py                     rc=0 —         rc=0 —         
+   verif_source_lhm_dn48.py                 rc=0 —         rc=0 —         
+   verif_sr03.py                            rc=2 —         rc=2 —         
+   verif_temoin_filtre_dn447.py             rc=0 5/0       rc=0 5/0       
+   verif_veille_dn33.py                     rc=0 —         rc=0 —         
+   verif_verrou_lvgl_dn413.py               rc=0 —         rc=0 —         
+   verif_vitrine_dn84.py                    rc=0 16/0      rc=0 16/0      
+   verif_xip_dn422.py                       rc=0 —         rc=0 —         
+
+   => 48 gates confrontees, 0 ecart(s).
+      (compte lu sur la DERNIERE ligne `n OK, m KO` ; « — » = la gate n'en
+       imprime pas, seul son rc fait foi.)
+
+-- B. LE CONTRAT DE verif_campagne_dn56.py ---------------------------------
+   Joue par un pilote qui IMPORTE `cibles()`, `liste_mutants()`, `joue()` et
+   `EXCEPTIONS` de la gate, en lots < 400 s. ⛔ La gate elle-meme n'est PAS
+   touchee (hors perimetre).
+   contrat « sain » : rc=1 ET un BILAN ET au moins un [KO ] — ou EXCEPTION declaree.
+
+   cibles                : ref 23 | passe 23 | listes identiques : True
+   mutants joues         : ref 732 | passe 736
+   NON CONFORMES         : 0
+
+   ECART DE POPULATION, DECLARE : +4 mutant(s), -0.
+      + tools/verif_affiliation_dn65.py#51
+      + tools/verif_affiliation_dn65.py#52
+      + tools/verif_affiliation_dn65.py#53
+      + tools/verif_affiliation_dn65.py#54
+
+   MUTANTS DONT LE RELEVE CHANGE : 2
+      ~ tools/verif_affiliation_dn65.py#23       ref [1, True, 5, True, False] -> passe [1, True, 4, True, False]
+      ~ tools/verif_affiliation_dn65.py#42       ref [1, True, 1, True, False] -> passe [1, True, 2, True, False]
+      (le 3e champ est le NOMBRE de [KO ]. Le 42 en emet un de plus et le 23
+       un de moins : c'est EXACTEMENT la correction d'attribution de T2, vue
+       par un instrument qui ⛔ ne lit pas `CIBLES`.)
+
+-- C. LA REGLE DE LECTURE DE CE RELEVE, ECRITE PLUTOT QUE SUPPOSEE ----------
+   ⚠️ UNE TRANSCRIPTION NE PEUT PAS SE MESURER ELLE-MEME. T3 et T4 sont ecrits
+      APRES la passe qu'ils transcrivent : au moment ou les 48 gates ont tourne,
+      ils n'etaient ⛔ pas au depot, donc ⛔ pas dans le corpus que
+      `verif_affiliation_dn65.py` relit (`git ls-files`, `.md` + `.txt`).
+      C'est le defaut paye par `dn5-1` puis `dn5-8` — « une capture est ecrite
+      AVANT le commit qui la publie » — et il est NOMME ici, ⛔ pas nie.
+   ⇒ CE QUI LE FERME, ET C'EST UNE MESURE : apres `git add` de T1 a T4, les
+     CINQ gates qui relisent tout le corpus ont ete re-tirees. Resultat :
+       verif_affiliation_dn65.py  rc=0  24 OK, 0 KO
+       verif_photos_dn63.py       rc=0  28 OK, 0 KO
+       verif_reception_dn85.py    rc=0  16 OK, 0 KO
+       verif_vitrine_dn84.py      rc=0  16 OK, 0 KO
+       verif_dossier_d5_dn45.py   rc=0  12 OK, 0 KO
+     ⇒ identiques a la reference. Ces relevés ⛔ ne portent AUCUNE adresse
+       (`https://` : 0 occurrence dans les quatre) et ⛔ aucun montant de jalon.
+   ⛔ CE QUE CA NE PROUVE PAS : les 43 autres gates ⛔ n'ont pas ete re-tirees
+     apres l'ajout. Elles ⛔ ne lisent pas `mesures/*.txt` — c'est pourquoi le
+     re-tir est borne a cinq — mais c'est un ARGUMENT, ⛔ pas une mesure.

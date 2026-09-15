@@ -1,0 +1,95 @@
+==============================================================================
+dn6-8 / T4 — verif_dossier_dn415.py AUX TROIS CONDITIONS, LIGNE A LIGNE
+            Tire le 2026-09-16, apres la derniere ecriture (voir la note de date
+            de T3 : la passe finale a franchi minuit).
+==============================================================================
+Cette gate est la SEULE des 48 qui sort ROUGE a la reference, et son rouge est
+un etat CONNU du cockpit. Ce qui compte n'est donc pas qu'elle rougisse, c'est
+qu'elle rougisse SUR LES MEMES LIGNES — sinon la marche aurait ajoute un defaut
+sous couvert d'un compte inchange : une gate DEJA ROUGE absorbe un KO de plus
+sans changer de couleur, et c'est un angle mort paye dans ce depot.
+
+-- cockpit PRESENT ---------------------------------------------
+   passe dn6-8 : BILAN : 23 OK, 10 KO
+   reference   : BILAN : 23 OK, 10 KO
+   lignes [KO ] : IDENTIQUES, ligne a ligne (10 ligne(s))
+
+   le detail, tel que la gate l'imprime :
+     [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5843) dont `sprint-change-
+     [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ifacts/sprint-status-desknode.yaml [vl53l0x] #1 (l.384) dn4-7-le-tof-porte-t-
+     [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.5267) `done` depuis mi-aoû
+     [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:rint-change-proposal-2026-08-31.md [vl53l0x] #1 (l.23) | « VL53L0X » | `TOF05
+     [KO ] toute occurrence de l'arbre est AU MANIFESTE             ⛔ 4 occurrence(s) de l'arbre SANS ligne de manifeste (sur 199 arbitree(s)) — chacune 
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:on-artifacts/sprint-status-desknode.yaml [vl53l0x] #1 « dn4-7-le-tof-porte-t-
+     [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 1 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 196) — soit le constat a 
+     [KO ] le TEXTE a change sous un verdict inchange               cockpit:/sprint-status-desknode.yaml [busid-en-dur] #1 (l.390)
+     [KO ] la citation du manifeste colle au TEXTE de l'arbre       ⛔ 1 ligne(s) DERIVEE(S) : t-status-desknode.yaml:390
+     [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 205 (manifeste) vs 208 (arbre), ecart -3 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l
+
+-- cockpit VIDE (--cockpit <repertoire vide>) ------------------
+   passe dn6-8 : BILAN : 24 OK, 51 KO
+   reference   : BILAN : 24 OK, 51 KO
+   lignes [KO ] : IDENTIQUES, ligne a ligne (51 ligne(s))
+
+   le detail, tel que la gate l'imprime :
+     [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     ad-output/planning-artifacts/sprint-change-proposal-*.md
+     [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     tput/planning-artifacts/briefs/brief-desknode-2026-08-14
+     [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     _bmad-output/planning-artifacts/epics-desknode-v1.md
+     [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     _bmad-output/implementation-artifacts/deferred-work.md
+     [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     put/implementation-artifacts/sprint-status-desknode.yaml
+     [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     .claude/skills/desknode-board
+     [KO ] surface d'audit DECLAREE mais ABSENTE — trou d'audit     _bmad-output/implementation-artifacts
+     [KO ] aucun saut subi (illisible / surface absente)            0 illisible(s), 7 surface(s) absente(s)
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:.claude/skills/desknode-board/SKILL.md [340..350] #1 « perimes (`facade`, `vl
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:.claude/skills/desknode-board/SKILL.md [506..516] #1 « perimes (`facade`, `vl
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:.claude/skills/desknode-board/SKILL.md [facade] #1 « perimes (`facade`, `vl53
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:.claude/skills/desknode-board/SKILL.md [vl53l0x] #1 « perimes (`facade`, `vl5
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:ts/code-reviews/cr-dn4-17-desknode.patch [busid-en-dur] #1 « -powershell.exe 
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:s/code-reviews/cr-dn4-2-delta-diff.patch [busid-en-dur] #1 « +> ⚠ **busid `3-
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [340..350] #1 « *« toute coordonnee 
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [340..350] #1 « - ⚪ **[desknode][ins
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [340..350] #1 « atteint la bande `y 
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [340..350] #1 « contre un releve dej
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [506..516] #1 « **controler la formu
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [506..516] #1 « rectangle reel pose 
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [busid-en-dur] #1 « (`--busid 3-1`, 
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [busid-en-dur] #1 « d'alternance wsl
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [busid-en-dur] #1 « pareil.** le cad
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « **0 occurrence ajoutee
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « **2026-08-17 13:13:42*
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « - ⚪ **[doc][a corriger
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « 13:13:42** (`b554a4e`,
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « `addendum.md:143` — le
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [facade] #1 « decision owner du 2026
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « (une url nommee « vl6
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « **0 occurrence ajoute
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « **la preuve, chiffree
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « *« vl53l0x, ina219 su
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « - ⚪ **[desknode][doc]
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « > les 29 occurrences 
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « `dn4-15` a lu les **2
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « `hardware/` en porten
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « bloque bas apres une 
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « globaux sur `readme.m
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « inchanges), ⛔ **aucun
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « l'entree de la sessio
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « legitimes** — des **r
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « ⇒ [dn4-16 2026-08-30]
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « ⇒ [dn4-16 2026-08-30]
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:mplementation-artifacts/deferred-work.md [vl53l0x] #1 « ⚠ **une seule correct
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:1-toolchain-build-flash-log-serie-wsl.md [busid-en-dur] #1 « - [x] [review][p
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:1-toolchain-build-flash-log-serie-wsl.md [busid-en-dur] #1 « → **busid = `3-1
+     [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:1-toolchain-build-flash-log-serie-wsl.md [busid-en-dur] #1 « → ecrite. **aucu
+     [KO ] … et d'autres fantomes                                   131 au total
+     [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 131 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 196) — soit le constat 
+     [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 205 (manifeste) vs 65 (arbre), ecart +140 — CE QUI LE COMPOSE : 131 FANTOME(S) au m
+
+-- cockpit INEXISTANT (--cockpit <chemin inexistant>) ----------
+   passe dn6-8 : BILAN : 25 OK, 0 KO
+   reference   : BILAN : 25 OK, 0 KO
+   lignes [KO ] : IDENTIQUES, ligne a ligne (0 ligne(s))
+
+   le detail, tel que la gate l'imprime :
+
+⇒ AUX TROIS CONDITIONS : meme rc, meme compte, MEMES LIGNES. Le rouge de cette
+  gate est celui d'avant la marche, ⛔ pas un rouge de plus.

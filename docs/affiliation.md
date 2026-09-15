@@ -18,6 +18,11 @@ en a accepté les règles, et a généré les liens suivis : cinq identifiants d
 `affiliate link`. ⛔ Aucun agent n'a créé de compte, accepté de conditions ni généré de lien. Ce que
 cette page livre depuis ce jour, c'est **ce qu'il fallait écrire après** : §2, §3, §5, §6 et §7 sont
 annotés, datés, chaque fait neuf avec son adresse, sa date et sa méthode.
+⚠️ *Annoté le 2026-09-15 (`dn6-8`)* — **le mot « tous » ci-dessus est PÉRIMÉ, ⛔ pas effacé.** Sur décision
+owner du même jour, les **cinq mêmes** liens sont **aussi** publiés dans `README.md`, dans un bloc
+**Buy it** de trois lignes qui porte **une** mention `affiliate link` pour les cinq. ⛔ Ce ne sont pas
+des liens de plus : ce sont les mêmes, à un second endroit — celui que lit quelqu'un qui arrive sur le
+dépôt. Ce que la vérification garde a été rouvert le même jour pour le dire (voir l'annotation du §1).
 
 ⛔ **Et il n'y a aucun chiffre de palier de revenus dans ce dépôt.** Des seuils chiffrés avaient été
 esquissés pendant la rédaction de la nomenclature ; ils ont été **sortis du périmètre par décision de
@@ -39,6 +44,13 @@ elle relit toutes les adresses publiées par ce dépôt et compte celles qui por
 ⚠️ *Annoté le 2026-09-15 (`dn6-6`)* : elle vérifie désormais aussi leur **place** — une adresse marquée
 ⛔ n'a le droit de vivre que dans la page d'achat, dans une cellule qui porte la mention `affiliate link`,
 et cette mention ⛔ ne décore jamais une adresse nue.
+⚠️ *Annoté le 2026-09-15 (`dn6-8`)* — **la phrase ci-dessus est PÉRIMÉE sur DEUX points, ⛔ pas effacée.**
+(1) Les places autorisées sont désormais **deux** : la page d'achat **ou** `README.md`. (2) La maille
+n'est plus « la cellule » mais l'**unité de déclaration** — la cellule quand l'adresse est dans une
+table, le **paragraphe** quand elle n'y est pas. C'est ce qu'il fallait pour que le bloc de trois lignes
+du `README.md`, où **une** mention couvre **cinq** liens, soit vrai **sans le réécrire**. ⛔ Ce n'est pas
+un assouplissement : hors de ces deux pages, une adresse marquée fait toujours rougir en la nommant, et
+la réciproque — une mention doit porter une adresse marquée — vaut désormais pour **les deux** pages.
 
 ---
 
@@ -63,6 +75,14 @@ désormais vers la **boutique Waveshare** avec un lien affilié Waveshare, et so
 autres lignes gardent leur lien AliExpress : toujours **cinq** liens, tous dans la page d'achat, de **deux**
 programmes.
 
+⚠️ **Annoté le 2026-09-15 (`dn6-8`) — « seulement dans la page d'achat » et « tous dans la page d'achat »
+sont PÉRIMÉS, ⛔ pas effacés.** Les cinq liens sont **les mêmes** et leur compte ⛔ n'a pas bougé ; ce qui
+a bougé, c'est le nombre d'endroits où le dépôt les publie : la page d'achat **et** `README.md`, sur
+décision owner du même jour. Dans le `README.md` ils vivent dans un bloc **Buy it** de trois lignes qui
+porte **une** mention `affiliate link` pour les cinq — c'est le paragraphe entier qui est l'unité de
+déclaration, ⛔ pas la ligne. ⛔ Aucune autre page, aucun relevé ⛔ n'en porte, et c'est toujours
+mécaniquement gardé (§8).
+
 🔵 **Ce dépôt porte des liens affiliés** — de deux programmes : Waveshare pour la carte, AliExpress pour les
 quatre autres lignes.
 
@@ -85,7 +105,10 @@ mènent à une page de résultats, et personne n'est payé si vous cliquez.
 **périmés pour cinq adresses**. Re-mesuré ce jour par la vérification du §8 : **5** adresses marquées,
 toutes sur le redirecteur de suivi d'AliExpress, toutes dans la page d'achat, chacune avec sa mention.
 Un achat passé par l'un de ces liens peut rémunérer l'owner — ou non : les conditions relevées sont au
-§3. Les **dix** adresses tentées de la page d'achat, elles, restent nues. La correspondance entre
+§3. Les **dix** adresses tentées de la page d'achat, elles, restent nues. ⚠️ *Annoté le 2026-09-15
+(`dn6-8`)* : elles restent **nues**, mais elles ⛔ ne sont plus « de la page d'achat » — elles ont
+déménagé dans [le journal de bord](journal-de-bord.md) avec le reste de ce que la coupe a retiré, et
+c'est là que les deux vérifications vont désormais les chercher (voir le §4). La correspondance entre
 chaque lien suivi (désigné par son seul code, ⛔ jamais par son adresse entière) et l'adresse de
 recherche nue d'où l'owner l'a généré est dans
 [le relevé du 2026-09-15](../mesures/dn6-6/T1-releves-du-2026-09-15.txt).
@@ -237,6 +260,18 @@ le fabricant de la carte. Ses deux lignes de relevé sont ci-dessus.
 ⚠️ *Annoté le 2026-09-15 (`dn6-7`)* : `waveshare.com` est désormais **aussi** cité par une cellule `Source`
 (la ligne de la carte), ⛔ plus seulement par la prose ; il a **quatre** lignes de relevé au §3.
 
+⚠️ **Annoté le 2026-09-15 (`dn6-8`) — « la page d'achat porte cette liste » est PÉRIMÉ, ⛔ pas effacé.**
+La page d'achat a été ramenée de 398 à 123 lignes ce jour-là, sur décision owner, et cette seconde liste
+est partie **mot pour mot** dans [le journal de bord](journal-de-bord.md), avec son en-tête, ses dix
+lignes, leurs dates et leurs motifs. ⛔ **Les dix adresses, leurs dates et leurs résultats n'ont pas
+bougé d'un caractère** — seul le fichier qui les porte a changé, et le titre ci-dessus reste vrai de
+bout en bout : ce ne sont toujours ⛔ pas des fournisseurs.
+⚠️ **Et la phrase « la vérification dérive cette colonne à chaque tir » reste vraie — mais elle ⛔ ne la
+dérive plus du même fichier.** `verif_bom_dn61.py` `(c11)` et la **2e population** de
+`verif_affiliation_dn65.py` résolvent désormais cette table **là où elle vit**, dans le journal ; les
+deux gates ont été rouvertes le même jour pour le dire, et chacune porte un mutant qui replante la
+faute « la table n'est plus résoluble ». ⇒ cette liste ⛔ ne peut toujours pas pourrir en silence.
+
 ---
 
 ## 5. L'obligation de déclaration en France et dans l'Union
@@ -288,6 +323,11 @@ un lien marqué — ⛔ n'est pas remplie : l'état du §2 n'a pas changé.
 sont publiés dans la page d'achat, et l'état du §2 a changé. La transparence du point 1 ci-dessus est
 donc **due**. La mention posée à côté de chaque lien est **`affiliate link`**, en anglais comme la page,
 dans la même cellule que le lien.
+⚠️ *Annoté le 2026-09-15 (`dn6-8`)* : **la mention n'a pas changé**, et elle est toujours dans la même
+cellule que le lien **dans la page d'achat**. Elle est aussi posée, en une seule fois, **en tête du bloc
+de trois lignes** que `README.md` porte depuis ce jour et qui publie les mêmes cinq liens : là, ⛔ il n'y
+a pas de cellule, et c'est le **paragraphe** qui porte la mention pour les cinq. La transparence du
+point 1 est donc due **aux deux endroits**, et elle y est.
 ⚠️ **Juxtaposé, ⛔ pas tranché** : l'article 5, I de la loi n° 2023-451 cité dans le tableau ci-dessus
 impose la mention « Publicité » **ou** « Collaboration commerciale » à l'influence commerciale ; la
 mention retenue par l'owner est `affiliate link`. Cette page ⛔ ne dit pas si l'une vaut l'autre, ni si

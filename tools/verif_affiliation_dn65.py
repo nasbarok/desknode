@@ -172,6 +172,23 @@ import sys
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOM = "docs/bom.md"
 PAGE = "docs/affiliation.md"
+# 🆕 2026-09-15 (`dn6-8`) — DEUX FICHIERS DE PLUS, ET CHACUN POUR UNE RAISON QUI
+#    S'ECRIT EN UNE PHRASE :
+#  · `README.md` — la VITRINE. Sur decision owner du 2026-09-15, les CINQ MEMES
+#    liens suivis y sont publies dans un bloc **Buy it** de trois lignes. Ce ne
+#    sont ⛔ pas des liens de plus : ce sont les memes, a un second endroit —
+#    celui que lit quelqu'un qui arrive sur le depot. ⇒ (c5) et (c24) comptent
+#    desormais DEUX pages autorisees, ⛔ pas une.
+#  · `docs/journal-de-bord.md` — la 2e POPULATION. La table des dix adresses
+#    tentees a quitte la page d'achat le meme jour (398 ⇒ 123 lignes) et vit
+#    desormais dans le journal, mot pour mot. (c4) garde le MEME invariant,
+#    dans les MEMES deux sens ; il le derive d'un AUTRE fichier.
+VITRINE = "README.md"
+JOURNAL = "docs/journal-de-bord.md"
+# ⚠️ LES DEUX PAGES OU UNE ADRESSE MARQUEE A LE DROIT DE VIVRE. ⛔ Ce n'est PAS
+#    une liste qui s'allonge par confort : chaque entree est une decision owner
+#    ECRITE, et le mutant 51 prouve qu'un TROISIEME fichier rougit toujours.
+PAGES_D_ACHAT = (BOM, VITRINE)
 
 # ── LES ANCRES LITTERALES ─────────────────────────────────────────────────
 # Une ancre qui bouge rend son mutant PERIME (rc=3) ⇒ elle se remarque,
@@ -609,7 +626,15 @@ MUTANTS[23] = ("casse toutes les adresses de `docs/bom.md` ⇒ la population "
 # 🆕 2026-09-15 (`dn6-6`) : QUINTUPLE, MESURE — casser les schemas efface AUSSI
 #    les cinq liens suivis : les deux pages disent encore PORTER des liens (c6),
 #    et les cinq mentions ne portent plus d'adresse marquee (c24).
-CIBLES[23] = ("c2", "c4", "c3", "c6", "c24")
+# 🆕 2026-09-15 (`dn6-8`) : QUADRUPLE, MESURE — **(c4) SORT**, et c'est la
+#    consequence directe du demenagement, ⛔ pas un relachement. Les deux
+#    populations ⛔ ne se derivent PLUS de la meme page : casser les schemas de
+#    `docs/bom.md` vide la 1re, ⛔ plus la 2e, qui vit dans le journal. Une
+#    cible qui decrirait encore un etat PERIME du document serait une
+#    reciproque qui ment — la regle du fichier, appliquee a lui-meme.
+#    ⚠️ (c4) ⛔ NE RESTE PAS NU POUR AUTANT : les mutants 3, 29 et **54** le
+#       visent, et 54 est precisement celui qui casse la derivation NEUVE.
+CIBLES[23] = ("c2", "c3", "c6", "c24")
 MUTANTS[24] = ("retire une cible de `CIBLES` ⇒ un controle garde par ZERO "
                "mutant, le risque que `dn6-1` avait paye")
 CIBLES[24] = ("c20",)
@@ -693,7 +718,20 @@ MUTANTS[41] = ("pose `affiliate link` a cote d'une adresse NUE (une adresse "
 CIBLES[41] = ("c24",)
 MUTANTS[42] = ("remplace les liens suivis par des recherches NUES, mentions "
                "retirees ⇒ les deux pages disent encore PORTER des liens")
-CIBLES[42] = ("c6",)
+# 🆕 2026-09-15 (`dn6-8`) : CIBLE **DOUBLE**, MESUREE — (c3) s'ajoute, et la
+#    raison est instructive. `waveshare.com` entrait dans la 1re population par
+#    DEUX chemins : la cellule `Source` de la carte, et le paragraphe en prose
+#    « Manufacturer price not surveyable » qui citait la fiche du fabricant.
+#    Ce paragraphe est parti dans le journal avec le reste de la coupe ⇒ il ⛔ ne
+#    reste qu'UN chemin, et ce mutant le coupe. La ligne de releve `waveshare.com`
+#    devient alors ORPHELINE. ⛔ La cible dit ce que le mutant FAIT.
+# ⚠️ ET CA NOMME UN EFFET DE BORD DE LA COUPE, ECRIT PLUTOT QUE TU : le balayage
+#    CONTEXTUEL de la prose de `populations()` ⛔ ne contribue PLUS RIEN a la 1re
+#    population (mesure du 2026-09-15 : la page d'achat ⛔ ne cite plus aucune
+#    adresse hors de ses cellules `Source`). La branche reste ECRITE et vivante
+#    — elle se rallumera au premier fournisseur nomme en prose — mais elle est
+#    aujourd'hui EXERCEE PAR RIEN, et ce fait est porte au ledger.
+CIBLES[42] = ("c6", "c3")
 MUTANTS[43] = ("ajoute au releve une ligne pour le REDIRECTEUR lui-meme "
                "(`s.click.aliexpress.com`) ⇒ il n'est PAS un fournisseur")
 CIBLES[43] = ("c3",)
@@ -722,6 +760,32 @@ CIBLES[49] = ("c16",)
 MUTANTS[50] = ("replante « 1,000 € » ⇒ un jalon au separateur de milliers "
                "ANGLAIS")
 CIBLES[50] = ("c15",)
+
+# 🆕 2026-09-15 (`dn6-8`) — QUATRE MUTANTS, UN PAR BRANCHE NEUVE. ⛔ AUCUN NE
+#    DEBRANCHE UNE GARDE : chacun REPLANTE la faute que sa branche vient de
+#    rendre possible, et les quatre sont mesures VERTS avant / ROUGES apres.
+#      · 51 — la frontiere de (c5) s'est elargie a DEUX pages ; il prouve
+#             qu'elle ⛔ ne s'est pas elargie a TOUTES, mention comprise ;
+#      · 52 — la vitrine porte UNE mention pour CINQ liens ; il la retire ;
+#      · 53 — (c24) juge desormais des unites HORS TABLE ; il vide le bloc de
+#             la vitrine de ses adresses marquees en gardant la mention ;
+#      · 54 — la 2e population se derive du JOURNAL ; il y renomme la colonne.
+MUTANTS[51] = ("pose une adresse marquee — DERIVEE de la page d'achat — dans "
+               "un TROISIEME fichier suivi (`CHANGELOG.md`), **avec** sa "
+               "mention ⇒ la place est une liste de DEUX pages, ⛔ pas une "
+               "recompense pour qui ecrit `affiliate link`")
+CIBLES[51] = ("c5",)
+MUTANTS[52] = ("retire la mention `affiliate link` du bloc **Buy it** de "
+               "`README.md` ⇒ les CINQ liens de la vitrine d'un coup, sans "
+               "leur declaration")
+CIBLES[52] = ("c5",)
+MUTANTS[53] = ("rend NUES les adresses du bloc **Buy it** de `README.md` en "
+               "GARDANT la mention ⇒ la reciproque (c24) hors d'une table")
+CIBLES[53] = ("c24",)
+MUTANTS[54] = ("renomme la colonne `Address tried` dans "
+               "`docs/journal-de-bord.md` ⇒ la 2e population cesse de se "
+               "DERIVER, et le silence ne vaut pas « aucune adresse tentee »")
+CIBLES[54] = ("c4",)
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL, hors le controle final qui le confronte.
 #    Il se PERIME si on ajoute un controle sans le mettre a jour — et c'est
@@ -1032,28 +1096,49 @@ def unite_autour(texte, pos):
     return cible[0] if cible else ligne
 
 
-def populations(bom):
-    """LES DEUX POPULATIONS, DERIVEES DE `docs/bom.md`.
+def populations(bom, journal):
+    """LES DEUX POPULATIONS — la 1re DERIVEE DE `docs/bom.md`, la 2e DU JOURNAL.
 
     🔴 ⛔ AUCUNE ENUMERATION : la 1re sort des cellules de la colonne dont
        l'entete commence par `Source`, PLUS les domaines nommes en PROSE hors
        de toute table (c'est la que vit le fabricant non relevable) ; la 2e
-       sort de la colonne dont l'entete contient `Adresse`."""
+       sort de la colonne dont l'entete contient `Adresse`.
+
+    🆕 2026-09-15 (`dn6-8`) — LA 2e POPULATION CHANGE DE FICHIER, ⛔ PAS DE
+       REGLE. La table des dix adresses tentees a quitte la page d'achat pour
+       `docs/journal-de-bord.md` ce jour-la, mot pour mot : la colonne se
+       resout donc **la ou elle vit**. Laissee sur `bom`, elle rendait un
+       ENSEMBLE VIDE — et `(c4)` aurait alors declare INTRUS les dix domaines
+       que `docs/affiliation.md` publie, c'est-a-dire un rouge sur du contenu
+       JUSTE, la classe de defaut la plus chere de ce depot.
+    ⚠️ CE QUE CA DEPLACE, ECRIT PLUTOT QUE TU : une table de tentatives REVENUE
+       dans la page d'achat ⛔ ne serait plus lue. C'est le prix du
+       demenagement ; le mutant 54 le rend FALSIFIABLE en renommant la colonne
+       la ou elle est, et `(c4)` doit alors rougir.
+    ⛔ ET LE JOURNAL ⛔ N'ENTRE PAS DANS LA 1re POPULATION : il porte des
+       centaines d'adresses de documentation, de datasheets et de wikis. Les y
+       verser exigerait une ligne de releve d'affiliation pour chaque editeur
+       cite — le faux KO exact que le balayage CONTEXTUEL de la prose (plus
+       bas) a du fermer pour la page d'achat."""
     pop1, pop2 = set(), set()
     lignes = bom.split("\n")
     en_table = set()
     for h, corps in tables(bom):
         i_src = next((k for k, n in enumerate(h)
                       if n.lower().startswith("source")), None)
-        # 🆕 2026-09-15 (`dn6-6`) : `Address tried` (page anglaise) — `adresse`
-        #    reste lu, ⛔ il ne sert plus a la page d'achat.
-        i_ten = next((k for k, n in enumerate(h)
-                      if "adresse" in n.lower() or "address" in n.lower()), None)
         for c in corps:
             if i_src is not None:
                 pop1.update(domaine_de(hote(u)) for u in RE_URL.findall(c[i_src]))
-            if i_ten is not None:
-                pop2.update(domaine_de(hote(u)) for u in RE_URL.findall(c[i_ten]))
+    # 🆕 2026-09-15 (`dn6-6`) : `Address tried` (page anglaise) — `adresse`
+    #    reste lu, ⛔ il ne sert plus a la page d'achat.
+    # 🆕 2026-09-15 (`dn6-8`) : … et il se lit dans le JOURNAL.
+    for h, corps in tables(journal):
+        i_ten = next((k for k, n in enumerate(h)
+                      if "adresse" in n.lower() or "address" in n.lower()), None)
+        if i_ten is None:
+            continue
+        for c in corps:
+            pop2.update(domaine_de(hote(u)) for u in RE_URL.findall(c[i_ten]))
     for h, corps in tables(bom):
         en_table.add(" | ".join(h))
         for c in corps:
@@ -1170,9 +1255,16 @@ def muter(etat):
         # 🆕 2026-09-15 (`dn6-6`) : l'adresse de recherche du BH1750 n'existe
         #    plus. Le marqueur est pose sur une adresse TENTEE — une unite qui
         #    ⛔ declare rien — et c'est le NOUVEL (c5) qui doit la voir.
-        p[BOM] = p[BOM].replace(
-            "https://www.adafruit.com/?q=BME680",
-            "https://www.adafruit.com/?q=BME680&aff_trace_key=dn65", 1)
+        # 🆕 2026-09-15 (`dn6-8`) — RE-ANCRE, ET C'EST UNE MESURE QUI L'A EXIGE :
+        #    la table des adresses tentees est partie dans le journal, la page
+        #    d'achat ⛔ ne porte PLUS AUCUNE adresse nue, et la substitution est
+        #    devenue un NO-OP — `rc=3`, mutant PERIME, la branche `sans_mention`
+        #    de (c5) perdait un gardien EN SILENCE. ⇒ la MEME adresse et le MEME
+        #    marqueur fabrique sont desormais POSES dans la prose de la page
+        #    d'achat : marquee, dans la bonne page, dans une unite qui ⛔ ne la
+        #    declare pas. Meme faute, meme controle, meme branche.
+        p[BOM] += ("\n\nhttps://www.adafruit.com/?q=BME680"
+                   "&aff_trace_key=dn65\n")
     elif _MUTANT == 5:
         # 🆕 2026-09-15 (`dn6-6`) : la faute d'origine retournait la phrase
         #    NEG en POS. La phrase NEG reste (NFR3) et la POS est ecrite EN
@@ -1348,9 +1440,33 @@ def muter(etat):
                      + lignes[k][m.end():])
         p[BOM] = "\n".join(lignes)
     elif _MUTANT == 41:
-        p[BOM] = p[BOM].replace(
-            "| `https://thepihut.com/search?q=BME680` |",
-            "| `https://thepihut.com/search?q=BME680` — affiliate link |", 1)
+        # 🆕 2026-09-15 (`dn6-8`) — RE-ANCRE PAR LA MESURE. Il posait la mention
+        #    a cote d'une adresse TENTEE de la page d'achat ; cette table est
+        #    partie dans le journal ⇒ `rc=3`, mutant PERIME, et la branche
+        #    CELLULE de (c24) perdait son seul gardien de ce cote.
+        #    ⇒ LA FAUTE EST REJOUEE A L'ENVERS, ET C'EST LA MEME : au lieu de
+        #      poser la mention a cote d'une adresse nue, il rend NUE l'adresse
+        #      d'une cellule qui porte deja la mention. Dans les deux cas, la
+        #      page declare un lien affilie **qui n'existe pas**, A LA MAILLE
+        #      CELLULE — ⛔ pas a celle de l'unite (c'est le mutant 53).
+        #    ⚠️ L'ADRESSE DE REMPLACEMENT EST UNE RECHERCHE `aliexpress.com`, et
+        #      la cellule visee est une cellule ALIEXPRESS : le domaine de la
+        #      1re population ⛔ ne bouge pas, donc (c3) reste vert et la cible
+        #      declaree reste SIMPLE. Viser la ligne de la carte aurait retire
+        #      `waveshare.com` de la population et rougi (c3) par ricochet.
+        lignes = p[BOM].split("\n")
+        k = next((i for i, l in enumerate(lignes)
+                  if l.strip().startswith("|")
+                  and any(est_redirecteur(hote(m.group(2)))
+                          for m in RE_CELLULE_SUIVIE.finditer(l))), None)
+        if k is None:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        lignes[k] = RE_CELLULE_SUIVIE.sub(
+            lambda m: ("[%s](https://www.aliexpress.com/w/"
+                       "wholesale-TEMOIN41.html) — affiliate link"
+                       % m.group(1)) if est_redirecteur(hote(m.group(2)))
+            else m.group(0), lignes[k], 1)
+        p[BOM] = "\n".join(lignes)
     elif _MUTANT == 42:
         # 🔴 LA FAUTE REELLE, ET ELLE EST SILENCIEUSE : les liens s'en vont, les
         #    deux phrases « PORTE des liens » restent.
@@ -1413,6 +1529,67 @@ def muter(etat):
         p[BOM] += "\n\nExpected: a revenue target of €300 per month.\n"
     elif _MUTANT == 50:
         p[BOM] += "\n\n- Replanted: 1,000 € accumulated.\n"
+    elif _MUTANT == 51:
+        # ⚠️ L'ADRESSE EST **DERIVEE** de la page d'achat, ⛔ recopiee ici : ce
+        #    fichier ⛔ ne porte pas les codes de l'owner (meme regle que 39/42).
+        # 🔴 ET IL POSE LA MENTION AVEC, EXPRES : sans elle, il ne prouverait
+        #    que « une adresse nue hors des pages rougit » — ce que 30 et 39
+        #    prouvent deja. AVEC elle, il prouve la propriete NEUVE : la place
+        #    est une liste de DEUX fichiers, et ⛔ aucune formule ne l'allonge.
+        if "CHANGELOG.md" not in p:
+            return e                      # fichier hors corpus ⇒ NO-OP ⇒ rc=3
+        u = next((x for x in RE_URL.findall(p[BOM])
+                  if est_redirecteur(hote(x))), None)
+        if u is None:
+            return e                      # plus aucun lien suivi ⇒ rc=3
+        p["CHANGELOG.md"] += "\n- Buy it: %s — affiliate link\n" % u
+    elif _MUTANT == 52:
+        # ⚠️ LA LIGNE EST **DERIVEE** : la 1re de la vitrine qui porte la
+        #    mention. Une ancre litterale se serait perimee au premier
+        #    reglage de formulation du bloc, ⛔ sans que rien ne le dise.
+        t = p.get(VITRINE)
+        if t is None:
+            return e                      # vitrine hors corpus ⇒ rc=3
+        lignes = t.split("\n")
+        k = next((i for i, l in enumerate(lignes)
+                  if RE_MENTION.search(l)), None)
+        if k is None:
+            return e                      # plus de mention ⇒ NO-OP ⇒ rc=3
+        lignes[k] = RE_MENTION.sub("tracked links", lignes[k])
+        p[VITRINE] = "\n".join(lignes)
+    elif _MUTANT == 53:
+        # 🔴 LA MENTION **RESTE**, et c'est tout le sujet : le bloc continue de
+        #    dire « ces cinq liens sont des liens affilies » alors qu'aucun ne
+        #    l'est. C'est la faute de (c24) — la declaration FAUSSE dans
+        #    l'autre sens — jouee HORS d'une table, la branche neuve du jour.
+        t = p.get(VITRINE)
+        if t is None:
+            return e                      # vitrine hors corpus ⇒ rc=3
+        def _denue(m):
+            u_ = m.group(0)
+            if est_redirecteur(hote(u_)) or RE_MARQUEUR_FRANC.search(u_):
+                return ("https://www.aliexpress.com/w/"
+                        "wholesale-TEMOIN53.html")
+            return u_
+        neuf_ = RE_URL.sub(_denue, t)
+        if neuf_ == t:
+            return e                      # plus aucun lien suivi ⇒ rc=3
+        p[VITRINE] = neuf_
+    elif _MUTANT == 54:
+        # ⚠️ IL VISE LA LIGNE D'EN-TETE, ⛔ pas « la 1re occurrence du texte » —
+        #    la lecon que `verif_bom_dn61.py` a payee le meme jour : le journal
+        #    EXPLIQUE, en prose, la table qu'il accueille, et une citation en
+        #    prose aurait absorbe la substitution en laissant la table intacte.
+        t = p.get(JOURNAL)
+        if t is None:
+            return e                      # journal hors corpus ⇒ rc=3
+        lignes = t.split("\n")
+        k = next((i for i, l in enumerate(lignes)
+                  if l.strip().startswith("|") and "Address tried" in l), None)
+        if k is None:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        lignes[k] = lignes[k].replace("Address tried", "Shop")
+        p[JOURNAL] = "\n".join(lignes)
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e
@@ -1522,6 +1699,19 @@ def main():
              "⛔ ABSENTE — la population se DERIVE d'elle, ⛔ il n'y a pas de "
              "repli")
         return bilan(1, "`docs/bom.md` est absente")
+    # 🆕 2026-09-15 (`dn6-8`) — LES DEUX FICHIERS NEUFS SE NOMMENT S'ILS
+    #    MANQUENT, ⛔ ils ne se replient pas sur une chaine vide. Un journal
+    #    absent aurait vide la 2e population EN SILENCE et fait declarer INTRUS
+    #    les dix domaines que la page publie ; une vitrine absente aurait rendu
+    #    (c24) vert sur une population retrecie. Un fichier manquant est un
+    #    FAIT, ⛔ pas un cas par defaut.
+    for f_ in (JOURNAL, VITRINE):
+        if f_ not in prose:
+            ctrl(False, "(c0) `%s` est au depot" % f_,
+                 "⛔ ABSENT — %s ⛔ il n'y a pas de repli"
+                 % ("la 2e population s'y DERIVE ;" if f_ == JOURNAL
+                    else "les liens suivis y sont publies ;"))
+            return bilan(1, "`%s` est absent" % f_)
 
     etat = {"prose": prose,
             "cibles": {n: tuple(v) for n, v in CIBLES.items()},
@@ -1559,7 +1749,8 @@ def main():
 
     # ── (c2)(c3)(c4) LA POPULATION EST DERIVEE, PUIS CONFRONTEE ────────────
     print("\n── (c2)(c3)(c4) LA POPULATION SE DERIVE DE LA BOM ────────────────")
-    pop1, pop2 = populations(bom)
+    print("           (2e population : %s — ⛔ plus la page d'achat)" % JOURNAL)
+    pop1, pop2 = populations(bom, prose.get(JOURNAL, ""))
     ctrl(bool(pop1), "(c2) la population des fournisseurs se DERIVE",
          "%d domaine(s) : %s" % (len(pop1), " · ".join(sorted(pop1)))
          if pop1 else
@@ -1646,20 +1837,55 @@ def main():
     #    engagement. Le voici : une adresse marquee n'a le droit de vivre QUE
     #    dans la page d'achat, et SEULEMENT dans une unite qui la declare.
     #    ⛔ Ignorer `s.click.` aurait laisse un lien NON DECLARE passer partout.
+    # 🆕 2026-09-15 (`dn6-8`) — L'ENGAGEMENT CHANGE UNE SECONDE FOIS, ET C'EST
+    #    ENCORE UN **REMPLACEMENT**, ⛔ PAS UN ASSOUPLISSEMENT. Il disait :
+    #    « toute adresse marquee est dans `docs/bom.md`, dans une unite qui
+    #    porte la mention ». Il dit desormais : « dans `docs/bom.md` **OU**
+    #    `README.md`, dans une unite qui porte la mention ».
+    #    LA RAISON EST UNE DECISION OWNER DU 2026-09-15, ⛔ pas un contournement :
+    #    les cinq liens vont AUSSI sur la vitrine — *« les liens directement sur
+    #    le readme + en entete du bom, juste 3 lignes »* — parce que le lecteur
+    #    qui arrive sur le depot ⛔ n'ouvre pas `docs/`. Ce sont les CINQ MEMES
+    #    liens, a un second endroit ; ⛔ pas cinq de plus.
+    #    ⛔ CE QUE CA NE DESSERRE PAS, ET IL FAUT LE MESURER POUR LE DIRE : hors
+    #    de ces DEUX pages, une adresse marquee rougit toujours EN LA NOMMANT
+    #    (mutants 30, 39, **51**) ; et dans ces deux pages, une adresse marquee
+    #    SANS sa mention rougit toujours (mutants 40, 46, 47, **52**). La
+    #    frontiere a bouge d'un fichier ; ⛔ aucune porte n'a ete ouverte.
+    #
+    # 🔴 LA MAILLE, MESUREE AVANT D'ETRE CHOISIE. Le bloc de la vitrine porte
+    #    **UNE** mention pour **CINQ** liens, sur **TROIS** lignes physiques
+    #    (decision owner : « juste 3 lignes »). A la maille LIGNE, deux des
+    #    trois lignes ⛔ ne portent pas la mention : quatre des cinq liens
+    #    seraient declares NON DECLARES, et la seule facon d'eteindre le rouge
+    #    serait de REECRIRE le bloc que l'owner a arbitre. ⛔ Une gate qui exige
+    #    de defaire une decision owner pour sortir verte est une gate fausse.
+    #    ⇒ LA MAILLE RETENUE EST CELLE QUI EXISTAIT DEJA, INCHANGEE :
+    #      `unite_autour()` — la CELLULE quand l'adresse est dans une table (la
+    #      page d'achat), l'UNITE DE DECLARATION sinon, c'est-a-dire le
+    #      PARAGRAPHE et ses lignes de continuation (la vitrine). Les trois
+    #      lignes du bloc **Buy it** sont un seul paragraphe : la mention de la
+    #      1re couvre les cinq adresses des trois. ⛔ AUCUNE LIGNE DE CODE DE LA
+    #      MAILLE N'A CHANGE — c'est la mesure qui le dit, ⛔ pas un souhait.
+    #    ⚠️ CE QUE CETTE MAILLE COUTE, ECRIT : une ligne vide posee AU MILIEU du
+    #      bloc le couperait en deux unites, et les liens de la 2e moitie
+    #      sortiraient sans mention. C'est un rouge, ⛔ pas un trou — et le
+    #      mutant 52 replante la faute voisine (la mention retiree du bloc).
     hors_page, sans_mention = [], []
     for f, u, t, pos in marques:
-        if f != BOM:
+        if f not in PAGES_D_ACHAT:
             hors_page.append("%s : %s (%s)" % (f, montre(u), t))
         elif not RE_MENTION.search(unite_autour(prose[f], pos)):
-            sans_mention.append("%s (%s)" % (montre(u), t))
+            sans_mention.append("%s : %s (%s)" % (f, montre(u), t))
     ctrl(not hors_page and not sans_mention,
          "(c5) toute adresse MARQUEE est declaree, a sa place",
          "%d adresse(s) relue(s) dans %d fichier(s) de texte suivis "
-         "(`.md` + `.txt`), %d marquee(s) — toutes dans `%s`, chacune "
-         "avec `affiliate link` dans son unite" % (n_url, len(prose),
-                                                  len(marques), BOM)
+         "(`.md` + `.txt`), %d marquee(s) — toutes dans %s, chacune "
+         "avec `affiliate link` dans son unite"
+         % (n_url, len(prose), len(marques),
+            " ou ".join("`%s`" % f for f in PAGES_D_ACHAT))
          if not hors_page and not sans_mention
-         else "⛔ %d HORS DE LA PAGE D'ACHAT : %s · %d SANS SA MENTION dans "
+         else "⛔ %d HORS DES PAGES D'ACHAT : %s · %d SANS SA MENTION dans "
               "son unite : %s — un lien affilie NON DECLARE"
               % (len(hors_page), " · ".join(hors_page[:2]) or "—",
                  len(sans_mention), " · ".join(sans_mention[:2]) or "—"))
@@ -1667,19 +1893,62 @@ def main():
     # 🆕 2026-09-15 (`dn6-6`) — (c24), LA RECIPROQUE : une mention qui ⛔ ne
     #    porte AUCUNE adresse marquee est une declaration FAUSSE dans l'autre
     #    sens. Elle se lit A LA CELLULE, comme la moitie « a sa place » de (c5).
+    # 🆕 2026-09-15 (`dn6-8`) — LA RECIPROQUE VAUT POUR **LES DEUX** PAGES, et
+    #    elle gagne une 2e maille parce que la vitrine ⛔ n'a pas de table.
+    #  · CELLULE (les deux pages) — LA REGLE D'ORIGINE, ⛔ INCHANGEE D'UN MOT :
+    #    une cellule qui porte la mention doit porter une adresse marquee, meme
+    #    si elle ne porte AUCUNE adresse. C'est ce qui attrape le mutant 47 (la
+    #    mention deplacee dans la cellule de date, qui ⛔ ne porte pas d'URL).
+    #    ⛔ L'assouplir en « … qui porte au moins une URL » aurait desarme 47 :
+    #    mesure du 2026-09-15, ⛔ pas une crainte.
+    #  · UNITE PORTANT UNE ADRESSE (les deux pages) — LA BRANCHE NEUVE, et elle
+    #    est BORNEE EXPRES. Hors table, une mention vit dans un paragraphe ; le
+    #    bloc **Buy it** de la vitrine en est un. ⚠️ Mais les DEUX pages
+    #    EXPLIQUENT aussi la regle — `## Affiliate links`, « the five `Source`
+    #    links below are affiliate links », « these five links are **affiliate
+    #    links** » — et une prose qui EXPLIQUE ⛔ ne declare rien. ⇒ seule une
+    #    unite qui porte **au moins une adresse** est jugee : une mention posee
+    #    a cote d'une adresse NUE rougit (mutant 53), une mention qui explique
+    #    sans adresse ⛔ ne rougit pas. Mesure du 2026-09-15 : sans cette borne,
+    #    la page d'achat et la vitrine sortent **rouges sur du contenu JUSTE**.
     decorees, n_mentions = [], 0
-    for h_, corps_ in tables(bom):
-        for c_ in corps_:
-            for cel in c_:
-                if not RE_MENTION.search(cel):
-                    continue
-                n_mentions += 1
-                if not any(marque(u, boutiques) for u in RE_URL.findall(cel)):
-                    decorees.append(montre(nu(cel).strip("`[] ")))
+    for f_ in PAGES_D_ACHAT:
+        txt_ = prose.get(f_, "")
+        vues = set()
+        for h_, corps_ in tables(txt_):
+            for c_ in corps_:
+                for cel in c_:
+                    if not RE_MENTION.search(cel):
+                        continue
+                    vues.add(cel)
+                    n_mentions += 1
+                    if not any(marque(u, boutiques)
+                               for u in RE_URL.findall(cel)):
+                        decorees.append("%s : %s"
+                                        % (f_, montre(nu(cel).strip("`[] "))))
+        # ⚠️ LES LIGNES DE TABLE SONT EXCLUES **ICI**, et ⛔ pas par hasard :
+        #    `unites()` rend une ligne `| … |` comme une unite, et la boucle
+        #    ci-dessus l'a DEJA jugee cellule par cellule — a la maille FINE.
+        #    Les compter deux fois gonflait le total de la ligne de verdict
+        #    (11 pour 6 unites reelles, mesure du 2026-09-15) et, pire, aurait
+        #    laisse croire qu'une ligne dont la mention est dans une cellule et
+        #    l'adresse marquee dans une AUTRE est declaree. La cellule fait foi.
+        for u_ in unites(txt_):
+            if (u_ in vues or u_.startswith("|")
+                    or not RE_MENTION.search(u_)):
+                continue
+            urls = RE_URL.findall(u_)
+            if not urls:
+                continue          # une prose qui EXPLIQUE ⛔ ne declare rien
+            n_mentions += 1
+            if not any(marque(x, boutiques) for x in urls):
+                decorees.append("%s : %s" % (f_, montre(nu(u_).strip("`[] "))))
     ctrl(not decorees,
          "(c24) toute mention `affiliate link` porte son adresse",
-         "%d cellule(s) portant la mention, toutes sur une adresse marquee"
-         % n_mentions if not decorees
+         "%d unite(s) portant la mention dans %s, toutes sur une adresse "
+         "marquee" % (n_mentions,
+                      " + ".join("`%s`" % f for f in PAGES_D_ACHAT))
+         if not decorees
          else "⛔ %d MENTION(S) SUR UNE ADRESSE NUE : %s — la page "
               "declarerait un lien affilie qui n'existe pas"
               % (len(decorees), " · ".join(decorees[:2])))

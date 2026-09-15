@@ -8,6 +8,38 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- 🆕 **The purchase page fits in a hundred lines, and the links are on the front page** (`dn6-8`,
+  2026-09-15). Later the same day as `dn6-7`, on two owner decisions. (1) `docs/bom.md` is cut from
+  **398 lines to 123** — *« il est trop trop verbeux c'est abusé »* — and everything it lost moved
+  **word for word** into `docs/journal-de-bord.md`, in one dated section that says where it comes
+  from and why: the tier cost and its refusal to recompute the sum, why a median rather than a mean,
+  the I²C addresses measured on the two sensors and the six photo links, the nine-wire count in full,
+  the ten shop addresses that could not be reached on 2026-09-06 with their header, the Pimoroni
+  alternative, and every dated annotation the page had collected since 2026-09-07 — the refuted
+  HTTP 403 included. Measured: **254 of the 256 non-empty lines** the page lost are in the log byte
+  for byte; the two others are sentences the cut rewrote in place, and both are named in the log
+  rather than left tacit. The only shape change is one heading demoted a level to sit under the new
+  section, and it is named too. (2) The **same five** affiliate links are now published in
+  `README.md` as well, in a three-line **Buy it** block carrying **one** `affiliate link` mention for
+  the five — because whoever lands on the repository does ⛔ not open `docs/`. Three checks were
+  reopened in the same commit as the move: `tools/verif_bom_dn61.py` resolves the table of addresses
+  tried in the log and its three mutants are re-anchored there — each one re-measured green before,
+  red after, on the same fault; `tools/verif_affiliation_dn65.py` derives its second population from
+  the log, and its commitment becomes *a marked address lives in `docs/bom.md` **or** `README.md`, in
+  a unit carrying the mention*, its reciprocal now covering both pages, with **four new mutants**
+  replanting each new branch; `docs/cablage/PHOTOS.md` names the log as the page citing its six
+  photographs. The mesh stayed as it was — the cell inside a table, the paragraph outside one — which
+  is what makes the three-line block true **without rewriting it**, and that was measured before it
+  was chosen. Two mutants that the move had silently expired (`rc=3`) were re-anchored, and two
+  target lists were corrected against the measurement rather than against intent.
+- 🆕 **What `dn6-8` did ⛔ not do, written rather than left to be assumed.** ⛔ No price, no date, no
+  address, no annotation and no photo caption was changed — only the file that carries them. ⛔ No
+  sixth affiliate link was created: the five on the front page are the five of the purchase page, at
+  a second place. ⛔ No tracked address was opened by the agent — a click is counted by the
+  programme — so the destinations of the two links outside the tiers remain the owner's statement.
+  ⛔ The ten addresses tried, judged by a single retrieval tool on 2026-09-06, were ⛔ not re-tried:
+  the disposition stays on the ledger. ⛔ The tier cost is still ⛔ not recomputed — no exchange rate
+  was surveyed — it simply now lives in the log. And ⛔ nothing was pushed by the agent.
 - 🆕 **The board is bought from Waveshare, through its affiliate link** (`dn6-7`, 2026-09-15).
   Later the same day, the Waveshare application was approved — the owner found the affiliate space open,
   without any e-mail — and, on the owner's decision, the board row of `docs/bom.md` links to Waveshare's own

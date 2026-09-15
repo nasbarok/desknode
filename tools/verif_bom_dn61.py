@@ -25,6 +25,18 @@ PRIX SANS SA DATE ET SA SOURCE. Cette gate garde cette regle, et rien d'autre.
    rouvrant la source, ⛔ pas en relisant le fichier.
 ⛔ Elle ne dit rien du cablage, rien du firmware, et n'ouvre aucun port.
 ⛔ Elle ne lit AUCUN fichier hors de `docs/bom.md`.
+⚠️ **CETTE DERNIERE PHRASE EST FAUSSE DEPUIS LE 2026-09-15 (`dn6-8`), ET ELLE EST
+   ANNOTEE PLUTOT QU'EFFACEE (NFR3).** Elle a ete vraie de `dn6-1` au 2026-09-15.
+   Ce jour-la, la page d'achat est ramenee de 398 a 123 lignes sur decision owner,
+   et **la table des sources non atteintes part dans `docs/journal-de-bord.md`**,
+   mot pour mot. (c11) garde le MEME invariant — chaque source tentee porte URL,
+   DATE et MOTIF — mais il resout desormais cette table **la ou elle vit**. ⇒ la
+   gate lit DEUX fichiers : `docs/bom.md` pour (c1) a (c10), et le journal pour le
+   seul (c11). ⛔ Rien d'autre, ⛔ aucun reseau, ⛔ aucune ecriture.
+   ⚠️ CE QUE CA COUTE, ECRIT PLUTOT QUE TU : le journal absent ou illisible est
+      desormais une SORTIE ANTICIPEE de cette gate, au meme titre que la page
+      d'achat absente. Une gate qui sauterait (c11) en silence parce que son 2e
+      fichier a disparu serait exactement le retrecissement que (z) garde.
 
 ── CE QU'ELLE GARDE, CONTROLE PAR CONTROLE ─────────────────────────────────
 
@@ -107,6 +119,13 @@ import sys
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 F_BOM = os.path.join(RACINE, "docs", "bom.md")
 BOM_REL = "docs/bom.md"
+# 🆕 2026-09-15 (`dn6-8`) — LA 2e CIBLE, ET ELLE NE SERT QU'A (c11). La table des
+#    sources non atteintes a quitte la page d'achat pour le journal, mot pour mot.
+#    ⛔ CE N'EST PAS UN ELARGISSEMENT DE PERIMETRE : (c1) a (c10) ⛔ ne lisent
+#    toujours QUE `docs/bom.md`, et le journal ⛔ n'est jamais confronte a la
+#    regle « un prix porte sa date et sa source » — il porte de la prose datee,
+#    ⛔ pas un catalogue.
+JOURNAL_REL = "docs/journal-de-bord.md"
 
 # Les deux paliers de D19. ⛔ Ce sont des NOMS, pas des descriptions : les
 # ecrire ici en dur est le sujet du controle, ⛔ pas un raccourci.
@@ -219,6 +238,12 @@ MUTANTS[27] = ("vide la QUANTITE d'une ligne a prix "
                "(une ligne incomplete ⛔ n'est pas commandable)")
 MUTANTS[28] = ("retire la colonne `Qty` d'une table de palier "
                "(⛔ retirer la colonne echappait au controle du champ)")
+# 🆕 2026-09-15 (`dn6-8`) — LES TROIS SUIVANTS SONT RE-ANCRES SUR L'ADRESSE NEUVE
+#    DE LEUR TABLE : elle a quitte `docs/bom.md` pour `docs/journal-de-bord.md`,
+#    mot pour mot. ⛔ AUCUN NE CHANGE DE FAUTE — leur substitution est la MEME,
+#    litteral pour litteral ; seul le fichier ou elle s'applique a bouge, et c'est
+#    `muter_journal()` qui la porte desormais. Ils sont re-mesures un par un
+#    (vert AVANT, rouge APRES) : `mesures/dn6-8/T3`.
 MUTANTS[29] = ("remplace une URL tentee par un NOM D'HOTE nu "
                "(un nom de boutique ⛔ ne se re-tente pas)")
 MUTANTS[30] = ("retire la DATE d'une tentative de source "
@@ -564,9 +589,6 @@ def muter(texte):
                              "| Date du relevé | Source |", 1)
     if _MUTANT == 33:
         return texte + "\n\nMilestone: 12.50 €\n"
-    if _MUTANT == 31:
-        return texte.replace("| Address tried | Date of the attempt |",
-                             "| Shop | When |", 1)
     if _MUTANT == 27:
         for _e, corps in tables_de_bom(texte):
             for l in corps:
@@ -582,6 +604,33 @@ def muter(texte):
                              "Supplier | Price | Survey date | Source |",
                              "| Item | Exact reference | "
                              "Supplier | Price | Survey date | Source |", 1)
+    if _MUTANT in (25, 26):
+        # ⚠️ Ces deux-la ⛔ ne mutent PAS le texte : 25 deplace la CIBLE, 26
+        #    replante une sortie anticipee. Le texte revient intact, et la
+        #    garde du no-op les excepte NOMMEMENT.
+        return texte
+    if _MUTANT in MUTANTS_JOURNAL:
+        # ⚠️ Ceux-la mutent l'AUTRE fichier — voir `muter_journal()`. La page
+        #    d'achat revient intacte, et la garde du no-op est UNIVERSELLE :
+        #    elle compare les DEUX textes, ⛔ pas seulement celui-ci.
+        return texte
+    raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
+
+
+# 🆕 2026-09-15 (`dn6-8`) — LES MUTANTS DE LA 2e CIBLE.
+#    ⛔ CE N'EST PAS UNE 2e FAMILLE DE FAUTES : ce sont les MEMES trois fautes
+#    qu'avant, sur le MEME texte — il a juste change de fichier. Les
+#    substitutions sont reprises LITTERAL POUR LITTERAL de `muter()`, et les
+#    commentaires qui les expliquent avec.
+MUTANTS_JOURNAL = (29, 30, 31)
+
+
+def muter_journal(texte):
+    """REPLANTE dans `docs/journal-de-bord.md`, EN MEMOIRE — ⛔ jamais sur le
+    disque. Rend le texte INCHANGE pour tout mutant qui ne vise pas ce
+    fichier : c'est la garde du no-op de `main()` qui tranche, ⛔ pas ici."""
+    if _MUTANT not in MUTANTS_JOURNAL:
+        return texte
     if _MUTANT == 29:
         # ⚠️ CHIRURGICAL : la MEME URL vit aussi dans la PROSE, plus haut. Une
         #    substitution « la 1re occurrence » frappait la prose et laissait
@@ -591,6 +640,12 @@ def muter(texte):
         #    `waveshare.com` datee (le lien de la boutique Waveshare) — et elle est la
         #    1re de la page. Le mutant la frappait, ⛔ plus la table des tentatives, et
         #    sortait VERT (mesure). ⇒ la ligne visee COMMENCE par l'URL tentee.
+        # 🆕 2026-09-15 (`dn6-8`) : la ligne de la carte est restee dans la page
+        #    d'achat, la table des tentatives est partie dans le journal ⇒ la
+        #    precaution ci-dessus ⛔ n'est plus ce qui separe les deux, mais elle
+        #    reste EXACTE — le paragraphe « Manufacturer price not surveyable »
+        #    a suivi la table et cite la meme adresse en PROSE, deux blocs plus
+        #    haut. La ligne visee COMMENCE toujours par l'URL tentee.
         for l in texte.split("\n"):
             if l.strip().startswith("| `https://") and "waveshare.com" in l \
                     and RE_DATE.search(l):
@@ -601,12 +656,28 @@ def muter(texte):
     if _MUTANT == 30:
         return texte.replace("| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 |",
                              "| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | recently |", 1)
-    if _MUTANT in (25, 26):
-        # ⚠️ Ces deux-la ⛔ ne mutent PAS le texte : 25 deplace la CIBLE, 26
-        #    replante une sortie anticipee. Le texte revient intact, et la
-        #    garde du no-op les excepte NOMMEMENT.
+    if _MUTANT == 31:
+        # 🔴 IL VISE LA LIGNE D'EN-TETE, ⛔ PLUS « LA 1re OCCURRENCE DU TEXTE » —
+        #    ET C'EST UNE MESURE DU 2026-09-15 (`dn6-8`), ⛔ pas une precaution.
+        #    Le journal explique, EN PROSE, d'ou vient la table qu'il accueille.
+        #    La 1re redaction de cette prose citait l'en-tete entre accents
+        #    graves : `replace(…, 1)` a frappe LA PHRASE, la vraie table est
+        #    restee intacte, et le mutant est sorti **rc=0, 24 OK, 0 KO** — un
+        #    gardien DESARME par un commentaire, exactement le defaut que le
+        #    jeton d'exemption de (c1c) a deja paye dans ce depot.
+        #    ⇒ la cible est une LIGNE DE TABLE, et la prose du journal ⛔ ne
+        #      recopie plus l'en-tete. Les DEUX bouts sont faits : documenter le
+        #      piege ne protege de rien, seul le REJOUER protege.
+        for l in texte.split("\n"):
+            if l.strip().startswith("|") and "Address tried" in l:
+                c = cellules(l)
+                i = colonne(c, "tried")
+                if i is None:
+                    continue
+                c[i] = "Shop"
+                return texte.replace(l, "| " + " | ".join(c) + " |", 1)
         return texte
-    raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
+    raise AssertionError("mutant %d declare journal mais SANS CORPS" % _MUTANT)
 
 
 # ═══════════════════════════ LES CONTROLES ═════════════════════════════════
@@ -663,6 +734,24 @@ def main():
         ctrl(False, "le document d'achat est LISIBLE",
              "⛔ %s: %s" % (type(e).__name__, str(e)[:90]))
         return bilan(1, "le document d'achat est illisible")
+    # 🆕 2026-09-15 (`dn6-8`) — LA 2e CIBLE SE LIT **ICI**, ⛔ PAS A (c11). Lue
+    #    plus bas, son absence aurait saute (c11) en silence : la gate serait
+    #    sortie a 23 controles au lieu de 24, et (z) l'aurait bien dit — mais
+    #    APRES coup, sur un compte, ⛔ pas en nommant le fichier. Un fichier
+    #    absent se NOMME.
+    chemin_j = os.path.join(RACINE, JOURNAL_REL)
+    if not os.path.isfile(chemin_j):
+        ctrl(False, "le journal de bord existe",
+             "⛔ %s est ABSENT — la table des sources non atteintes y vit "
+             "depuis le 2026-09-15" % JOURNAL_REL)
+        return bilan(1, "le journal de bord est ABSENT")
+    try:
+        with open(chemin_j, encoding="utf-8") as fh:
+            brut_j = fh.read()
+    except (OSError, UnicodeDecodeError) as e:
+        ctrl(False, "le journal de bord est LISIBLE",
+             "⛔ %s: %s" % (type(e).__name__, str(e)[:90]))
+        return bilan(1, "le journal de bord est illisible")
     # 🔴 REVUE DU 2026-09-07 — UN MUTANT QUI MEURT SORTAIT EN TRACEBACK, SANS
     #    `BILAN`. Or « pas de BILAN » est precisement le discriminant d'une
     #    gate MORTE que `verif_campagne_dn56.py` cherche : la campagne aurait
@@ -670,6 +759,7 @@ def main():
     #    litterale a bouge, ou son corps manque). ⇒ il se rend en KO nomme.
     try:
         texte = muter(brut)
+        journal = muter_journal(brut_j)
     except Exception as e:
         ctrl(False, "le mutant %d a une CIBLE et un CORPS" % _MUTANT,
              "⛔ %s: %s — ⛔ la faute est dans le MUTANT, ⛔ pas dans la gate"
@@ -680,10 +770,16 @@ def main():
     #    jour ou la formulation visee bouge dans `docs/bom.md`, la substitution
     #    devient un no-op et la gate sort VERTE — la campagne accuse alors la
     #    GATE, la ou la faute est dans le MUTANT. ⇒ il se declare lui-meme.
-    if _MUTANT and _MUTANT not in (25, 26) and texte == brut:
+    # 🆕 2026-09-15 (`dn6-8`) — LA GARDE COMPARE LES **DEUX** TEXTES. Bornee au
+    #    seul `docs/bom.md`, elle aurait declare PERIMES les trois mutants qui
+    #    viennent de partir dans le journal (leur page d'achat revient intacte)
+    #    — un `rc=3` sur trois gardiens VIVANTS. ⛔ Le no-op se juge sur TOUT ce
+    #    que la gate lit, ⛔ pas sur un fichier choisi.
+    if _MUTANT and _MUTANT not in (25, 26) \
+            and texte == brut and journal == brut_j:
         ctrl(False, "le mutant %d a bien un EFFET" % _MUTANT,
-             "⛔ SANS EFFET — sa cible litterale a disparu de %s. ⛔ Ce n'est "
-             "PAS un controle vert." % BOM_REL)
+             "⛔ SANS EFFET — sa cible litterale a disparu de %s et de %s. "
+             "⛔ Ce n'est PAS un controle vert." % (BOM_REL, JOURNAL_REL))
         # 🆕 2026-09-15 (revue de `dn6-6`) : rc=3, ⛔ plus rc=1 — rc=1 + BILAN +
         #    [KO ] est EXACTEMENT le contrat « sain » de `verif_campagne_dn56.py`,
         #    et 16 mutants venaient d'etre re-ancres : un perime passait pour sain.
@@ -906,13 +1002,25 @@ def main():
     #    gardait : cette table ne porte pas de prix, donc (c1c) la saute, et
     #    elle ne se declare pas table de BOM, donc (c3)(c4)(c5) ne la voient
     #    pas. ⛔ Un nom de boutique ne se re-tente pas ; une URL, si.
+    # 🆕 2026-09-15 (`dn6-8`) — LA TABLE A DEMENAGE, ET (c11) LA SUIT. Elle vit
+    #    dans `docs/journal-de-bord.md` depuis la coupe de la page d'achat
+    #    (398 ⇒ 123 lignes, decision owner). ⛔ L'INVARIANT NE BOUGE PAS d'un
+    #    mot : une source non atteinte porte son URL, sa DATE et son MOTIF, et
+    #    le SILENCE ne vaut toujours pas « toutes les sources ont repondu ».
+    #    ⚠️ CE QUI A CHANGE DE SENS, ET IL FAUT LE DIRE : « la table est LA »
+    #       ne mesure plus la page d'achat mais le journal. Une table de
+    #       tentatives REVENUE dans `docs/bom.md` ⛔ ne serait donc plus vue par
+    #       ce controle — c'est le prix du demenagement, il est ECRIT, et le
+    #       mutant 31 (l'en-tete renomme) le garde LA OU ELLE EST.
     print("\n── (c11) CHAQUE SOURCE NON ATTEINTE PORTE URL + DATE + MOTIF ─────")
-    t_src = [(e, co) for e, co, _a in toutes_les_tables(texte)
+    print("           (lue dans %s — ⛔ plus dans la page d'achat)"
+          % JOURNAL_REL)
+    t_src = [(e, co) for e, co, _a in toutes_les_tables(journal)
              if colonne(e, "tried") is not None]
     ctrl(len(t_src) == 1, "la table des sources non atteintes est LA",
-         "1 table" if len(t_src) == 1
-         else "⛔ %d — ⛔ le silence n'est pas « toutes les sources ont "
-              "repondu »" % len(t_src))
+         "1 table, dans %s" % JOURNAL_REL if len(t_src) == 1
+         else "⛔ %d dans %s — ⛔ le silence n'est pas « toutes les sources ont "
+              "repondu »" % (len(t_src), JOURNAL_REL))
     incompletes = []
     for ent, corps in t_src:
         # 🆕 2026-09-15 (`dn6-6`) : `Address tried | Date of the attempt |
