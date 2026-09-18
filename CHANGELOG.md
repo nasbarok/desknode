@@ -24,6 +24,11 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   rather than left tacit. The three gates that read this ground were counted before and after and **none moved**:
   ledger `36 OK / 0 KO`, reception `16 OK / 0 KO`, front page `16 OK / 0 KO`, all three `rc=0`; the front page
   went from **8 532 to 9 082 bytes**, under a 16 000 ceiling. Counts in `mesures/dn8-10/`.
+  ⚠️ **A funding file is not enough, and that was measured the hard way**: with the file public and **parsed**
+  by GitHub, and the account's Sponsors profile approved, the button was still hidden — because a repository
+  **setting**, `hasSponsorshipsEnabled`, was `false`. Turning it on flipped it to `true`, and the button is now
+  read as `showSponsorButton: true` on the page an **anonymous** visitor gets. Anyone reproducing this needs
+  both: the file, and *Settings → General → Features → Sponsorships*.
 - 🆕 **The purchase page fits in a hundred lines, and the links are on the front page** (`dn6-8`,
   2026-09-15). Later the same day as `dn6-7`, on two owner decisions. (1) `docs/bom.md` is cut from
   **398 lines to 123** — *« il est trop trop verbeux c'est abusé »* — and everything it lost moved

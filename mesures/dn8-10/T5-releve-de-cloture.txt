@@ -1,0 +1,32 @@
+==============================================================================
+dn8-10 — T5, LE RELEVE DE CLOTURE : LE BOUTON EST VU, ⛔ PAS DECLARE
+==============================================================================
+  releve le : 2026-09-18T16:41:04+02:00
+
+-- 1. CE QUI EST POUSSE -------------------------------------------------------
+  git ls-remote origin refs/heads/main : c5e2c7970f84d36d28033574b6487d19d0c9013c
+  HEAD local                            : c5e2c7970f84d36d28033574b6487d19d0c9013c
+
+-- 2. CE QUI EST REELLEMENT SERVI (octet pour octet) --------------------------
+  .github/FUNDING.yml : HTTP 200, 884 o — IDENTIQUE a l'arbre local
+  README.md : HTTP 200, 9082 o — IDENTIQUE a l'arbre local
+
+-- 3. CE QUE GITHUB A PARSE DU FICHIER ----------------------------------------
+  {"data":{"repository":{"hasSponsorshipsEnabled":true,"fundingLinks":[{"platform":"GITHUB","url":"https://github.com/nasbarok"}]}}}
+-- 4. LE PROFIL SPONSORS DU COMPTE --------------------------------------------
+  {"data":{"user":{"hasSponsorsListing":true,"sponsorsListing":{"name":"sponsors-nasbarok","isPublic":true}}}}
+-- 5. LE BOUTON, VU PAR UN ANONYME (⛔ pas par le compte owner) ----------------
+  showSponsorButton : true
+  liens /sponsors/nasbarok dans la page : 2
+
+-- 6. LE FAIT QUE LA CONDITION DE DEBLOCAGE DU LEDGER NE CONNAISSAIT PAS -------
+  Relevé du 2026-09-18, APRES la poussée : le fichier était public, parsé
+  (fundingLinks non vide) — et le bouton restait MASQUE.
+  Cause MESUREE : hasSponsorshipsEnabled = false sur le DEPOT.
+  ⇒ une TROISIEME condition existait, qu'⛔ AUCUNE des deux moitiés écrites
+    par dn6-6 ne nommait : le réglage Sponsorships du dépôt.
+  Après le geste owner : false ⇒ true, et showSponsorButton false ⇒ true.
+
+==============================================================================
+FIN T5
+==============================================================================
