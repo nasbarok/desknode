@@ -94,7 +94,7 @@ DeskNode is free and open-source, and it is built in spare time. Nothing in it i
 
 [**Sponsor this project on GitHub**](https://github.com/sponsors/nasbarok)
 
-⛔ **Sponsoring buys no priority** — not on an issue, not on a feature, not on an answer — and it buys no dates. What it can change is the one thing [What this project is, honestly](CONTRIBUTING.md#what-this-project-is-honestly) already names: the door is not closed, and if the project ever finds funding, the pace picks back up.
+⛔ **Sponsoring does not buy a guaranteed fix, feature, answer or delivery date.** Some sponsorship tiers may include explicitly described rewards, but the project's roadmap and technical decisions remain independent. What this project is, and what it is not, is written plainly in [What this project is, honestly](CONTRIBUTING.md#what-this-project-is-honestly).
 
 ## More
 

@@ -1,0 +1,57 @@
+==============================================================================
+dn8-10 — T6 : LES TIERS PUBLIES, ET CE QU'ILS ENGAGENT
+  releve le : 2026-09-18T16:46:31+02:00
+==============================================================================
+
+-- 1. LES TIERS, LUS PAR L'API (⛔ pas paraphrases) ----------------------------
+  listing : sponsors-nasbarok · public : True · 6 tiers
+  $5      $5 a month             one-time=False
+        Support my open-source work and get a Sponsor badge on your GitHub profile. Thank you!
+  $25     $25 a month            one-time=False
+        Support my open-source work and have your name or logo listed in the Sponsors section of one of my active project READMEs.
+  $100    $100 a month           one-time=False
+        I'll prioritize the investigation and review of one of your bug reports. This does not guarantee a fix or a specific delivery date.
+  $350    $350 one time          one-time=True 
+        One hour of consulting or technical mentoring around software development, embedded systems, backend, infrastructure or open-source projects. Please contact me first to arrange the session.
+  $1000   $1,000 one time        one-time=True 
+        For one clearly defined bug fix or medium-sized development task. Please contact me before sponsoring this tier so we can agree on scope, feasibility, deliverables and timeline.
+  $5000   $5,000 one time        one-time=True 
+        For larger development, integration, embedded, backend or infrastructure work. Please contact me before sponsoring this tier. Scope, deliverables, timeline and feasibility must be agreed beforehand.
+
+-- 2. LA CONTRADICTION QUE LA VITRINE PORTAIT, ET SA CORRECTION ----------------
+  AVANT : « Sponsoring buys no priority — not on an issue, not on a feature,
+          not on an answer — and it buys no dates. »
+  OR le tier $100/mois dit : « I'll prioritize the investigation and review of
+  one of your bug reports. This does not guarantee a fix or a specific delivery
+  date. » ⇒ la vitrine CONTREDISAIT un tier publie.
+  APRES (arbitrage owner du 2026-09-18) : « Sponsoring does not buy a guaranteed
+  fix, feature, answer or delivery date. Some sponsorship tiers may include
+  explicitly described rewards, but the project's roadmap and technical
+  decisions remain independent. »
+  ⇒ la vitrine reprend desormais le disclaimer DU TIER LUI-MEME.
+
+-- 3. UNE PROMESSE PUBLIEE QUI N'A ENCORE AUCUN SUPPORT ------------------------
+  Le tier $25/mois promet : « have your name or logo listed in the Sponsors
+  section of one of my active project READMEs ».
+  MESURE : ⛔ AUCUNE section de listing de sponsors dans desknode:README.md.
+  Depots PUBLICS du compte et leur derniere poussee :
+    desknode — pousse 2026-09-18
+    game_map_master_flutter_app — pousse 2025-09-21
+    myphonetoyforchilds — pousse 2021-03-19
+    plant_tracker_backend — pousse 2025-05-28
+    policy_rules — pousse 2026-02-02
+    server-game-map-master — pousse 2025-09-20
+    vegatableCalendarV1 — pousse 2021-03-29
+  ⇒ DeskNode est le SEUL depot public reellement actif (pousse ce jour ; le
+    suivant date d'un an) : « one of my active project READMEs » le designe
+    de fait, ⛔ meme si la formule ne le NOMME pas.
+
+-- 4. GATES APRES CORRECTION --------------------------------------------------
+  verif_vitrine_dn84.py -> BILAN : 16 OK, 0 KO  rc=0
+  verif_reception_dn85.py -> BILAN : 16 OK, 0 KO  rc=0
+  verif_affiliation_dn65.py -> BILAN : 24 OK, 0 KO  rc=0
+  README.md : 9110 o (plafond 16000)
+
+==============================================================================
+FIN T6
+==============================================================================
