@@ -1,0 +1,62 @@
+==============================================================================
+dn8-10 — T1, LA BORNE D'ARRIVEE (arbre ECRIT, ⛔ non committe)
+  relevee le : 2026-09-18T14:40:03+02:00
+==============================================================================
+
+-- 1. LE FICHIER DE FINANCEMENT EXISTE ET SE PARSE (AC8.10.1) -----------------
+  yaml.safe_load : {'github': ['nasbarok']}
+  seule cle github + identifiant du depot : TENUE
+  AC8.10.1 rc=0
+
+-- 2. LES TROIS VOISINS DE .github/ — IDENTIQUES A T0 ? (AC8.10.5) -------------
+  b49167386e31b6f24f28b6228d79c3ff9ea41feb139bd1da5af0da265ed57852  /home/nasbarok/projects/desknode/.github/workflows/cla.yml
+  00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  /home/nasbarok/projects/desknode/.github/workflows/gates.yml
+  a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  /home/nasbarok/projects/desknode/.github/cla-signatures.json
+  T0 attendait :
+    b49167386e31b6f24f28b6228d79c3ff9ea41feb139bd1da5af0da265ed57852  cla.yml
+    00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  gates.yml
+    a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  cla-signatures.json
+
+-- 3. LA VITRINE (plafond 16000) ----------------------------------------------
+  README.md : 8989 octets (T0 : 8532)
+    11:## What it shows
+    19:## Demo
+    31:## Two hardware tiers
+    50:## Install
+    68:## Language
+    72:## Known issues
+    84:## Status and help
+    91:## Support
+    99:## More
+
+-- 4. LES TROIS GATES, AU COMPTE ET AU rc REEL (⛔ pas le rc d'un tube) --------
+  verif_ledger_dn416.py  ->  BILAN : 36 OK, 0 KO   rc=0
+  verif_reception_dn85.py  ->  BILAN : 16 OK, 0 KO   rc=0
+  verif_vitrine_dn84.py  ->  BILAN : 16 OK, 0 KO   rc=0
+
+-- 5. LA GATE DE RECEPTION N'A PAS ETE TOUCHEE (AC8.10.8) ---------------------
+  git diff --stat sur la gate :
+  (vide = ⛔ pas touchee)
+  controles declares : 16 lignes (c..) dans l'en-tete
+
+-- 6. LE TRACKER SE PARSE ----------------------------------------------------
+  cles : 107 · dn8-10 = in-progress
+
+-- 7. CE QUE LA MARCHE A ECRIT -----------------------------------------------
+  desknode :
+     M CHANGELOG.md
+     M README.md
+     M docs/roadmap.md
+    ?? .github/FUNDING.yml
+    ?? mesures/dn8-10/
+  cockpit :
+     M _bmad-output/implementation-artifacts/deferred-work.md
+     M _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md
+     M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+    ?? _bmad-output/implementation-artifacts/dn8-10-le-depot-porte-son-bouton-sponsor-et-le-ledger-est-solde.md
+    ?? docs/dashboard_desktop_project/desknode.mp4
+    ?? docs/dashboard_desktop_project/reddit-post-desknode-2026-09-15.md
+
+==============================================================================
+FIN T1
+==============================================================================

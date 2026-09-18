@@ -177,6 +177,15 @@ the `dn8` row is left — **proving the CLA bot against a real outside contribut
 longer something a story can run: it waits for the first pull request of someone from outside. What
 else is still missing, for someone arriving from outside, is listed in the last section of this page.
 
+⚠️ **Amended again on 2026-09-18 (`dn8-10`), and nothing above is erased.** The sentence above — *"every story
+of the epic has shipped"* — has stopped being true: a **tenth** story ran on 2026-09-18, after the epic had been
+called complete. It was ⛔ not new scope. It was a ledger entry left by `dn6-6` whose unblocking condition was
+written down and whose external half had fallen: the GitHub Sponsors profile, *"pending"* on 2026-09-15, is
+approved and public — **measured through the API**, ⛔ not declared. The repository now carries
+`.github/FUNDING.yml`, and the front page a `## Support` section that promises nothing. ⚠️ That file is guarded
+by **no gate** — an owner decision of the same day — and the gap is at the ledger with its carrier. What is left
+of the `dn8` row still does not change: **proving the CLA bot against a real outside contributor**.
+
 ## What is already known to be wrong, and where it is written
 
 The gap between what this repository **asks of you** and what it **can currently

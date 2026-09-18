@@ -88,6 +88,14 @@ The screen starts in **English**. **French** can be selected on the install page
 - A **security vulnerability**? **Not in an issue**, which is public: follow [`SECURITY.md`](SECURITY.md).
 - How people are expected to behave here, and what can and cannot be done when they do not: [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 
+## Support
+
+DeskNode is free and open-source, and it is built in spare time. Nothing in it is behind a paywall, and nothing planned is.
+
+[**Sponsor this project on GitHub**](https://github.com/sponsors/nasbarok)
+
+⛔ **Sponsoring buys no priority** — not on an issue, not on a feature, not on an answer — and it buys no dates. What it can change is the one thing [What this project is, honestly](CONTRIBUTING.md#what-this-project-is-honestly) already names: the door is not closed, and if the project ever finds funding, the pace picks back up.
+
 ## More
 
 - Building, reporting a bug, contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md)

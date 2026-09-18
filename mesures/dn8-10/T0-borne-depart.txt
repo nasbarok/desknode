@@ -1,0 +1,49 @@
+==============================================================================
+dn8-10 — T0, LA BORNE DE DEPART
+  relevee le : 2026-09-18T14:36:47+02:00
+==============================================================================
+
+-- 0. LES DEUX ARBRES ---------------------------------------------------------
+desknode HEAD  : b00944d08b1c7a4e21a4bbb146b72aee523e1a88
+desknode branche : main
+desknode status --porcelain (vide = propre) :
+    ?? mesures/dn8-10/
+  (fin)
+cockpit HEAD   : 77678dedfb8da9f1e9acb22b26702cb66bfd632a
+cockpit branche : desknode-p0-p1-clos
+
+-- 1. CE QUE LA MARCHE VA POSER N'EXISTE PAS ENCORE ----------------------------
+  .github/FUNDING.yml : ⛔ ABSENT (etat attendu)
+  contenu de .github/ :
+    ISSUE_TEMPLATE
+    cla-signatures.json
+    pull_request_template.md
+    workflows
+
+-- 2. LES TROIS VOISINS DE .github/ — sha256 A GARDER IDENTIQUES (AC8.10.5) ----
+  b49167386e31b6f24f28b6228d79c3ff9ea41feb139bd1da5af0da265ed57852  /home/nasbarok/projects/desknode/.github/workflows/cla.yml
+  00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  /home/nasbarok/projects/desknode/.github/workflows/gates.yml
+  a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  /home/nasbarok/projects/desknode/.github/cla-signatures.json
+
+-- 3. LA VITRINE, ET SON PLAFOND (c4) = 16000 o -------------------------------
+  README.md : 8532 octets, 97 lignes
+  titres ATX actuels :
+    11:## What it shows
+    19:## Demo
+    31:## Two hardware tiers
+    50:## Install
+    68:## Language
+    72:## Known issues
+    84:## Status and help
+    91:## More
+
+-- 4. LES TROIS GATES, AU COMPTE (⛔ pas a la couleur) -------------------------
+  verif_ledger_dn416.py  ->  BILAN : 36 OK, 0 KO   rc=0
+  verif_reception_dn85.py  ->  BILAN : 16 OK, 0 KO   rc=0
+  verif_vitrine_dn84.py  ->  BILAN : 16 OK, 0 KO   rc=0
+
+-- 5. LE PROFIL SPONSORS, MESURE (⛔ pas declare) ------------------------------
+  {"data":{"user":{"login":"nasbarok","hasSponsorsListing":true,"sponsorsListing":{"name":"sponsors-nasbarok","isPublic":true}}}}
+==============================================================================
+FIN T0
+==============================================================================

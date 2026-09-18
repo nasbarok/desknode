@@ -1,0 +1,15 @@
+# DeskNode — ce que GitHub lit pour afficher le bouton « Sponsor ».
+#
+# UNE SEULE cle, et c'est une decision, ⛔ pas un oubli : le sponsoring
+# PCBWay / JLCPCB / Seeed est INELIGIBLE (ils sponsorisent la fabrication de
+# PCB ; DeskNode utilise une carte du commerce) — ecrit pour que ca ne se
+# re-cherche pas. ⛔ Aucune AUTRE plateforme de financement AU SENS DE CE
+# FICHIER (patreon, ko_fi, open_collective, custom, ...) n'est ouverte.
+# ⚠️ ⛔ NE PAS CONFONDRE avec les programmes d'AFFILIATION de
+#    `docs/affiliation.md` (AliExpress, Waveshare) : ceux-la sont OUVERTS et
+#    ACTIFS, et ils ⛔ ne se declarent PAS ici.
+#
+# ⚠️ Ce fichier n'est garde par AUCUNE gate du depot (arbitrage owner du
+#    2026-09-18, `dn8-10`) : une cle renommee ou un identifiant faux ⛔ ne
+#    ferait rougir personne. L'ecart est au ledger, avec son porteur.
+github: [nasbarok]

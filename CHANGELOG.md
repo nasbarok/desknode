@@ -8,6 +8,22 @@ versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- 🆕 **The repository carries its Sponsor button, and the front page says how to support** (`dn8-10`,
+  2026-09-18). A ledger entry opened by `dn6-6` on 2026-09-15 recorded that the GitHub Sponsors profile was
+  *"pending"*, and it wrote its own unblocking condition: the profile approved, then a story that lays the funding
+  file down and replays the reception gate. **The external half has fallen, and it is measured, not declared**:
+  `gh api graphql` on `user(login:"nasbarok")` returns `hasSponsorsListing: true`, `sponsorsListing.isPublic: true`.
+  `.github/FUNDING.yml` carries **one** key, `github` — a decision rather than an omission, since PCBWay / JLCPCB /
+  Seeed sponsorship is ineligible: they sponsor PCB fabrication, and DeskNode uses an off-the-shelf board.
+  `README.md` gains a `## Support` section between *Status and help* and *More*, and it promises nothing:
+  sponsoring buys **no** priority — not on an issue, not on a feature, not on an answer, and no date. The five
+  affiliate links are **left exactly where they are**, in `## Two hardware tiers`, next to the act of buying, so
+  the disclosure `dn6-8` placed there is untouched. ⚠️ **The funding file is guarded by no gate** — an owner
+  decision of the same day, after the option of adding a control to `verif_reception_dn85.py` was put and turned
+  down: a renamed key or a wrong handle would redden nothing, and that gap is at the ledger with its carrier
+  rather than left tacit. The three gates that read this ground were counted before and after and **none moved**:
+  ledger `36 OK / 0 KO`, reception `16 OK / 0 KO`, front page `16 OK / 0 KO`, all three `rc=0`; the front page
+  went from **8 532 to 9 082 bytes**, under a 16 000 ceiling. Counts in `mesures/dn8-10/`.
 - 🆕 **The purchase page fits in a hundred lines, and the links are on the front page** (`dn6-8`,
   2026-09-15). Later the same day as `dn6-7`, on two owner decisions. (1) `docs/bom.md` is cut from
   **398 lines to 123** — *« il est trop trop verbeux c'est abusé »* — and everything it lost moved

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# dn8-10 — lanceur de POUSSEE, joue par l'OWNER : `bash ~/dn810.sh` (ou `bash ~/dn810.sh --a-blanc`).
+# L'agent ⛔ ne pousse pas : le classifieur de permissions lui refuse tout geste GitHub en ecriture
+# (precedents dn8-7, dn8-8, dn6-6). Ce lanceur REFUSE, exit != 0 et motif imprime, sur :
+#   1 ATTENDU non rempli (le commit de la marche n'existait pas encore a l'ecriture du lanceur)
+#   2 un autre depot (racine git ≠ ~/projects/desknode, ou `origin` ≠ github.com/nasbarok/desknode)
+#   3 une autre branche que `main`
+#   4 un arbre sale (`git status --porcelain` non vide, fichiers non suivis compris)
+#   5 un HEAD different du SHA ATTENDU ci-dessous
+#   6 un `git fetch origin` en echec
+#   7 un non fast-forward : `origin/main` n'est PAS ancetre de HEAD
+# Puis il pousse `main` SANS FORCE (⛔ --force, ⛔ tags), relit `git ls-remote origin refs/heads/main`
+# et imprime VERDICT (8 poussee refusee par le serveur · 9 relecture ≠ ATTENDU).
+# `--a-blanc` joue TOUTES les gardes, fetch compris, et s'arrete AVANT la poussee (exit 0).
+set -u
+DEPOT="$HOME/projects/desknode"
+ORIGINE='^(https://github\.com/|git@github\.com:)nasbarok/desknode(\.git)?$'
+ATTENDU=
+BLANC=0
+[ "${1:-}" = "--a-blanc" ] && BLANC=1
+refus() {  # $1 = exit, reste = motif
+  local rc="$1"; shift
+  echo "⛔ REFUS : $*"
+  echo "VERDICT: dn810 REFUSE, rien n'est pousse (exit $rc)"
+  exit "$rc"
+}
+[ -n "$ATTENDU" ] || refus 1 "ATTENDU est VIDE — le lanceur a ete ecrit AVANT le commit de la marche ; le remplir avec le SHA du commit de dn8-10 avant de jouer"
+cd "$DEPOT" 2>/dev/null || refus 2 "le depot $DEPOT est introuvable"
+racine=$(git rev-parse --show-toplevel 2>/dev/null) || refus 2 "$DEPOT n'est pas un depot git"
+[ "$(cd "$racine" && pwd -P)" = "$(cd "$DEPOT" && pwd -P)" ] || refus 2 "racine git $racine ≠ $DEPOT"
+url=$(git remote get-url origin 2>/dev/null) || refus 2 "aucun remote origin"
+[[ "$url" =~ $ORIGINE ]] || refus 2 "origin = $url ≠ github.com/nasbarok/desknode"
+branche=$(git symbolic-ref --short -q HEAD) || refus 3 "HEAD detache, ⛔ sur une branche"
+[ "$branche" = main ] || refus 3 "branche courante = $branche ≠ main"
+sale=$(git status --porcelain)
+[ -z "$sale" ] || refus 4 "arbre SALE : $(echo "$sale" | head -3 | tr '\n' ' ')"
+head=$(git rev-parse HEAD)
+[ "$head" = "$ATTENDU" ] || refus 5 "HEAD = $head ≠ ATTENDU $ATTENDU"
+git fetch -q origin || refus 6 "git fetch origin a echoue"
+distant=$(git rev-parse -q --verify refs/remotes/origin/main) || refus 7 "origin/main introuvable apres fetch"
+git merge-base --is-ancestor "$distant" "$head" || refus 7 "NON FAST-FORWARD : origin/main = $distant n'est pas ancetre de HEAD $head"
+echo "gardes tenues : depot $DEPOT · origin $url · branche main · arbre propre · HEAD = $ATTENDU"
+echo "                origin/main = $distant, ancetre de HEAD ($(git rev-list --count "$distant..$head") commit(s) a pousser)"
+if [ "$BLANC" = 1 ]; then
+  echo "VERDICT: dn810 A BLANC, gardes tenues, ⛔ rien n'est pousse (exit 0)"
+  exit 0
+fi
+git push origin refs/heads/main:refs/heads/main || refus 8 "la poussee a ete refusee (⛔ jamais --force)"
+relu=$(git ls-remote origin refs/heads/main | cut -f1)
+echo "git ls-remote origin refs/heads/main : $relu"
+[ "$relu" = "$ATTENDU" ] || refus 9 "relecture distante $relu ≠ ATTENDU $ATTENDU"
+echo "VERDICT: dn810 main pousse, relu sur origin = $ATTENDU (exit 0)"

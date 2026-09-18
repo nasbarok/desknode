@@ -1,0 +1,59 @@
+==============================================================================
+dn8-10 — T4, APRES LES RETOUCHES DE REVUE (arbre ECRIT, ⛔ non committe)
+  relevee le : 2026-09-18T15:28:28+02:00
+==============================================================================
+
+-- 1. AC8.10.1 — le fichier de financement -----------------------------------
+   {'github': ['nasbarok']} -> TENUE
+  rc=0
+
+-- 2. AC8.10.5 — les trois voisins de .github/, identiques a T0 ? -------------
+  b49167386e31b6f24f28b6228d79c3ff9ea41feb139bd1da5af0da265ed57852  .github/workflows/cla.yml
+  00f194c9d459caca3205f53c294dc8863aef4b4e587d6ba0fd32c4156bd9566e  .github/workflows/gates.yml
+  a0d5bfe53d7bda13a42cb8e585ce1c445962fde059eca76f2369809842f0d5b7  .github/cla-signatures.json
+  T0 : b491673…57852 cla.yml · 00f194c9…9566e gates.yml · a0d5bfe5…0d5b7 cla-signatures.json
+
+-- 3. AC8.10.2 — la vitrine sous 16000 o --------------------------------------
+  README.md : 9082 o  (T0 : 8532 · T1 : 8989)
+
+-- 4. LES GATES TOUCHEES, AU COMPTE ET AU rc REEL -----------------------------
+  verif_vitrine_dn84.py  ->  BILAN : 16 OK, 0 KO   rc=0
+  verif_reception_dn85.py  ->  BILAN : 16 OK, 0 KO   rc=0
+  verif_affiliation_dn65.py  ->  BILAN : 24 OK, 0 KO   rc=0
+  verif_ledger_dn416.py  ->  BILAN : 36 OK, 0 KO   rc=0
+
+-- 5. AC8.10.8 — la gate de reception N'A PAS ete touchee ---------------------
+  git diff --stat -- tools/ :
+  (vide = AUCUNE gate touchee, AUCUN mutant ajoute)
+
+-- 6. LA PASSE COMPLETE, ET SON ROUGE ATTRIBUE PAR LA MESURE ------------------
+  BILAN : 46 VERTE, 2 ROUGE, 1 NON-JOUABLE sur 49 gates (1169s)
+  reference documentee (dn8-6, dn8-7, dn8-9) : 47 VERTE / 1 ROUGE / 1 NON-JOUABLE
+  la gate qui bouge : verif_campagne_dn56.py rc=124 a 900 s (plafond DN_TIMEOUT_GATE)
+  rejouee SEULE sans plafond : BILAN : 8 OK, 0 KO · rc=0 duree=991s
+  ⇒ ROUGE PAR TIMEOUT, ⛔ PAS PAR CONTENU — et ⛔ pas imputable a dn8-10 (§5)
+
+-- 7. LE TRACKER SE PARSE ----------------------------------------------------
+   107 cles · dn8-10 = in-progress
+
+-- 8. CE QUE LA MARCHE A ECRIT -----------------------------------------------
+  desknode :
+     A .github/FUNDING.yml
+     M CHANGELOG.md
+     M README.md
+     M docs/roadmap.md
+     A mesures/dn8-10/T0-borne-depart.txt
+     A mesures/dn8-10/T1-borne-arrivee.txt
+     A mesures/dn8-10/dn810.sh.source
+    ?? mesures/dn8-10/T2-passe-runner-complete.txt
+    ?? mesures/dn8-10/T3-campagne-seule-sans-plafond.txt
+    ?? mesures/dn8-10/T4-borne-apres-revue.txt
+  cockpit :
+     M _bmad-output/implementation-artifacts/deferred-work.md
+     M _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md
+     A _bmad-output/implementation-artifacts/dn8-10-le-depot-porte-son-bouton-sponsor-et-le-ledger-est-solde.md
+     M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+
+==============================================================================
+FIN T4
+==============================================================================
